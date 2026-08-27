@@ -17,6 +17,7 @@ import AutomaticTasksPage from "./pages/AutomaticTasksPage";
 import LogsPage from "./pages/LogsPage";
 import SettingsPage from "./pages/SettingsPage";
 import ExtensionPage from "./pages/ExtensionPage";
+import QrReceivePage from "./pages/QrReceivePage";
 
 const THEME_KEY = "theme";
 
@@ -65,6 +66,8 @@ function AppRoot() {
   return (
     <div className="h-screen w-screen overflow-hidden bg-gray-50 font-sans text-gray-900 transition-colors duration-300 selection:bg-indigo-500 selection:text-white dark:bg-[#101014] dark:text-gray-100">
       <Routes>
+        {/* 离线扫码接收页：无需登录，可被 Service Worker 预缓存后离线使用 */}
+        <Route path="/qr-receive" element={<QrReceivePage />} />
         <Route path="/login" element={<LoginLayout isDark={isDark} onToggleTheme={toggle} />}>
           <Route index element={<LoginPage />} />
         </Route>
