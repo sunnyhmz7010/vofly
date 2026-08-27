@@ -1,0 +1,496 @@
+/* ==========================================================================
+   vofly design system — ported 1:1 from the VoHive reference build.
+   Light + dark themes, glassmorphism "ui-*" surfaces, sidebar, menu,
+   disclaimer, skeletons and keyframes. Plain CSS imported after Tailwind.
+   ========================================================================== */
+
+/* ---- Keyframes (top-level so they are always emitted) ---- */
+@keyframes loader-shimmer {
+  0% { transform: translate(-60%); }
+  100% { transform: translate(60%); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.1); }
+}
+@keyframes fade-slide-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-slide-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-20px); }
+}
+@keyframes drawer-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+@keyframes vofly-logo-draw-main {
+  0%, 3% { stroke-dashoffset: 10000; fill: transparent; stroke: #1296db; opacity: 1; }
+  41%, 72% { stroke-dashoffset: 0; fill: transparent; stroke: #1296db; opacity: 1; }
+  82%, 90% { stroke-dashoffset: 0; fill: #1296db; stroke: transparent; opacity: 1; }
+  96% { stroke-dashoffset: 0; fill: #1296db; stroke: transparent; opacity: 0; }
+  97%, 100% { stroke-dashoffset: 10000; fill: transparent; stroke: #1296db; opacity: 1; }
+}
+@keyframes vofly-logo-draw-left {
+  0%, 43% { stroke-dashoffset: 10000; fill: transparent; stroke: #1296db; opacity: 1; }
+  51%, 72% { stroke-dashoffset: 0; fill: transparent; stroke: #1296db; opacity: 1; }
+  82%, 90% { stroke-dashoffset: 0; fill: #1296db; stroke: transparent; opacity: 1; }
+  96% { stroke-dashoffset: 0; fill: #1296db; stroke: transparent; opacity: 0; }
+  97%, 100% { stroke-dashoffset: 10000; fill: transparent; stroke: #1296db; opacity: 1; }
+}
+@keyframes vofly-logo-draw-middle {
+  0%, 53% { stroke-dashoffset: 10000; fill: transparent; stroke: #1296db; opacity: 1; }
+  62%, 72% { stroke-dashoffset: 0; fill: transparent; stroke: #1296db; opacity: 1; }
+  82%, 90% { stroke-dashoffset: 0; fill: #1296db; stroke: transparent; opacity: 1; }
+  96% { stroke-dashoffset: 0; fill: #1296db; stroke: transparent; opacity: 0; }
+  97%, 100% { stroke-dashoffset: 10000; fill: transparent; stroke: #1296db; opacity: 1; }
+}
+@keyframes vofly-logo-draw-right {
+  0%, 64% { stroke-dashoffset: 10000; fill: transparent; stroke: #1296db; opacity: 1; }
+  72% { stroke-dashoffset: 0; fill: transparent; stroke: #1296db; opacity: 1; }
+  82%, 90% { stroke-dashoffset: 0; fill: #1296db; stroke: transparent; opacity: 1; }
+  96% { stroke-dashoffset: 0; fill: #1296db; stroke: transparent; opacity: 0; }
+  97%, 100% { stroke-dashoffset: 10000; fill: transparent; stroke: #1296db; opacity: 1; }
+}
+/* ---- Base ---- */
+html {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+html, body {
+  height: 100%;
+  margin: 0;
+}
+body {
+  background: #f9fafb;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+html.dark body {
+  background: #101014;
+}
+#root {
+  font-feature-settings: "tnum" 1, "cv01" 1;
+}
+
+.vofly-boot-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #f9fafb;
+}
+.dark .vofly-boot-loader { background: #101014; }
+.vofly-boot-logo {
+  display: block;
+  width: clamp(144px, 24vw, 240px);
+  height: clamp(144px, 24vw, 240px);
+}
+.vofly-boot-logo path {
+  fill: transparent;
+  stroke: #1296db;
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 10000;
+  stroke-dashoffset: 10000;
+  animation-duration: 1.9s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.vofly-boot-logo path:nth-child(1) { animation-name: vofly-logo-draw-left; }
+.vofly-boot-logo path:nth-child(2) { animation-name: vofly-logo-draw-main; }
+.vofly-boot-logo path:nth-child(3) { animation-name: vofly-logo-draw-middle; }
+.vofly-boot-logo path:nth-child(4) { animation-name: vofly-logo-draw-right; }
+@media (prefers-reduced-motion: reduce) {
+  .vofly-boot-logo path {
+    animation: none;
+    fill: #1296db;
+    stroke: transparent;
+    stroke-dashoffset: 0;
+  }
+}
+
+::selection {
+  background: rgb(14 165 233 / 1);
+  color: #fff;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.dark ::-webkit-scrollbar-thumb { background: #334155; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* ---- Design tokens ---- */
+:root {
+  --el-color-primary: #0ea5e9;
+  --el-color-primary-light-3: #38bdf8;
+  --el-color-primary-light-5: #7dd3fc;
+  --el-color-primary-light-7: #bae6fd;
+  --el-color-primary-light-8: #e0f2fe;
+  --el-color-primary-light-9: #f0f9ff;
+  --el-color-primary-dark-2: #0284c7;
+
+  --color-primary: #0ea5e9;
+  --color-surface: #ffffff;
+  --color-border: #e5e7eb;
+
+  --ui-surface: rgba(255, 255, 255, 0.9);
+  --ui-surface-strong: #ffffff;
+  --ui-surface-muted: rgba(250, 250, 251, 0.9);
+  --ui-border: rgba(17, 24, 39, 0.08);
+  --ui-border-muted: rgba(17, 24, 39, 0.05);
+  --ui-backdrop: blur(18px);
+  --ui-radius-sm: 6px;
+  --ui-radius-md: 8px;
+  --ui-radius-lg: 10px;
+  --ui-radius-xl: 12px;
+  --ui-shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.04);
+  --ui-shadow-md: 0 1px 3px rgba(17, 24, 39, 0.06), 0 1px 2px rgba(17, 24, 39, 0.04);
+  --ui-shadow-lg: 0 8px 24px rgba(17, 24, 39, 0.08);
+  --ui-btn-shadow: 0 2px 8px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.05);
+  --ui-btn-shadow-hover: 0 4px 12px rgba(15, 23, 42, 0.11), 0 2px 5px rgba(15, 23, 42, 0.06);
+  --ui-btn-primary-shadow: 0 1px 2px rgba(14, 165, 233, 0.2);
+  --ui-btn-primary-shadow-hover: 0 2px 6px rgba(14, 165, 233, 0.26);
+}
+html.dark {
+  --el-color-primary: #38bdf8;
+  --el-color-primary-light-3: #0ea5e9;
+  --el-color-primary-light-5: #0284c7;
+  --el-color-primary-light-7: #075985;
+  --el-color-primary-light-8: #0c4a6e;
+  --el-color-primary-light-9: #082f49;
+  --el-color-primary-dark-2: #7dd3fc;
+
+  --color-primary: #38bdf8;
+  --color-surface: #1a1a20;
+  --color-border: rgba(255, 255, 255, 0.1);
+
+  --ui-surface: rgba(255, 255, 255, 0.055);
+  --ui-surface-strong: rgba(255, 255, 255, 0.09);
+  --ui-surface-muted: rgba(255, 255, 255, 0.022);
+  --ui-border: rgba(255, 255, 255, 0.1);
+  --ui-border-muted: rgba(255, 255, 255, 0.055);
+  --ui-btn-primary-shadow: 0 6px 16px rgba(14, 165, 233, 0.28), 0 2px 6px rgba(15, 23, 42, 0.18);
+  --ui-btn-primary-shadow-hover: 0 8px 20px rgba(14, 165, 233, 0.32), 0 3px 8px rgba(15, 23, 42, 0.22);
+}
+
+/* ---- Surfaces ---- */
+.ui-surface {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  -webkit-backdrop-filter: var(--ui-backdrop);
+  backdrop-filter: var(--ui-backdrop);
+}
+.ui-surface-strong {
+  background: var(--ui-surface-strong);
+  border: 1px solid var(--ui-border);
+  -webkit-backdrop-filter: var(--ui-backdrop);
+  backdrop-filter: var(--ui-backdrop);
+}
+.ui-surface-muted {
+  background: var(--ui-surface-muted);
+  border: 1px solid var(--ui-border-muted);
+  -webkit-backdrop-filter: var(--ui-backdrop);
+  backdrop-filter: var(--ui-backdrop);
+}
+.ui-glass {
+  background: var(--ui-surface);
+  -webkit-backdrop-filter: var(--ui-backdrop);
+  backdrop-filter: var(--ui-backdrop);
+}
+.ui-glass-border {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  -webkit-backdrop-filter: var(--ui-backdrop);
+  backdrop-filter: var(--ui-backdrop);
+}
+.ui-card {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  -webkit-backdrop-filter: var(--ui-backdrop);
+  backdrop-filter: var(--ui-backdrop);
+  border-radius: var(--ui-radius-xl);
+  box-shadow: var(--ui-shadow-md);
+}
+.ui-card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.ui-card-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--ui-shadow-lg);
+}
+.ui-panel {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  -webkit-backdrop-filter: var(--ui-backdrop);
+  backdrop-filter: var(--ui-backdrop);
+  border-radius: var(--ui-radius-lg);
+  box-shadow: var(--ui-shadow-sm);
+}
+.ui-panel-muted {
+  background: var(--ui-surface-muted);
+  border: 1px solid var(--ui-border-muted);
+  -webkit-backdrop-filter: var(--ui-backdrop);
+  backdrop-filter: var(--ui-backdrop);
+  border-radius: var(--ui-radius-lg);
+  box-shadow: var(--ui-shadow-sm);
+}
+.ui-action-btn { box-shadow: var(--ui-btn-shadow); }
+.ui-action-btn-primary { box-shadow: var(--ui-btn-primary-shadow); }
+.ui-action-btn-primary:hover,
+.ui-action-btn-primary:focus-visible { box-shadow: var(--ui-btn-primary-shadow-hover); }
+
+h1, h2, .ui-app-title { letter-spacing: -0.02em; }
+
+.animate-pulse-slow { animation: pulse 8s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+/* ---- Sidebar ---- */
+.sidebar-shell {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --sidebar-menu-text: #475569;
+  --sidebar-menu-hover-bg: rgba(14, 165, 233, 0.08);
+  --sidebar-menu-active-bg: linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(14, 165, 233, 0.1));
+  --sidebar-menu-active-color: #0284c7;
+  --sidebar-menu-active-ring: rgba(14, 165, 233, 0.16);
+}
+html.dark .sidebar-shell {
+  --sidebar-menu-text: rgba(255, 255, 255, 0.84);
+  --sidebar-menu-hover-bg: rgba(14, 165, 233, 0.18);
+  --sidebar-menu-active-bg: linear-gradient(135deg, rgba(14, 165, 233, 0.24), rgba(14, 165, 233, 0.15));
+  --sidebar-menu-active-color: #7dd3fc;
+  --sidebar-menu-active-ring: rgba(14, 165, 233, 0.22);
+}
+.sidebar-brand-title {
+  font-family: "Space Grotesk", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1.62rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  min-height: 1.75rem;
+  background: #1f2430;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: none;
+  white-space: nowrap;
+  padding-right: 4px;
+}
+html.dark .sidebar-brand-title { background: #f3f4f6; background-clip: text; -webkit-background-clip: text; }
+.sidebar-brand-logo {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  display: block;
+}
+.sidebar-menu-label {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.sidebar-menu { display: flex; flex-direction: column; }
+.sidebar-menu .vofly-menu-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  min-height: 40px;
+  margin: 2px 8px;
+  border-radius: 10px;
+  padding-left: 13px;
+  padding-right: 13px;
+  font-size: 0.94rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--sidebar-menu-text);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+.sidebar-menu .vofly-menu-item .vofly-menu-icon {
+  margin-right: 8px;
+  font-size: 1.18rem;
+  width: 1.18rem;
+  height: 1.18rem;
+  display: inline-flex;
+  color: inherit;
+  flex-shrink: 0;
+}
+.sidebar-menu .vofly-menu-item:hover { background: var(--sidebar-menu-hover-bg); }
+html.dark .sidebar-shell .sidebar-menu .vofly-menu-item:not(.is-active) { color: rgba(236, 241, 252, 0.9); }
+.sidebar-menu .vofly-menu-item.is-active {
+  background: var(--sidebar-menu-active-bg);
+  color: var(--sidebar-menu-active-color);
+  box-shadow: inset 0 0 0 1px var(--sidebar-menu-active-ring);
+}
+.sidebar-menu.is-collapsed { align-items: center; }
+.sidebar-menu.is-collapsed .vofly-menu-item {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  margin: 3px auto;
+  padding: 0;
+  justify-content: center;
+}
+.sidebar-menu.is-collapsed .vofly-menu-item .vofly-menu-icon { margin: 0; }
+.sidebar-menu.is-collapsed .vofly-menu-item .sidebar-menu-label { display: none; }
+
+.main-inner { max-width: 100%; }
+@media (min-width: 768px) {
+  .main-inner { max-width: clamp(0px, calc(100vw - 288px), 80rem); }
+}
+
+/* ---- Modal (glass) ---- */
+.glass-modal {
+  background: rgba(255, 255, 255, 0.9);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+html.dark .glass-modal {
+  background: rgba(30, 30, 40, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ---- Disclaimer ---- */
+.disclaimer-overlay {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.disclaimer-dialog { max-height: calc(100vh - 32px); display: flex; flex-direction: column; }
+@supports (height: 100dvh) {
+  .disclaimer-dialog {
+    max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+}
+.disclaimer-dialog-content { max-height: inherit; }
+.disclaimer-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
+.disclaimer-actions { flex-shrink: 0; }
+@media (max-width: 640px) {
+  .disclaimer-overlay {
+    align-items: stretch;
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+  .disclaimer-dialog {
+    align-self: center;
+    max-height: calc(100vh - 24px);
+    margin-left: 0;
+    margin-right: 0;
+    padding: 18px;
+    border-radius: 20px;
+  }
+  @supports (height: 100dvh) {
+    .disclaimer-dialog {
+      max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    }
+  }
+  .disclaimer-icon { width: 44px; height: 44px; margin-bottom: 12px; border-radius: 14px; }
+  .disclaimer-icon svg { width: 24px; height: 24px; }
+  .disclaimer-title { margin-bottom: 14px; font-size: 20px; line-height: 1.35; }
+  .disclaimer-body { font-size: 13px; line-height: 1.6; }
+  .disclaimer-body > div { align-items: flex-start; }
+  .disclaimer-body > div + div { margin-top: 12px; }
+  .disclaimer-body > div > div:first-child { width: 22px; height: 22px; margin-right: 10px; }
+  .disclaimer-actions { margin-top: 14px; padding-top: 14px; }
+  .disclaimer-input-wrap { margin-bottom: 12px; }
+  .disclaimer-button-row { gap: 10px; }
+}
+@media (max-width: 420px) {
+  .disclaimer-icon { display: none; }
+  .disclaimer-title { margin-top: 2px; }
+  .disclaimer-button-row { flex-direction: column-reverse; }
+  .disclaimer-button-row > button { width: 100%; }
+}
+
+/* ---- SMS page ---- */
+.sms-page { container-type: inline-size; }
+.sms-main-layout { display: grid; grid-template-columns: minmax(0, 1fr); height: 100%; min-height: 0; }
+.sms-msg-wrapper { width: 100%; max-width: min(620px, 88%); }
+.sms-delete-trigger { width: 28px; height: 28px; padding: 0; }
+.sms-thread-row { position: relative; }
+.sms-thread-item-shell { transition: background-color 0.16s ease, border-color 0.16s ease; }
+.sms-thread-item-shell-active {
+  background: color-mix(in srgb, var(--color-primary, #0ea5e9) 10%, transparent);
+  position: relative; z-index: 1;
+}
+.sms-thread-item-shell-active::before {
+  content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 1px;
+  background: color-mix(in srgb, var(--color-primary, #0ea5e9) 10%, transparent);
+}
+.sms-thread-row-active { background: transparent; }
+.sms-thread-delete-btn { position: absolute; right: 16px; top: 50%; transform: translate(10px, -50%); z-index: 3; }
+.sms-thread-meta { transition: transform 0.2s ease; }
+.sms-message-delete-btn { flex: 0 0 auto; }
+.sms-delete-visible { opacity: 1 !important; pointer-events: auto !important; }
+.sms-action-sheet-mask {
+  position: fixed; inset: 0; z-index: 2200; background: rgba(15, 23, 42, 0.36);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.sms-action-sheet {
+  width: min(520px, 100%);
+  background: color-mix(in srgb, var(--color-surface, #fff) 92%, transparent);
+  border-top-left-radius: 16px; border-top-right-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--color-border, #e5e7eb) 90%, transparent);
+  border-bottom: none;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  padding: 12px; display: flex; flex-direction: column; gap: 10px;
+}
+.sms-action-sheet-title { font-size: 12px; font-weight: 700; color: #6b7280; text-align: center; letter-spacing: 0.03em; }
+.sms-danger-ghost-btn { color: #b91c1c; border-color: rgba(239,68,68,0.24); background: rgba(239,68,68,0.09); }
+.sms-danger-ghost-btn:hover { color: #991b1b; border-color: rgba(239,68,68,0.38); background: rgba(239,68,68,0.15); }
+@container (min-width: 980px) {
+  .sms-main-layout { grid-template-columns: 260px 340px minmax(0, 1fr); }
+  .sms-delete-trigger { opacity: 0; pointer-events: none; transition: opacity 0.18s ease, transform 0.2s ease; }
+  .group:hover .sms-delete-trigger, .group:focus-within .sms-delete-trigger { opacity: 1; pointer-events: auto; }
+  .sms-thread-row:hover .sms-thread-meta, .sms-thread-row:focus-within .sms-thread-meta { transform: translate(-36px); }
+  .sms-thread-row:hover .sms-thread-delete-btn, .sms-thread-row:focus-within .sms-thread-delete-btn { transform: translateY(-50%); }
+}
+@container (max-width: 979px) {
+  .sms-msg-wrapper { max-width: 96%; }
+}
+.sms-detail-scroll::-webkit-scrollbar { width: 6px; }
+.sms-detail-scroll::-webkit-scrollbar-track { background: transparent; }
+.sms-detail-scroll::-webkit-scrollbar-thumb { background: rgba(144,147,153,0.3); border-radius: 3px; }
+.sms-detail-scroll::-webkit-scrollbar-thumb:hover { background: rgba(144,147,153,0.5); }
+.sms-detail-scroll { scrollbar-width: thin; scrollbar-color: rgba(144,147,153,0.3) transparent; }
+
+/* ---- Devices page ---- */
+.devices-page { container-type: inline-size; }
+.devices-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+@container (min-width: 980px) {
+  .devices-layout { grid-template-columns: 270px minmax(0, 1fr); }
+}
+.device-list-scroll { container-type: inline-size; }
+.device-list-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
+.device-list-item { min-width: 0; }
+@container (min-width: 700px) {
+  .device-list-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.device-detail-tabs .vofly-tabs-content { overflow: visible; }
+.device-header-brand-icon {
+  width: 2.75rem; height: 2.75rem; border-radius: 0.75rem;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  background: linear-gradient(135deg, #0ea5e9, #0284c7); color: #fff;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1.15rem; font-weight: 700; box-shadow: 0 10px 22px rgba(14, 165, 233, 0.2);
+}
+.device-header-brand-svg { width: 60%; height: 60%; fill: currentColor; }
+
+.websheet-frame-shell { height: min(680px, 78vh); }
+@media (max-width: 640px) {
+  .websheet-frame-shell { height: min(620px, calc(100vh - 140px)); }
+}
