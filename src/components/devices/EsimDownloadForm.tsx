@@ -1,6 +1,7 @@
-import { AddRegular, ArrowDownloadRegular } from "@fluentui/react-icons";
+import { AddRegular, ArrowDownloadRegular, DocumentArrowUpRegular } from "@fluentui/react-icons";
+import { useRef, useState } from "react";
 import { cx } from "../../lib/utils";
-import { Button, Input, Select } from "../ui";
+import { Button, Input, Select, message } from "../ui";
 import type { EsimChipInfo, EsimDownloadForm } from "./types";
 import { tf, useI18n } from "../../lib/i18n";
 
@@ -39,6 +40,38 @@ export function EsimDownloadForm(props: EsimDownloadFormProps) {
     label: tf("eUICC #{n} (...{tail}) — {free} 可用", { n: i + 1, tail: e.eid.slice(-4), free: e.freeNvram }),
   }));
   const widthClass = WIDTHS[Math.min(20, Math.round(props.downloadPct / 5))];
+  const uploadRef = useRef<HTMLInputElement>(null);
+  const [decoding, setDecoding] = useState(false);
+
+  const decodeActivation = async (file: File) => {
+    setDecoding(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const response = await fetch("/api/esim/actions/decode-activation", {
+        method: "POST",
+        body,
+        credentials: "include",
+        headers: (() => {
+          const token = sessionStorage.getItem("vofly.csrf");
+          const headers: Record<string, string> ={};
+          if (token) headers["X-CSRF-Token"] = token;
+          return headers;
+        })(),
+      });
+      const payload = await response.json() as { data?: { smdpAddress?: string; matchingId?: string; confirmationCode?: string }; error?: { message?: string } };
+      if (!response.ok || !payload.data?.smdpAddress) throw new Error(payload.error?.message || t("无法解析激活码"));
+      set({
+        smdp: payload.data.smdpAddress,
+        matchingId: payload.data.matchingId || "",
+        confirmationCode: payload.data.confirmationCode || "",
+      });
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : t("无法解析激活码"));
+    } finally {
+      setDecoding(false);
+    }
+  };
 
   return (
     <div className="ui-panel-muted p-4">
@@ -78,7 +111,21 @@ export function EsimDownloadForm(props: EsimDownloadFormProps) {
           </div>
         </div>
       ) : null}
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex flex-wrap justify-end gap-3">
+        <input
+          ref={uploadRef}
+          type="file"
+          accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,text/plain"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) void decodeActivation(file);
+          }}
+        />
+        <Button variant="text" loading={decoding} disabled={props.downloading || decoding} onClick={() => uploadRef.current?.click()} icon={<DocumentArrowUpRegular />}>
+          {t("扫描二维码/PDF")}
+        </Button>
         <Button variant="primary" loading={props.downloading} disabled={props.downloading} onClick={props.onDownload} className="!border-0" icon={<ArrowDownloadRegular />}>
           {t("开始下载")}
         </Button>
