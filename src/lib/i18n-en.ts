@@ -1260,6 +1260,9 @@ export const EN_DICT: Record<string, string> = {
   "VoLTE 未就绪": "VoLTE not ready",
   "设备离线，无法读取或修改模组 IMS 配置。": "The device is offline; its modem IMS configuration cannot be read or changed.",
   "VoWiFi 通话": "VoWiFi Calls",
+  "网页麦克风与扬声器 IMS 通话、通话记录与录音回放":
+    "Browser microphone & speaker IMS calls, call history, and recording playback",
+  "选择要拨号的设备": "Pick a device to dial from",
   "通过网页麦克风和扬声器进行 IMS 通话": "Place IMS calls using your browser microphone and speakers",
   "当前为基站直连（电路交换）通话，网页音频仅 VoWiFi IMS 通话可用":
     "Currently on the cellular (circuit-switched) call path; browser audio is only available for VoWiFi IMS calls",
@@ -1281,5 +1284,7 @@ export const EN_DICT: Record<string, string> = {
   "接听": "Answer",
   "挂断": "Hang up",
   "暂无进行中的通话": "No active calls",
-  "通话记录": "Call history",
+  "通话记录与录音": "Call history & recordings",
+  "暂无通话记录": "No call records",
+  "共 {count} 条记录": "{count} records in total",
 };
