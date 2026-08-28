@@ -50,16 +50,15 @@ test("installer scripts follow current VOFLY environment layout without audio tr
   assert.doesNotMatch(joined, /libmp3lame|opencore-amr|ffmpeg|vofly -c|config\.yaml/);
 });
 
-test("installer bootstraps first admin and exposes the vofly CLI without storing secrets", async () => {
+test("installer bootstraps the access secret and exposes the vofly CLI without storing credentials", async () => {
   const install = await source("install.sh");
   const update = await source("update.sh");
 
   assert.match(install, /--force/);
   assert.match(install, /FIRST_INSTALL=0/);
   assert.match(install, /INITIAL_ADMIN_PASSWORD=""/);
-  assert.match(install, /bootstrap-admin --database "\$DEFAULT_DATABASE" --username admin/);
-  assert.match(install, /首次安装已生成管理员初始密码/);
-  assert.match(install, /用户名：admin/);
+  assert.match(install, /bootstrap-admin --database "\$DEFAULT_DATABASE"/);
+  assert.match(install, /首次安装已生成访问密令/);
   assert.match(install, /LINK_PATH="\/usr\/local\/bin\/vofly"/);
   assert.match(update, /LINK_PATH="\/usr\/local\/bin\/vofly"/);
   assert.match(install, /ln -sfn "\$BINARY_PATH" "\$LINK_PATH"/);
@@ -67,6 +66,7 @@ test("installer bootstraps first admin and exposes the vofly CLI without storing
   assert.match(install, /AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW/);
   assert.match(install, /ReadWritePaths=\/opt\/vofly\/data \/opt\/vofly\/bin/);
 
+  assert.doesNotMatch(install, /--username/);
   assert.doesNotMatch(install, /^VOFLY_ADMIN_USERNAME=/m);
   assert.doesNotMatch(install, /^VOFLY_ADMIN_PASSWORD=/m);
   assert.doesNotMatch(install, /^VOFLY_ADMIN_PASSWORD_B64=/m);
