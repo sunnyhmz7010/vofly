@@ -331,7 +331,7 @@ generate_admin_password() {
     secret=$(tr -dc 'a-f0-9' </dev/urandom | head -c 32)
   fi
   if [ -z "$secret" ]; then
-    printf '生成随机管理员密码失败。\n' >&2
+    printf '生成随机访问密令失败。\n' >&2
     exit 1
   fi
   printf '%s\n' "$secret"
@@ -340,7 +340,7 @@ generate_admin_password() {
 bootstrap_admin() {
   candidate=$1
   secret=$(generate_admin_password)
-  result=$(printf '%s\n' "$secret" | "$candidate" bootstrap-admin --database "$DEFAULT_DATABASE" --username admin 2>/dev/null) || {
+  result=$(printf '%s\n' "$secret" | "$candidate" bootstrap-admin --database "$DEFAULT_DATABASE" 2>/dev/null) || {
     printf '待安装版本无法读取或初始化数据库；当前程序尚未被替换，请检查数据库与版本兼容性。\n' >&2
     exit 1
   }
@@ -364,10 +364,9 @@ print_admin_credentials() {
   fi
   ADMIN_NOTICE_PRINTED=1
   printf '\n================ 安装完成 ================\n'
-  printf '首次安装已生成管理员初始密码（仅显示一次）：\n\n'
+  printf '首次安装已生成访问密令（仅显示一次）：\n\n'
   printf '    %s\n\n' "$INITIAL_ADMIN_PASSWORD"
-  printf '用户名：admin\n'
-  printf '请立即记录此密码；登录后可在 Web 设置或运行 vofly menu 修改。\n'
+  printf '请立即记录此密令；登录后可在 Web 设置或运行 vofly menu 修改。\n'
   printf '==========================================\n'
 }
 

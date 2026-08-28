@@ -17,7 +17,6 @@ export interface OverviewNetworkPanelProps {
 
 export function OverviewNetworkPanel({ device, trafficMinuteRx, trafficMinuteTx, trafficSpeedRx, trafficSpeedTx }: OverviewNetworkPanelProps) {
   const { t, lang } = useI18n();
-  const developerActive = !!device.developerEnabled;
   const [publicIP, setPublicIP] = useState<PublicIPInfo | null>(null);
   const [detectingIP, setDetectingIP] = useState(false);
   const [liveSession, setLiveSession] = useState<{ phase?: string; modemPhase?: string; lastError?: string } | null>(null);
@@ -42,7 +41,6 @@ export function OverviewNetworkPanel({ device, trafficMinuteRx, trafficMinuteTx,
   useEffect(() => {
     let cancelled = false;
     setPublicIP(device.publicIpInfo?.detected ? device.publicIpInfo : null);
-    if (!developerActive) return () => { cancelled = true; };
     api<PublicIPInfo>(`/devices/${encodeURIComponent(device.id)}/network/public-ip`)
       .then((info) => {
         if (!cancelled) setPublicIP(info.detected ? info : null);
@@ -52,7 +50,6 @@ export function OverviewNetworkPanel({ device, trafficMinuteRx, trafficMinuteTx,
       });
     return () => { cancelled = true; };
   }, [
-    developerActive,
     device.id,
     device.interface,
     device.networkEnabled,
@@ -69,7 +66,6 @@ export function OverviewNetworkPanel({ device, trafficMinuteRx, trafficMinuteTx,
   useEffect(() => {
     let cancelled = false;
     setLiveSession(null);
-    if (!developerActive) return () => { cancelled = true; };
     api<{ phase?: string; modemPhase?: string; lastError?: string }>(`/devices/${encodeURIComponent(device.id)}/network`)
       .then((status) => {
         if (!cancelled) setLiveSession(status);
@@ -79,7 +75,6 @@ export function OverviewNetworkPanel({ device, trafficMinuteRx, trafficMinuteTx,
       });
     return () => { cancelled = true; };
   }, [
-    developerActive,
     device.id,
     device.interface,
     device.networkEnabled,
@@ -112,10 +107,6 @@ export function OverviewNetworkPanel({ device, trafficMinuteRx, trafficMinuteTx,
   const location = publicIP
     ? [countryName, publicIP.region, publicIP.city].filter((value, index, values) => value && values.indexOf(value) === index).join(" · ")
     : "";
-
-  if (!developerActive) {
-    return null;
-  }
 
   return (
     <div className="ui-panel-muted p-4">

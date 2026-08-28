@@ -165,10 +165,10 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
   return requestAPI<T>(path, options, true);
 }
 
-export async function login(username: string, password: string) {
+export async function login(secret: string) {
   const result = await api<LoginResponse & { user?: { username?: string } }>("/auth/login", {
     method: "POST",
-    body: { username, password },
+    body: { secret },
   });
   if (result.csrfToken) sessionStorage.setItem(CSRF_KEY, result.csrfToken);
   return result;

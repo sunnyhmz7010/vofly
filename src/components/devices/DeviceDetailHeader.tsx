@@ -46,7 +46,7 @@ export function DeviceDetailHeader(props: DeviceDetailHeaderProps) {
             <Button loading={props.reconnectingVoWiFi} onClick={props.onReconnectVowifi} className="ui-glass-border !border-0" icon={<ArrowSyncRegular />}>
               {t("重连 VoWiFi")}
             </Button>
-		  ) : device.developerEnabled && !props.wifiCallingOnly ? (
+		  ) : !props.wifiCallingOnly ? (
 			<div
 			  className="ui-glass-border flex h-8 items-center gap-2 rounded-lg px-3 text-sm text-gray-700 dark:text-gray-200"
 			  title={t("蜂窝数据仅进入 Export Proxy 的受保护路由，不会成为主机默认出口")}

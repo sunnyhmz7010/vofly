@@ -524,7 +524,6 @@ export interface SystemInfo {
   os?: string;
   architecture?: string;
   uptime?: string;
-  developer?: boolean;
 }
 
 export interface HTTPSSettings {

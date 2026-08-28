@@ -22,7 +22,6 @@ export interface DeviceModem extends ModemSummary {
 // Device detail (`/devices/:id/overview` -> devices[0]) with the extra fields
 // the reference page reads. All camelCase (api auto-converts).
 export interface DeviceDetail extends Omit<DeviceOverview, "modem" | "traffic"> {
-  developerEnabled?: boolean;
   modem: DeviceModem;
   localPhone?: string;
   publicIpv6?: string;

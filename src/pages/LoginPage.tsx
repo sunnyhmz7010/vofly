@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowRightRegular, LockClosedRegular, PersonRegular } from "@fluentui/react-icons";
+import { ArrowRightRegular, LockClosedRegular } from "@fluentui/react-icons";
 import { useAuth } from "../store/auth";
 import { useI18n } from "../lib/i18n";
 import { message } from "../components/ui/message";
@@ -14,19 +14,18 @@ export default function LoginPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [secret, setSecret] = useState("");
   const [working, setWorking] = useState(false);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!username || !password) {
-      message.warning(t("请输入用户名和密码"));
+    if (!secret) {
+      message.warning(t("请输入访问密令"));
       return;
     }
     setWorking(true);
     await new Promise((resolve) => setTimeout(resolve, 600));
-    const ok = await login(username, password);
+    const ok = await login(secret);
     setWorking(false);
     if (ok) {
       message.success(t("欢迎回来"));
@@ -57,30 +56,15 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="relative">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-gray-500">
-                  <PersonRegular className="h-5 w-5" />
-                </div>
-                <input
-                  className={INPUT_CLASS}
-                  placeholder={t("用户名")}
-                  type="text"
-                  autoComplete="username"
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-gray-500">
                   <LockClosedRegular className="h-5 w-5" />
                 </div>
                 <input
                   className={INPUT_CLASS}
-                  placeholder={t("密码")}
+                  placeholder={t("访问密令")}
                   type="password"
                   autoComplete="current-password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  value={secret}
+                  onChange={(event) => setSecret(event.target.value)}
                 />
               </div>
             </div>

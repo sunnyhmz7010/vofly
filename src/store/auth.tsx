@@ -18,7 +18,7 @@ interface AuthContextValue {
   ready: boolean;
   isAuthenticated: boolean;
   user: AuthUser | null;
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (secret: string) => Promise<boolean>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -41,11 +41,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(
-    async (username: string, password: string) => {
+    async (secret: string) => {
       try {
-        await api.login(username, password);
+        await api.login(secret);
         const current = await api.session();
-        setUser({ username: current.username || username, role: current.role || "Administrator" });
+        setUser({ username: current.username || "Admin", role: current.role || "Administrator" });
         return true;
       } catch {
         return false;

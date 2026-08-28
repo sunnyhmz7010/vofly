@@ -25,8 +25,6 @@ import { cx } from "../../lib/utils";
 import { BrandLogo } from "./BrandLogo";
 import { VersionBadge } from "./VersionBadge";
 import { listPlugins, type InstalledPlugin } from "../../extensions";
-import { api } from "../../api";
-import type { SystemInfo } from "../../types";
 
 const NAV = [
   { to: "/", label: "仪表盘", icon: BoardRegular, end: true },
@@ -51,23 +49,10 @@ export function AuthenticatedShell({
   const [isMobile, setIsMobile] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [plugins, setPlugins] = useState<InstalledPlugin[]>([]);
-  const [developer, setDeveloper] = useState(false);
   const { logout, user } = useAuth();
   const { t, lang } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
-
-  useEffect(() => {
-    let active = true;
-    const load = () => api<SystemInfo>("/system/info").then((info) => {
-      if (active) setDeveloper(!!info.developer);
-    }).catch(() => {
-      if (active) setDeveloper(false);
-    });
-    void load();
-    const timer = window.setInterval(load, 10_000);
-    return () => { active = false; window.clearInterval(timer); };
-  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -120,10 +105,10 @@ export function AuthenticatedShell({
     const navItems: Array<(typeof NAV)[number] | { to: string; label: string; icon: typeof GlobeRegular; pluginLabelZH?: string }> = [];
     for (const item of NAV) {
       navItems.push(item);
-	  if (developer && item.to === "/proxy") {
-		navItems.push({ to: "/export-proxy", label: "导出代理", icon: GlobeRegular });
-	  }
-	  const itemKey = item.to.replace(/^\//, "") || "dashboard";
+      if (item.to === "/proxy") {
+        navItems.push({ to: "/export-proxy", label: "导出代理", icon: GlobeRegular });
+      }
+      const itemKey = item.to.replace(/^\//, "") || "dashboard";
       for (const extension of sidebarPlugins.filter((entry) => (entry.contribution.after || "sms") === itemKey)) {
         navItems.push({
           to: `/extensions/${encodeURIComponent(extension.plugin.id)}/${encodeURIComponent(extension.contribution.id)}`,

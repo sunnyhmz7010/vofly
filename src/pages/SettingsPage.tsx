@@ -27,7 +27,7 @@ import { PluginsCard } from "../components/settings/PluginsCard";
 import { HTTPSCard } from "../components/settings/HTTPSCard";
 import { SMSRateLimitCard } from "../components/settings/SMSRateLimitCard";
 
-const EMPTY_PASSWORD: PasswordForm = { oldPassword: "", newPassword: "", confirmPassword: "" };
+const EMPTY_PASSWORD: PasswordForm = { currentSecret: "", newSecret: "", confirmSecret: "" };
 
 const NOTIFY_TABS = [
   { key: "telegram", label: "Telegram Bot" },
@@ -153,15 +153,9 @@ export default function SettingsPage() {
   }, [fetchSystemInfo, fetchNotifications, fetchSecurity]);
 
   useEffect(() => {
-    if (systemInfo.developer) {
-      void fetchHTTPS();
-      void fetchDeveloperSettings();
-    } else {
-      setHTTPSSettings(null);
-      setDeveloperSettings(null);
-      setSMSHourlyLimit(10);
-    }
-  }, [systemInfo.developer, fetchHTTPS, fetchDeveloperSettings]);
+    void fetchHTTPS();
+    void fetchDeveloperSettings();
+  }, [fetchHTTPS, fetchDeveloperSettings]);
 
   const onToggleHTTPS = useCallback(async (enabled: boolean) => {
     setSavingHTTPS(true);
@@ -218,26 +212,26 @@ export default function SettingsPage() {
   }, [security, applySecurity]);
 
   const onChangePassword = useCallback(async () => {
-    if (password.newPassword !== password.confirmPassword) {
-      message.error(t("两次输入的新密码不一致"));
+    if (password.newSecret !== password.confirmSecret) {
+      message.error(t("两次输入的新密令不一致"));
       return;
     }
     setChangingPassword(true);
     try {
-      await api("/settings/password", {
+      await api("/settings/secret", {
         method: "POST",
         body: {
-          oldPassword: password.oldPassword,
-          newPassword: password.newPassword,
-          confirmPassword: password.confirmPassword,
+          current_secret: password.currentSecret,
+          new_secret: password.newSecret,
+          confirm_secret: password.confirmSecret,
         },
       });
-      message.success(t("密码已更新，请重新登录"));
+      message.success(t("密令已更新，请重新登录"));
       setPassword(EMPTY_PASSWORD);
       // vofly 后端改密成功后会注销现有会话，需要重新登录
       window.setTimeout(() => void refresh(), 1200);
     } catch (error) {
-      message.error(apiMessage(error) || t("密码更新失败"));
+      message.error(apiMessage(error) || t("密令更新失败"));
     } finally {
       setChangingPassword(false);
     }
@@ -429,25 +423,21 @@ export default function SettingsPage() {
           onSave={onSaveSecurity}
         />
 
-        {systemInfo.developer ? (
-          <>
-            <HTTPSCard
-              value={httpsSettings}
-              loading={loadingHTTPS}
-              saving={savingHTTPS}
-              onToggle={onToggleHTTPS}
-            />
-            <SMSRateLimitCard
-              value={developerSettings}
-              limit={smsHourlyLimit}
-              loading={loadingDeveloper}
-              saving={savingSMSLimit}
-              onLimitChange={setSMSHourlyLimit}
-              onSave={onSaveSMSHourlyLimit}
-            />
-            <PluginsCard />
-          </>
-        ) : null}
+        <HTTPSCard
+          value={httpsSettings}
+          loading={loadingHTTPS}
+          saving={savingHTTPS}
+          onToggle={onToggleHTTPS}
+        />
+        <SMSRateLimitCard
+          value={developerSettings}
+          limit={smsHourlyLimit}
+          loading={loadingDeveloper}
+          saving={savingSMSLimit}
+          onLimitChange={setSMSHourlyLimit}
+          onSave={onSaveSMSHourlyLimit}
+        />
+        <PluginsCard />
 
         <div className="notify-card ui-card group relative overflow-hidden p-8 lg:col-span-2">
           <CardDecor />

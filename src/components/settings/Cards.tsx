@@ -11,9 +11,9 @@ import { Button } from "../ui/Button";
 import { FieldRow, PasswordInput } from "./controls";
 
 export interface PasswordForm {
-  oldPassword: string;
-  newPassword: string;
-  confirmPassword: string;
+  currentSecret: string;
+  newSecret: string;
+  confirmSecret: string;
 }
 
 export interface UpdateInfo {
@@ -77,33 +77,33 @@ export function SecurityCard({
       </div>
       <div className="relative z-10 space-y-4">
         <div className="space-y-1">
-          <label className={PASSWORD_LABEL}>{t("当前密码")}</label>
+          <label className={PASSWORD_LABEL}>{t("当前密令")}</label>
           <PasswordInput
             inputSize="large"
             placeholder="••••••••"
             autoComplete="current-password"
-            value={value.oldPassword}
-            onChange={(oldPassword) => onChange({ oldPassword })}
+            value={value.currentSecret}
+            onChange={(currentSecret) => onChange({ currentSecret })}
           />
         </div>
         <div className="space-y-1">
-          <label className={PASSWORD_LABEL}>{t("新密码")}</label>
+          <label className={PASSWORD_LABEL}>{t("新密令")}</label>
           <PasswordInput
             inputSize="large"
             placeholder="••••••••"
             autoComplete="new-password"
-            value={value.newPassword}
-            onChange={(newPassword) => onChange({ newPassword })}
+            value={value.newSecret}
+            onChange={(newSecret) => onChange({ newSecret })}
           />
         </div>
         <div className="space-y-1">
-          <label className={PASSWORD_LABEL}>{t("确认新密码")}</label>
+          <label className={PASSWORD_LABEL}>{t("确认新密令")}</label>
           <PasswordInput
             inputSize="large"
             placeholder="••••••••"
             autoComplete="new-password"
-            value={value.confirmPassword}
-            onChange={(confirmPassword) => onChange({ confirmPassword })}
+            value={value.confirmSecret}
+            onChange={(confirmSecret) => onChange({ confirmSecret })}
           />
         </div>
         <div className="pt-4">
