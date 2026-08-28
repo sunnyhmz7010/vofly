@@ -490,6 +490,10 @@ export interface EsimOverview {
 
 export interface NotificationSettings {
   telegram: Record<string, unknown>;
+  qq: Record<string, unknown>;
+  weixin: Record<string, unknown>;
+  wecomBot?: Record<string, unknown>;
+  wecom_bot?: Record<string, unknown>;
   webhook: Record<string, unknown>;
   bark: Record<string, unknown>;
   email: Record<string, unknown>;

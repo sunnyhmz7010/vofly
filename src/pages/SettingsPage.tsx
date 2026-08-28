@@ -21,7 +21,7 @@ import {
   formsFromNotifications,
   type NotifyForms,
 } from "../components/settings/model";
-import { PushplusTab, TelegramTab } from "../components/settings/BotTabs";
+import { PushplusTab, QQTab, TelegramTab, WeComBotTab, WeixinTab } from "../components/settings/BotTabs";
 import { BarkTab, EmailTab, LarkTab, WebhookTab, WecomTab } from "../components/settings/PushTabs";
 import { PluginsCard } from "../components/settings/PluginsCard";
 import { HTTPSCard } from "../components/settings/HTTPSCard";
@@ -32,6 +32,9 @@ const EMPTY_PASSWORD: PasswordForm = { oldPassword: "", newPassword: "", confirm
 
 const NOTIFY_TABS = [
   { key: "telegram", label: "Telegram Bot" },
+  { key: "qq", label: "QQ Bot" },
+  { key: "weixin", label: "个人微信" },
+  { key: "wecomBot", label: "企业微信长连接 Bot" },
   { key: "bark", label: "Bark" },
   { key: "email", label: "Email" },
   { key: "pushplus", label: "Pushplus" },
@@ -485,7 +488,7 @@ export default function SettingsPage() {
               <CardIcon>
                 <AlertRegular className="text-[24px]" />
               </CardIcon>
-              <CardTitle title={t("通知")} subtitle={t("Telegram / Bark / Email / Pushplus / Webhook / 企业微信 / 飞书 / Lark 群机器人")} />
+              <CardTitle title={t("通知")} subtitle={t("Telegram / QQ / 个人微信 / 企业微信长连接 Bot / Bark / Email / Pushplus / Webhook / 飞书 / Lark 群机器人")} />
             </div>
             <Button variant="primary" loading={savingNotif} disabled={loadingNotif} onClick={onSaveNotifications} className="!border-0" icon={<CheckmarkRegular />}>
               {t("保存通知配置")}
@@ -498,6 +501,15 @@ export default function SettingsPage() {
               <SegmentedTabs tabs={NOTIFY_TABS.map((tab) => ({ ...tab, label: t(tab.label) }))} value={activeTab} onChange={setActiveTab} />
               {activeTab === "telegram" ? (
                 <TelegramTab value={forms.telegram} onChange={(p) => updateChannel("telegram", p)} />
+              ) : null}
+              {activeTab === "qq" ? (
+                <QQTab value={forms.qq} onChange={(p) => updateChannel("qq", p)} onApplied={fetchNotifications} />
+              ) : null}
+              {activeTab === "weixin" ? (
+                <WeixinTab value={forms.weixin} onChange={(p) => updateChannel("weixin", p)} onApplied={fetchNotifications} />
+              ) : null}
+              {activeTab === "wecomBot" ? (
+                <WeComBotTab value={forms.wecomBot} onChange={(p) => updateChannel("wecomBot", p)} onApplied={fetchNotifications} />
               ) : null}
               {activeTab === "bark" ? (
                 <BarkTab value={forms.bark} onChange={(p) => updateChannel("bark", p)} testing={testingBark} onTest={onTestBark} />

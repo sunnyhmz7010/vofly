@@ -11,6 +11,30 @@ export interface TelegramForm {
   proxy: string;
 }
 
+export interface QQForm {
+  enabled: boolean;
+  appId: string;
+  appSecret: string;
+  groupIds: string;
+  directIds: string;
+}
+
+export interface WeixinForm {
+  enabled: boolean;
+  baseUrl: string;
+  allowedUserIds: string;
+  allowedGroupIds: string;
+}
+
+export interface WeComBotForm {
+  enabled: boolean;
+  botId: string;
+  secret: string;
+  websocketUrl: string;
+  allowedUserIds: string;
+  allowedGroupIds: string;
+}
+
 export interface HeaderRow {
   id: number;
   key: string;
@@ -83,6 +107,9 @@ export const DEFAULT_LARK_PAYLOAD_TEMPLATE = `{
 
 export interface NotifyForms {
   telegram: TelegramForm;
+  qq: QQForm;
+  weixin: WeixinForm;
+  wecomBot: WeComBotForm;
   webhook: WebhookForm;
   bark: BarkForm;
 	email: EmailForm;
@@ -159,6 +186,9 @@ export function defaultNotifyForms(): NotifyForms {
 
 export function formsFromNotifications(data: Partial<NotificationSettings>): NotifyForms {
   const telegram = asRecord(data.telegram);
+  const qq = asRecord(data.qq);
+  const weixin = asRecord(data.weixin);
+  const wecomBot = asRecord(data.wecomBot ?? data.wecom_bot);
   const webhook = asRecord(data.webhook);
   const bark = asRecord(data.bark);
 	const email = asRecord(data.email);
@@ -173,6 +203,27 @@ export function formsFromNotifications(data: Partial<NotificationSettings>): Not
       adminId: telegram.adminId === null || telegram.adminId === undefined ? "" : String(telegram.adminId),
       baseUrl: str(telegram.baseUrl),
       proxy: str(telegram.proxy),
+    },
+    qq: {
+      enabled: !!qq.enabled,
+      appId: str(qq.appId ?? qq.app_id),
+      appSecret: str(qq.appSecret ?? qq.app_secret),
+      groupIds: str(qq.groupIds ?? qq.group_ids),
+      directIds: str(qq.directIds ?? qq.direct_ids),
+    },
+    weixin: {
+      enabled: !!weixin.enabled,
+      baseUrl: str(weixin.baseUrl ?? weixin.base_url) || "https://ilinkai.weixin.qq.com",
+      allowedUserIds: joinList(weixin.allowedUserIds ?? weixin.allowed_user_ids),
+      allowedGroupIds: joinList(weixin.allowedGroupIds ?? weixin.allowed_group_ids),
+    },
+    wecomBot: {
+      enabled: !!wecomBot.enabled,
+      botId: str(wecomBot.botId ?? wecomBot.bot_id),
+      secret: str(wecomBot.secret),
+      websocketUrl: str(wecomBot.websocketUrl ?? wecomBot.websocket_url) || "wss://openws.work.weixin.qq.com",
+      allowedUserIds: joinList(wecomBot.allowedUserIds ?? wecomBot.allowed_user_ids),
+      allowedGroupIds: joinList(wecomBot.allowedGroupIds ?? wecomBot.allowed_group_ids),
     },
     webhook: {
       enabled: !!webhook.enabled,
@@ -270,6 +321,36 @@ export function buildEmailPayload(form: EmailForm, forTest = false) {
   };
 }
 
+export function buildQQPayload(form: QQForm) {
+  return {
+    enabled: !!form.enabled,
+    app_id: form.appId || "",
+    app_secret: form.appSecret || "",
+    group_ids: form.groupIds || "",
+    direct_ids: form.directIds || "",
+  };
+}
+
+export function buildWeixinPayload(form: WeixinForm) {
+  return {
+    enabled: !!form.enabled,
+    base_url: form.baseUrl || "",
+    allowed_user_ids: splitList(form.allowedUserIds),
+    allowed_group_ids: splitList(form.allowedGroupIds),
+  };
+}
+
+export function buildWeComBotPayload(form: WeComBotForm) {
+  return {
+    enabled: !!form.enabled,
+    bot_id: form.botId || "",
+    secret: form.secret || "",
+    websocket_url: form.websocketUrl || "",
+    allowed_user_ids: splitList(form.allowedUserIds),
+    allowed_group_ids: splitList(form.allowedGroupIds),
+  };
+}
+
 export function buildWecomPayload(form: WecomForm, forTest = false) {
 	const urls = Array.isArray(form.urls) ? form.urls : [];
 	return {
@@ -308,6 +389,9 @@ export function buildNotificationsPayload(forms: NotifyForms) {
       baseUrl: forms.telegram.baseUrl || "",
       proxy: forms.telegram.proxy || "",
     },
+    qq: buildQQPayload(forms.qq),
+    weixin: buildWeixinPayload(forms.weixin),
+    wecomBot: buildWeComBotPayload(forms.wecomBot),
     email: buildEmailPayload(forms.email),
     pushplus: {
       enabled: !!forms.pushplus.enabled,

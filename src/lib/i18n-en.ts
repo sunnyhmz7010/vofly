@@ -390,10 +390,45 @@ export const EN_DICT: Record<string, string> = {
     "Access policy saved, but the source IP of the current connection has been denied",
   访问策略保存失败: "Failed to save access policy",
 
-  // ---- 设置页：Bot 渠道（Telegram/Pushplus） ----
+  // ---- 设置页：Bot 渠道（Telegram/QQ/Weixin/WeCom Bot/Pushplus） ----
+  "QQ Bot": "QQ Bot",
+  个人微信: "Personal WeChat",
+  "企业微信长连接 Bot": "WeCom Long-Connection Bot",
   "启用 Telegram 机器人": "Enable Telegram Bot",
   "启用后会推送新短信，并允许指定管理员通过 Bot 查看状态、切卡、管理 WiFi Calling、发送短信和限时拨号。拨号只执行呼叫并自动挂断，不处理音频。":
     "When enabled, new SMS messages are pushed and the designated administrator can check status, switch profiles, manage WiFi Calling, send SMS, and place timed calls. Calls only dial and hang up automatically; audio is not processed.",
+  "QQ 扫码注册": "QQ QR Registration",
+  "个人微信扫码": "Personal WeChat QR Login",
+  "企微机器人扫码": "WeCom Bot QR Login",
+  扫码连接: "Connect by QR",
+  重新扫码: "Rescan",
+  取消扫码: "Cancel QR",
+  正在查询: "Polling",
+  尚未创建扫码会话: "No QR session yet",
+  等待扫码: "Waiting for scan",
+  "已扫码，请在手机端确认": "Scanned; confirm on your phone",
+  已过期: "Expired",
+  连接失败: "Connection failed",
+  在新窗口打开: "Open in new window",
+  "QQ Bot 配置": "QQ Bot Configuration",
+  "个人微信 iLink": "Personal WeChat iLink",
+  企微长连接机器人: "WeCom Long-Connection Bot",
+  "扫码会自动写入 Bot 凭证与首个私聊用户，手动字段用于白名单、默认目标和长期运行配置。":
+    "QR onboarding writes Bot credentials and the first direct user automatically. Manual fields are used for allowlists, default targets, and persistent runtime configuration.",
+  "个人微信长连接用于接收通知、执行 slash 命令，并支持 /y /n 确认交互。":
+    "Personal WeChat long connection receives notifications, runs slash commands, and supports /y /n confirmation.",
+  "企业微信长连接 Bot 支持通知、命令执行、确认交互和媒体附件回传。":
+    "WeCom long-connection Bot supports notifications, command execution, confirmation prompts, and media attachment replies.",
+  "App Secret": "App Secret",
+  "群 OpenID": "Group OpenID",
+  "私聊 OpenID": "Direct OpenID",
+  "iLink 服务地址": "iLink Service URL",
+  "允许私聊用户 ID": "Allowed Direct User IDs",
+  "允许群聊 ID": "Allowed Group IDs",
+  "WebSocket 地址": "WebSocket URL",
+  "企业微信 Bot ID": "WeCom Bot ID",
+  多个使用英文逗号分隔: "Separate multiple values with English commas",
+  首个私聊用户会自动绑定: "The first direct user is bound automatically",
   "启用 Pushplus 推送": "Enable Pushplus",
   "该渠道仅用于单向通知，不提供设备控制功能。新短信会逐条推送；启用通知的自动任务也会推送执行结果。":
     "This channel is for one-way notifications only and provides no device controls. New SMS messages are delivered individually, and notification-enabled automatic tasks also send their results.",
@@ -428,6 +463,8 @@ export const EN_DICT: Record<string, string> = {
   "飞书 / Lark 群机器人": "Feishu / Lark Group Bot",
   "启用飞书 / Lark 群自定义机器人通知": "Enable Feishu / Lark Custom Group Bot Notifications",
   "Telegram / Bark / Email / Pushplus / Webhook / 企业微信 / 飞书 / Lark 群机器人": "Telegram / Bark / Email / Pushplus / Webhook / WeCom / Feishu / Lark Group Bot",
+  "Telegram / QQ / 个人微信 / 企业微信长连接 Bot / Bark / Email / Pushplus / Webhook / 飞书 / Lark 群机器人":
+    "Telegram / QQ / Personal WeChat / WeCom Long-Connection Bot / Bark / Email / Pushplus / Webhook / Feishu / Lark Group Bot",
   "目标 URLs": "Target URLs",
   "添加 URL": "Add URL",
   "尚未配置任何 Bark URL，点击右侧添加按钮。": "No Bark URLs yet. Click the add button on the right.",

@@ -1,12 +1,18 @@
 import { useI18n } from "../../lib/i18n";
 import { Input } from "../ui/Input";
 import { Select } from "../ui/Select";
-import { ChannelHeader, Field } from "./controls";
-import type { PushplusForm, TelegramForm } from "./model";
+import { useNotificationQR } from "../../lib/notificationOnboarding";
+import { ChannelHeader, Field, PasswordInput } from "./controls";
+import { NotificationQrConnect } from "./NotificationQrConnect";
+import type { PushplusForm, QQForm, TelegramForm, WeComBotForm, WeixinForm } from "./model";
 
 interface ChannelProps<T> {
   value: T;
   onChange: (patch: Partial<T>) => void;
+}
+
+interface InteractiveChannelProps<T> extends ChannelProps<T> {
+  onApplied?: () => Promise<void> | void;
 }
 
 export function TelegramTab({ value, onChange }: ChannelProps<TelegramForm>) {
@@ -37,6 +43,154 @@ export function TelegramTab({ value, onChange }: ChannelProps<TelegramForm>) {
           <Input value={value.proxy} onChange={(e) => onChange({ proxy: e.target.value })} disabled={off} placeholder={t("例如 http://127.0.0.1:7890")} />
         </Field>
       </div>
+    </div>
+  );
+}
+
+export function QQTab({ value, onChange, onApplied }: InteractiveChannelProps<QQForm>) {
+  const { t } = useI18n();
+  const qr = useNotificationQR("qq", {
+    onApplied: async () => {
+      await onApplied?.();
+    },
+  });
+  const off = !value.enabled;
+
+  return (
+    <div className="grid min-w-0 grid-cols-1 gap-6 pt-2 xl:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]">
+      <NotificationQrConnect
+        title={t("QQ 扫码注册")}
+        connected={value.enabled}
+        session={qr.session}
+        busy={qr.loading}
+        polling={qr.polling}
+        error={qr.error}
+        onStart={() => void qr.start()}
+        onCancel={() => void qr.cancel()}
+      />
+
+      <section className="min-w-0" aria-labelledby="qq-manual-title">
+        <ChannelHeader title={t("QQ Bot 配置")} enabled={value.enabled} onToggle={(enabled) => onChange({ enabled })} />
+        <div className="space-y-4">
+          <div className="rounded-lg bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
+            {t("扫码会自动写入 Bot 凭证与首个私聊用户，手动字段用于白名单、默认目标和长期运行配置。")}
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="App ID">
+              <Input value={value.appId} onChange={(e) => onChange({ appId: e.target.value })} disabled={off} placeholder="QQ Bot App ID" />
+            </Field>
+            <Field label={t("App Secret")}>
+              <PasswordInput value={value.appSecret} onChange={(appSecret) => onChange({ appSecret })} disabled={off} placeholder="********" />
+            </Field>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label={t("群 OpenID")} hint={t("多个使用英文逗号分隔")}>
+              <Input value={value.groupIds} onChange={(e) => onChange({ groupIds: e.target.value })} disabled={off} placeholder={t("多个使用英文逗号分隔")} />
+            </Field>
+            <Field label={t("私聊 OpenID")} hint={t("首个私聊用户会自动绑定")}>
+              <Input value={value.directIds} onChange={(e) => onChange({ directIds: e.target.value })} disabled={off} placeholder={t("首个私聊用户会自动绑定")} />
+            </Field>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export function WeixinTab({ value, onChange, onApplied }: InteractiveChannelProps<WeixinForm>) {
+  const { t } = useI18n();
+  const qr = useNotificationQR("weixin", {
+    onApplied: async () => {
+      await onApplied?.();
+    },
+  });
+  const off = !value.enabled;
+
+  return (
+    <div className="grid min-w-0 grid-cols-1 gap-6 pt-2 xl:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]">
+      <NotificationQrConnect
+        title={t("个人微信扫码")}
+        connected={value.enabled}
+        session={qr.session}
+        busy={qr.loading}
+        polling={qr.polling}
+        error={qr.error}
+        onStart={() => void qr.start({ baseUrl: value.baseUrl })}
+        onCancel={() => void qr.cancel()}
+      />
+
+      <section className="min-w-0" aria-labelledby="weixin-manual-title">
+        <ChannelHeader title={t("个人微信 iLink")} enabled={value.enabled} onToggle={(enabled) => onChange({ enabled })} />
+        <div className="space-y-4">
+          <div className="rounded-lg bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
+            {t("个人微信长连接用于接收通知、执行 slash 命令，并支持 /y /n 确认交互。")}
+          </div>
+          <Field label={t("iLink 服务地址")}>
+            <Input value={value.baseUrl} onChange={(e) => onChange({ baseUrl: e.target.value })} disabled={off} placeholder="https://ilinkai.weixin.qq.com" />
+          </Field>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label={t("允许私聊用户 ID")} hint={t("多个使用英文逗号分隔")}>
+              <Input value={value.allowedUserIds} onChange={(e) => onChange({ allowedUserIds: e.target.value })} disabled={off} placeholder={t("多个使用英文逗号分隔")} />
+            </Field>
+            <Field label={t("允许群聊 ID")} hint={t("多个使用英文逗号分隔")}>
+              <Input value={value.allowedGroupIds} onChange={(e) => onChange({ allowedGroupIds: e.target.value })} disabled={off} placeholder={t("多个使用英文逗号分隔")} />
+            </Field>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export function WeComBotTab({ value, onChange, onApplied }: InteractiveChannelProps<WeComBotForm>) {
+  const { t } = useI18n();
+  const qr = useNotificationQR("wecom-bot", {
+    onApplied: async () => {
+      await onApplied?.();
+    },
+  });
+  const off = !value.enabled;
+
+  return (
+    <div className="grid min-w-0 grid-cols-1 gap-6 pt-2 xl:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]">
+      <NotificationQrConnect
+        title={t("企微机器人扫码")}
+        connected={value.enabled}
+        session={qr.session}
+        busy={qr.loading}
+        polling={qr.polling}
+        error={qr.error}
+        onStart={() => void qr.start()}
+        onCancel={() => void qr.cancel()}
+      />
+
+      <section className="min-w-0" aria-labelledby="wecom-bot-manual-title">
+        <ChannelHeader title={t("企微长连接机器人")} enabled={value.enabled} onToggle={(enabled) => onChange({ enabled })} />
+        <div className="space-y-4">
+          <div className="rounded-lg bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
+            {t("企业微信长连接 Bot 支持通知、命令执行、确认交互和媒体附件回传。")}
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Bot ID">
+              <Input value={value.botId} onChange={(e) => onChange({ botId: e.target.value })} disabled={off} placeholder={t("企业微信 Bot ID")} />
+            </Field>
+            <Field label="Secret">
+              <PasswordInput value={value.secret} onChange={(secret) => onChange({ secret })} disabled={off} placeholder="********" />
+            </Field>
+          </div>
+          <Field label={t("WebSocket 地址")}>
+            <Input value={value.websocketUrl} onChange={(e) => onChange({ websocketUrl: e.target.value })} disabled={off} placeholder="wss://openws.work.weixin.qq.com" />
+          </Field>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label={t("允许私聊用户 ID")} hint={t("首个私聊用户会自动绑定")}>
+              <Input value={value.allowedUserIds} onChange={(e) => onChange({ allowedUserIds: e.target.value })} disabled={off} placeholder={t("首个私聊用户会自动绑定")} />
+            </Field>
+            <Field label={t("允许群聊 ID")} hint={t("多个使用英文逗号分隔")}>
+              <Input value={value.allowedGroupIds} onChange={(e) => onChange({ allowedGroupIds: e.target.value })} disabled={off} placeholder={t("多个使用英文逗号分隔")} />
+            </Field>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
