@@ -31,12 +31,12 @@ function firstRat(c: OperatorCandidate): string | undefined {
 export interface OperatorSelectionDialogProps {
   open: boolean;
   deviceId: string;
-  scanBlockedReason?: string;
+  scanDisabledReason?: string;
   onClose: () => void;
   onUpdated: () => void;
 }
 
-export function OperatorSelectionDialog({ open, deviceId, scanBlockedReason = "", onClose, onUpdated }: OperatorSelectionDialogProps) {
+export function OperatorSelectionDialog({ open, deviceId, scanDisabledReason = "", onClose, onUpdated }: OperatorSelectionDialogProps) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [current, setCurrent] = useState<CurrentSelection | null>(null);
@@ -49,9 +49,9 @@ export function OperatorSelectionDialog({ open, deviceId, scanBlockedReason = ""
 
   const scanning = scan?.status === "running";
   const candidates = scan?.candidates || [];
-  const scanMessage = scan?.message || scanBlockedReason;
+  const scanMessage = scan?.message || scanDisabledReason;
   const errorText = scan?.retryable ? "" : scan?.error || "";
-  const retryable = !!scan?.retryable || !!scanBlockedReason;
+  const retryable = !!scan?.retryable || !!scanDisabledReason;
   function stopStream() {
     abortRef.current?.abort();
     abortRef.current = null;
@@ -73,8 +73,8 @@ export function OperatorSelectionDialog({ open, deviceId, scanBlockedReason = ""
 
   function startStream() {
     if (!deviceId || scanInFlightRef.current) return;
-    if (scanBlockedReason) {
-      setScan({ status: "blocked", message: scanBlockedReason, retryable: true });
+    if (scanDisabledReason) {
+      setScan({ status: "disabled", message: scanDisabledReason, retryable: true });
       return;
     }
     stopStream();
@@ -224,7 +224,7 @@ export function OperatorSelectionDialog({ open, deviceId, scanBlockedReason = ""
           ) : null}
         </div>
         <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Button variant="primary" plain onClick={startStream} loading={scanning} disabled={busy || !!scanBlockedReason} className="flex-1">
+          <Button variant="primary" plain onClick={startStream} loading={scanning} disabled={busy || !!scanDisabledReason} className="flex-1">
             {scanning ? t("扫描中...") : t("扫描可用网络")}
           </Button>
           <Button onClick={reRegister} disabled={busy} className="flex-1">

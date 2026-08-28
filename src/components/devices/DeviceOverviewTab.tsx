@@ -59,7 +59,7 @@ export function DeviceOverviewTab(props: DeviceOverviewTabProps) {
         <OperatorSelectionDialog
           open={operatorOpen}
           deviceId={device.id}
-          scanBlockedReason={
+          scanDisabledReason={
             device.flightMode || device.modem?.operatingMode === 0 || device.modem?.operatingMode === 4
               ? t("运营商扫描需要开启蜂窝射频；请先关闭飞行模式，再手动开始扫描。")
               : ""

@@ -52,7 +52,6 @@ export default function DevicesPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [list, setList] = useState<DeviceListItem[]>([]);
-  const [deviceLimit, setDeviceLimit] = useState(0);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<LoadError | null>(null);
   const [lastOkAt, setLastOkAt] = useState<number | null>(null);
@@ -187,10 +186,9 @@ export default function DevicesPage() {
         setListError(null);
       }
       try {
-        const res = await api<{ devices?: DeviceListItem[]; deviceLimit?: number }>("/devices");
+        const res = await api<{ devices?: DeviceListItem[] }>("/devices");
         const devices = res?.devices || [];
         setList(devices);
-        setDeviceLimit(typeof res?.deviceLimit === "number" ? res.deviceLimit : 0);
         setLastOkAt(Date.now());
         if (manual) setListError(null);
         const urlDevice = (searchParamsRef.current.get("device") || "").trim();
@@ -657,7 +655,6 @@ export default function DevicesPage() {
 	useEffect(() => {
 		if (isReader && ["at", "ussd"].includes(activeTab)) setActiveTab("overview");
 	}, [isReader, activeTab]);
-  const addAtLimit = deviceLimit > 0 && list.length >= deviceLimit;
   const tabItems = [
     { key: "overview", label: t("概览") },
     { key: "esim", label: t("eSIM") },
@@ -698,8 +695,6 @@ export default function DevicesPage() {
             <Button
               variant="primary"
               onClick={openAddDialog}
-              disabled={addAtLimit}
-              title={addAtLimit ? t("设备数量已达上限，无法继续添加") : undefined}
               className="!border-0"
               icon={<AddRegular />}
             >
@@ -729,8 +724,6 @@ export default function DevicesPage() {
             sortDir={sortDir}
             selectedId={selectedId}
             filteredDevices={filteredDevices}
-            deviceCount={list.length}
-            deviceLimit={deviceLimit}
             onQueryChange={setQuery}
             onStatusFilterChange={setStatusFilter}
             onSortKeyChange={setSortKey}

@@ -1,5 +1,5 @@
 import type { DeviceListItem } from "../../types";
-import { Input, Select, Tag, ListSkeleton, EmptyState } from "../ui";
+import { Input, Select, ListSkeleton, EmptyState } from "../ui";
 import { isDeviceOnline, isRegistered, isVoWiFiInUse, lifecycleLabel } from "./shared";
 import { DeviceListItemCard } from "./DeviceListItemCard";
 import { tl, useI18n } from "../../lib/i18n";
@@ -16,8 +16,6 @@ export interface DeviceListPanelProps {
   sortDir: SortDir;
   selectedId: string;
   filteredDevices: DeviceListItem[];
-  deviceCount: number;
-  deviceLimit: number;
   onQueryChange: (v: string) => void;
   onStatusFilterChange: (v: StatusFilter) => void;
   onSortKeyChange: (v: SortKey) => void;
@@ -46,7 +44,7 @@ function statusLine(d: DeviceListItem): string {
 
 export function DeviceListPanel(props: DeviceListPanelProps) {
   const { t } = useI18n();
-  const { loading, query, statusFilter, sortKey, sortDir, selectedId, filteredDevices, deviceCount, deviceLimit } = props;
+  const { loading, query, statusFilter, sortKey, sortDir, selectedId, filteredDevices } = props;
   return (
     <div className="ui-card p-5">
       <div className="mb-4 flex items-center gap-3">
@@ -81,13 +79,6 @@ export function DeviceListPanel(props: DeviceListPanelProps) {
             { value: "desc", label: t("降序") },
           ]}
         />
-        {deviceLimit > 0 ? (
-          <div className="flex items-center">
-            <Tag type={deviceCount >= deviceLimit ? "warning" : "info"} className="w-full justify-center">
-              {t("配额")} {deviceCount} / {deviceLimit}
-            </Tag>
-          </div>
-        ) : null}
       </div>
       {loading && filteredDevices.length === 0 ? (
         <ListSkeleton rows={8} />

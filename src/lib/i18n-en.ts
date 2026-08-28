@@ -769,7 +769,6 @@ export const EN_DICT: Record<string, string> = {
   "WiFi-Calling · 全部就绪": "WiFi Calling · All Ready",
   "[空响应]": "[Empty response]",
   "eUICC 安装 profile 时空间不足，请删除未使用的 profile 后重试。": "Insufficient space on the eUICC for this profile; delete unused profiles and retry.",
-  "vofly 最终用户许可与免责声明": "vofly End User License Agreement & Disclaimer",
   "⚠️ 删除 Profile": "⚠️ Delete Profile",
   "下载失败": "Download failed",
   "下载新 Profile": "Download New Profile",
@@ -804,11 +803,9 @@ export const EN_DICT: Record<string, string> = {
   "发送 AT 指令并查看回显（多行响应会完整返回）": "Send AT commands and view the echo (multi-line responses are returned in full)",
   "发送 USSD 代码 (如 *100#) 并等待网络菜单响应": "Send a USSD code (e.g. *100#) and wait for the network menu response",
   "可选": "optional",
-  "同意并继续": "Agree & Continue",
   "名称不能为空": "Name is required",
   "名称修改成功": "Name updated",
   "否": "No",
-  "启用后进飞行模式，不支持国内运营商": "Once enabled it enters airplane mode; domestic carriers are not supported",
   "启用时强制关闭蜂窝射频；关闭 VoWiFi 后仍保持飞行模式":
     "Enabling forces cellular RF off; airplane mode remains on after VoWiFi is disabled.",
   "只有手动关闭此开关才允许设备连接基站":
@@ -1035,8 +1032,6 @@ export const EN_DICT: Record<string, string> = {
   添加设备: "Add Device",
   重新扫描: "Rescan",
   请选择左侧设备查看详情: "Select a device on the left to view details",
-  "设备数量已达上限，无法继续添加": "Device limit reached; cannot add more",
-  配额: "Quota",
   "暂无设备，点击右上角“添加设备”开始接管": 'No devices yet. Click "Add Device" in the top-right to start adopting',
   按周期统计该设备的上下行流量: "Uplink/downlink traffic for this device by period",
   固件: "Firmware",

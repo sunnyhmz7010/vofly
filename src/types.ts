@@ -69,8 +69,6 @@ export interface ModemSummary {
   homeCarrierName?: string;
   homeCarrierPlmn?: string;
   homeCarrierCountryCode?: string;
-  serviceBlocked?: boolean;
-  blockedReason?: string;
   networkMode: string;
   networkDuplex?: string;
   radioBand: string;
@@ -135,7 +133,6 @@ export interface DeviceListItem {
 }
 
 export interface DevicesResponse {
-  deviceLimit: number;
   devices: DeviceListItem[];
 }
 
@@ -539,9 +536,6 @@ export interface HTTPSSettings {
 }
 
 export interface DeveloperSettings {
-  deviceLimit: number;
-  defaultDeviceLimit: number;
-  maxDeviceLimit: number;
   smsHourlyLimit: number;
   defaultSmsHourlyLimit: number;
   maxSmsHourlyLimit: number;
