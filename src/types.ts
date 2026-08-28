@@ -534,6 +534,8 @@ export interface HTTPSSettings {
   httpsUrl: string;
   fingerprint?: string;
   notAfter?: string;
+  /** Fingerprint of the persistent local CA that signs the server certificate. */
+  caFingerprint?: string;
 }
 
 export interface DeveloperSettings {

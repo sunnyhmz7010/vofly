@@ -46,14 +46,27 @@ export function HTTPSCard({
             <div className="break-all font-mono text-xs">{value.fingerprint}</div>
           </div>
         ) : null}
+        {value?.caFingerprint ? (
+          <div className="rounded-xl bg-gray-50 p-3 dark:bg-white/5">
+            <div className="mb-1 text-xs font-bold uppercase tracking-wider text-gray-500">
+              {zh ? "本地 CA SHA-256" : "Local CA SHA-256"}
+            </div>
+            <div className="break-all font-mono text-xs">{value.caFingerprint}</div>
+          </div>
+        ) : null}
         <p className="text-xs text-amber-600 dark:text-amber-400">
           {zh
-            ? "自签证书需要在系统或浏览器中信任，否则浏览器可能继续提示连接不安全。"
-            : "Trust the self-signed certificate in the operating system or browser; otherwise the browser may keep warning that the connection is not secure."}
+            ? "推荐下载本地 CA 证书并在设备上信任一次，之后重新签发的服务器证书不会再出现告警。"
+            : "Download the local CA once and trust it on your devices; reissued server certificates then load without warnings."}
         </p>
-        <Button onClick={() => window.open("/api/settings/https/certificate", "_blank")} disabled={loading}>
-          {zh ? "下载自签证书" : "Download certificate"}
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <Button onClick={() => window.open("/api/settings/https/ca", "_blank")} disabled={loading}>
+            {zh ? "下载本地 CA 证书" : "Download local CA"}
+          </Button>
+          <Button variant="text" onClick={() => window.open("/api/settings/https/certificate", "_blank")} disabled={loading}>
+            {zh ? "下载服务器证书" : "Download server certificate"}
+          </Button>
+        </div>
       </div>
     </div>
   );
