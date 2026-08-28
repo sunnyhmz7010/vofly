@@ -34,9 +34,30 @@
 
 ### 📋 前置要求
 
-- Node.js >= 20
-- npm
-- 可访问后端服务的本地开发环境
+- 生产安装：Linux amd64 / arm64 / armv7，systemd 推荐，需 `curl` 与 SHA256 校验工具。
+- USB SIM 读卡器：需要系统 `pcscd` 服务与 CCID 驱动，可通过安装脚本 `--with-pcsc` 选装。
+- 前端开发：Node.js >= 20、npm、可访问后端服务的本地环境。
+
+### 📦 一键安装
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh
+```
+
+安装后默认监听 `0.0.0.0:7575`，数据库位于 `/opt/vofly/data/vofly.db`。需要 USB SIM 读卡器支持时：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh -s -- --with-pcsc
+```
+
+升级与卸载：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/update.sh | sudo sh
+curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/uninstall.sh | sudo sh
+```
+
+默认卸载保留数据库和环境文件；确认删除全部本机数据时追加 `--purge`。
 
 ### 📦 前端本地运行
 
@@ -76,6 +97,8 @@ npm run build
 - 前端使用 React + TypeScript + Vite，页面和组件遵循统一的 vofly 设计令牌。
 - 后端 API 默认由 `http://127.0.0.1:7575` 提供；开发代理在 `vite.config.ts` 中配置。
 - 品牌图标统一使用 `public/icon-192.png` 与 `public/icon-512.png`，favicon 和触摸图标均来自同一套 PNG 资产。
+- 安装脚本使用 `/etc/vofly/env` 写入 `VOFLY_ADDR` 与 `VOFLY_DATABASE_PATH`，systemd 入口为 `/opt/vofly/bin/vofly serve`。
+- 通话录音保存为 WAV，可在网页直接播放，也可通过二维码发送到手机；不需要额外音频转码运行库。
 - 本仓库不保存后端源码；任何后端实现、数据库迁移、设备控制逻辑都应在 `vofly-backend` 中维护。
 
 ## 🧱 技术栈
@@ -100,6 +123,9 @@ vofly/
 │   └── api.ts              # 后端 API 调用层
 ├── test/                   # 前端单元测试与源码守卫
 ├── .github/                # Issue 模板、CI 与 CD 流水线
+├── install.sh              # Linux 一键安装脚本
+├── update.sh               # Release 二进制升级脚本
+├── uninstall.sh            # 服务与程序卸载脚本
 ├── index.html              # Vite HTML 入口
 ├── package.json            # npm 脚本与依赖
 └── vite.config.ts          # Vite 构建与开发代理配置

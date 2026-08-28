@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CallRegular, MicRegular, Speaker0Regular } from "@fluentui/react-icons";
+import { CallRegular, MicRegular, QrCode24Regular, Speaker0Regular } from "@fluentui/react-icons";
 import { api, apiMessage, camelize } from "../api";
+import { QrSendModal, type QrSendPayload } from "../components/QrSendModal";
 import { Button, Input, PageHeader, Select, StatusDot, Tag } from "../components/ui";
 import { tf, useI18n } from "../lib/i18n";
 
@@ -170,6 +171,11 @@ function validDialNumber(value: string) {
   return /^[+]?[0-9*#]+$/.test(trimmed);
 }
 
+function callRecordingFileName(callId: string) {
+  const clean = callId.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 80) || "recording";
+  return `call_${clean}.wav`;
+}
+
 export default function PhonePage() {
   const { t } = useI18n();
   const [devices, setDevices] = useState<DeviceListItem[]>([]);
@@ -181,6 +187,8 @@ export default function PhonePage() {
   const [acting, setActing] = useState(false);
   const [mediaConnected, setMediaConnected] = useState(false);
   const [records, setRecords] = useState<CallRecord[]>([]);
+  const [qrPayload, setQrPayload] = useState<QrSendPayload | null>(null);
+  const [qrPreparingId, setQrPreparingId] = useState("");
   const bridgeRef = useRef<CallAudioBridge | null>(null);
   const mediaCallIdRef = useRef("");
 
@@ -285,6 +293,30 @@ export default function PhonePage() {
       window.alert(apiMessage(error));
     } finally {
       setActing(false);
+    }
+  }
+
+  async function sendRecordingAsQr(record: CallRecord) {
+    if (qrPreparingId) return;
+    setQrPreparingId(record.callId);
+    try {
+      const response = await fetch(`/api/call-recordings/${encodeURIComponent(record.callId)}`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error(`${t("录音读取失败")}（HTTP ${response.status}）`);
+      }
+      const buffer = await response.arrayBuffer();
+      setQrPayload({
+        name: callRecordingFileName(record.callId),
+        mimeType: "audio/wav",
+        bytes: new Uint8Array(buffer),
+      });
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setQrPreparingId("");
     }
   }
 
@@ -420,12 +452,25 @@ export default function PhonePage() {
                     <Tag type={stateBadge(record.state).type}>{stateBadge(record.state).text}</Tag>
                   </div>
                   {record.recordingPath ? (
-                    <audio
-                      controls
-                      preload="none"
-                      className="mt-2 h-8 w-full"
-                      src={`/api/call-recordings/${encodeURIComponent(record.callId)}`}
-                    />
+                    <div className="mt-2 space-y-2">
+                      <audio
+                        controls
+                        preload="none"
+                        className="h-8 w-full"
+                        src={`/api/call-recordings/${encodeURIComponent(record.callId)}`}
+                      />
+                      <Button
+                        size="small"
+                        plain
+                        variant="primary"
+                        loading={qrPreparingId === record.callId}
+                        disabled={!!qrPreparingId && qrPreparingId !== record.callId}
+                        onClick={() => void sendRecordingAsQr(record)}
+                        icon={<QrCode24Regular />}
+                      >
+                        {t("二维码发送")}
+                      </Button>
+                    </div>
                   ) : null}
                 </div>
               ))}
@@ -436,6 +481,7 @@ export default function PhonePage() {
           ) : null}
         </section>
       </div>
+      <QrSendModal open={!!qrPayload} payload={qrPayload} onClose={() => setQrPayload(null)} />
     </div>
   );
 }
