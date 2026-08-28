@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-// Polling hook mirroring VoHive's: immediate run, fixed interval, pauses when hidden.
+// Polling hook: immediate run, fixed interval, pauses when hidden.
 export function usePolling(fn: () => void, intervalMs: number, immediate = true) {
   const saved = useRef(fn);
   saved.current = fn;

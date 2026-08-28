@@ -1,0 +1,151 @@
+name: CD
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+env:
+  VERSION: ${{ github.event.release.tag_name }}
+
+jobs:
+  frontend:
+    name: Build frontend assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout frontend
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Build frontend assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: dist
+          if-no-files-found: error
+          retention-days: 1
+
+  build:
+    name: Build ${{ matrix.artifact_arch }}
+    runs-on: ubuntu-latest
+    needs: frontend
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goarch: amd64
+            goarm: ''
+            artifact_arch: amd64
+          - goarch: arm64
+            goarm: ''
+            artifact_arch: arm64
+          - goarch: arm
+            goarm: '7'
+            artifact_arch: armv7
+
+    steps:
+      - name: Checkout backend (private)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.BACKEND_REPO || 'sunnyhmz7010/vofly-backend' }}
+          token: ${{ secrets.BACKEND_REPO_TOKEN }}
+          path: backend
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache: false
+
+      - name: Download frontend dist
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: web-dist
+
+      - name: Sync frontend dist for embed
+        run: |
+          rm -rf backend/web/dist
+          mkdir -p backend/web
+          cp -R web-dist backend/web/dist
+
+      - name: Build binary
+        run: |
+          mkdir -p dist
+          cd backend
+          GOWORK=off CGO_ENABLED=0 GOOS=linux GOARCH=${{ matrix.goarch }} GOARM=${{ matrix.goarm }} \
+            go build -trimpath -buildvcs=false -tags "with_utls nomsgpack" \
+            -ldflags "-s -w -X 'vofly/internal/buildinfo.Version=${{ env.VERSION }}' -X 'vofly/internal/buildinfo.BuildTime=$(date -u +'%Y-%m-%dT%H:%M:%SZ')'" \
+            -o ../dist/vofly ./cmd/vofly
+
+      - name: Compress with UPX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y upx-ucl || sudo apt-get install -y upx
+          upx --best --lzma dist/vofly || upx -9 dist/vofly
+
+      - name: Package artifact
+        run: |
+          OUT="vofly_${{ env.VERSION }}_linux_${{ matrix.artifact_arch }}"
+          mkdir -p out
+          mv dist/vofly "out/${OUT}"
+          (cd out && sha256sum "${OUT}" > "${OUT}.sha256")
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.artifact_arch }}
+          path: out/*
+          retention-days: 3
+
+  release:
+    name: Publish release assets
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binaries-*
+          merge-multiple: true
+          path: dist
+
+      - name: Write SHA256SUMS
+        run: |
+          cd dist
+          : > SHA256SUMS
+          for f in vofly_*; do
+            [ -f "$f" ] || continue
+            case "$f" in
+              *.sha256) continue ;;
+            esac
+            sha256sum "$f" >> SHA256SUMS
+          done
+          if [ ! -s SHA256SUMS ]; then
+            echo "SHA256SUMS is empty; no binaries found in dist/" >&2
+            ls -la
+            exit 1
+          fi
+          echo "SHA256SUMS:"
+          cat SHA256SUMS
+
+      - name: Publish to this GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: dist/*
+          fail_on_unmatched_files: true
+          overwrite_files: true

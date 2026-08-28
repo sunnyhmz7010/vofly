@@ -1,0 +1,80 @@
+name: Bug Report / 缺陷反馈
+description: Report a reproducible bug in vofly / 提交可复现的问题
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug.
+        感谢你反馈问题。
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Bug Summary / 问题概述
+      description: Describe the issue clearly and concisely. / 简要描述遇到的问题。
+      placeholder: What went wrong? / 发生了什么问题？
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce / 复现步骤
+      description: If possible, list the shortest steps to reproduce it. / 如方便，请提供最小复现步骤。
+      placeholder: |
+        1. ...
+        2. ...
+        3. See error / 出现错误 ...
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version / 版本
+      description: vofly release version or commit hash (visible in the top bar of the web console). / vofly 发行版本或 commit hash（可在管理台顶栏查看）。
+      placeholder: e.g. v1.0.0 or commit hash / 例如 v1.0.0 或 commit hash
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment / 运行环境
+      description: Linux distro & arch, release/source build method, modem model, and browser if UI related. / Linux 发行版与架构、Release 或源码构建方式、模组型号；界面问题请附浏览器。
+      placeholder: e.g. Debian 12 arm64, release binary, EC25; Chrome 126 / 例如 Debian 12 arm64，Release 二进制，EC25；Chrome 126
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior / 预期行为
+      description: What should have happened? / 你期望的结果是什么？
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior / 实际行为
+      description: What actually happened? / 实际发生了什么？
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or Screenshots / 日志或截图
+      description: Paste relevant log output or add screenshots. / 请粘贴相关日志或添加截图。
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist / 提交前确认
+      options:
+        - label: I have searched existing issues before submitting this report. / 我已在现有 Issue 中搜索过类似问题。
+        - label: I have removed sensitive information from logs and screenshots. / 我已移除日志和截图中的敏感信息。

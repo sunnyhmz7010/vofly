@@ -52,7 +52,7 @@ export default {
         },
       },
       keyframes: {
-        // VoHive overrides the default pulse to a slow scale+fade (glow blobs)
+        // Slow scale+fade pulse used by the vofly glow blobs.
         pulse: {
           "0%, 100%": { opacity: "0.3", transform: "scale(1)" },
           "50%": { opacity: "0.6", transform: "scale(1.1)" },

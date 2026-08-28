@@ -13,7 +13,7 @@ interface State {
   details: string | null;
 }
 
-// ErrorBoundary: mirrors VoHive's — catches render errors and offers a retry.
+// ErrorBoundary catches render errors and offers a retry.
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { message: null, details: null };
 

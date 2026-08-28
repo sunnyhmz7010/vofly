@@ -18,7 +18,7 @@ export function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-// Signal strength (RSSI dBm, AT+CSQ) -> 0..4 bars, matching VoHive thresholds.
+// Signal strength (RSSI dBm, AT+CSQ) -> 0..4 bars, matching vofly thresholds.
 // RSSI-calibrated (not RSRP): RSSI sits ~20 dB above RSRP on LTE, so RSRP-scaled
 // bands peg at full for any real signal and the bars never reflect strength.
 export function signalBars(dbm?: number | null): number {

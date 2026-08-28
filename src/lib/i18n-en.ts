@@ -61,7 +61,7 @@ export const EN_DICT: Record<string, string> = {
 
   // External extensions.
   "插件": "Plugins",
-  "通过 URL 或本地插件包扩展 VoFly 功能": "Extend VoFly with a URL or a local plugin package",
+  "通过 URL 或本地插件包扩展 vofly 功能": "Extend vofly with a URL or a local plugin package",
   "插件列表加载失败": "Failed to load plugins",
   "请输入插件包 URL": "Enter a plugin package URL",
   "插件页面以当前管理员权限运行，插件后端还可以运行外部代码。仅安装你完全信任的插件。":
@@ -510,8 +510,8 @@ export const EN_DICT: Record<string, string> = {
   "收件人地址 (To)": "Recipient Addresses",
   多个收件人请用英文逗号分隔: "Separate multiple recipients with commas",
   "数字签名密钥 (Secret)": "Signing Secret",
-  "若配置，将通过请求头 X-Vofly-Signature 提供 payload 验证。":
-    "If set, payload verification is provided via the X-Vofly-Signature header.",
+  "若配置，将通过请求头 x-vofly-signature 提供 payload 验证。":
+    "If set, payload verification is provided via the x-vofly-signature header.",
   "用于 HMAC-SHA256 签名，选填": "Used for HMAC-SHA256 signing (optional)",
   "自定义请求头 (Headers)": "Custom Headers",
   "添加 Header": "Add Header",
@@ -519,8 +519,8 @@ export const EN_DICT: Record<string, string> = {
     "No custom headers yet, e.g. Authorization, X-Api-Key.",
   "选择或输入 Header 名": "Select or type a header name",
   "值，如 Bearer xxx": "Value, e.g. Bearer xxx",
-  "Content-Type 与 X-Vofly-Signature 为系统保留头，自定义同名头会被忽略。":
-    "Content-Type and X-Vofly-Signature are reserved headers; custom entries with the same names are ignored.",
+  "Content-Type 与 x-vofly-signature 为系统保留头，自定义同名头会被忽略。":
+    "Content-Type and x-vofly-signature are reserved headers; custom entries with the same names are ignored.",
   "文本模板 (Text Template)": "Text Template",
   "请求超时 (ms)": "Timeout (ms)",
   最大重试次数: "Max Retries",
@@ -1270,8 +1270,8 @@ export const EN_DICT: Record<string, string> = {
   "强制启用整个 IMS": "Force-enable all IMS",
   "强制关闭整个 IMS": "Force-disable all IMS",
   "读取蜂窝 IMS 模组配置失败": "Failed to read the modem IMS configuration",
-  "将清除 VoFly 的 IMS 强制覆盖，改由当前 MBN / 运营商配置决定是否启用 IMS。":
-    "Clear the VoFly IMS override and let the active MBN / carrier configuration decide whether IMS is enabled.",
+  "将清除 vofly 的 IMS 强制覆盖，改由当前 MBN / 运营商配置决定是否启用 IMS。":
+    "Clear the vofly IMS override and let the active MBN / carrier configuration decide whether IMS is enabled.",
   "这会强制启用模组的整个蜂窝 IMS，而不只是 IMS 短信；VoLTE 等语音功能也会受到影响。":
     "This force-enables all cellular IMS services, not only IMS SMS; voice services such as VoLTE are also affected.",
   "这会强制关闭整个蜂窝 IMS，可能导致 VoLTE、IMS 短信及 IMS 语音不可用。":

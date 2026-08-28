@@ -16,7 +16,7 @@ export interface ModalProps {
   bodyClassName?: string;
 }
 
-// Glassmorphism modal replicating VoHive's `.el-dialog.glass-modal`.
+// Glassmorphism modal shared by vofly dialogs.
 export function Modal({
   open,
   onClose,

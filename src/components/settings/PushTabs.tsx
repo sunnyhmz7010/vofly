@@ -172,7 +172,7 @@ export function WebhookTab({ value, onChange, testing, onTest }: PushChannelProp
           placeholder="https://..."
           emptyText={t("尚未配置任何 Webhook URL，点击右侧添加按钮。")}
         />
-        <Field label={t("数字签名密钥 (Secret)")} hint={t("若配置，将通过请求头 X-Vofly-Signature 提供 payload 验证。")}>
+        <Field label={t("数字签名密钥 (Secret)")} hint={t("若配置，将通过请求头 x-vofly-signature 提供 payload 验证。")}>
           <Input value={value.secret} onChange={(e) => onChange({ secret: e.target.value })} disabled={off} placeholder={t("用于 HMAC-SHA256 签名，选填")} />
         </Field>
         <div className="space-y-2">
@@ -208,7 +208,7 @@ export function WebhookTab({ value, onChange, testing, onTest }: PushChannelProp
               <option key={name} value={name} />
             ))}
           </datalist>
-          <div className="mt-1 text-[10px] text-gray-400">{t("Content-Type 与 X-Vofly-Signature 为系统保留头，自定义同名头会被忽略。")}</div>
+          <div className="mt-1 text-[10px] text-gray-400">{t("Content-Type 与 x-vofly-signature 为系统保留头，自定义同名头会被忽略。")}</div>
         </div>
         <Field
           label={t("文本模板 (Text Template)")}

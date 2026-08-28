@@ -6,7 +6,7 @@ import { lookupCarrier } from "../../lib/carrier";
 import { notifyUnauthorized } from "../../api";
 
 /* ---------------------------------------------------------------------------
- * Lifecycle / status helpers (ported from the VoHive reference).
+ * Lifecycle / status helpers.
  * ------------------------------------------------------------------------- */
 
 // Wt: phases where the control plane is recovering.
@@ -128,7 +128,7 @@ export async function copyText(value: unknown, msg = tl("已复制")): Promise<b
 }
 
 /* ---------------------------------------------------------------------------
- * Sensitive-info visibility store (vohive_show_sensitive), shared across tabs.
+ * Sensitive-info visibility store, shared across tabs.
  * ------------------------------------------------------------------------- */
 const SENSITIVE_KEY = "vofly_show_sensitive";
 let sensitiveValue = readSensitive();

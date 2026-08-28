@@ -1,7 +1,7 @@
 import type { SMSContact, SMSMessage } from "../../types";
 import { tl, useI18n } from "../../lib/i18n";
 
-// Aggregated conversation row built from an SMSContact (mirrors the VoHive `Os` mapper).
+// Aggregated conversation row built from an SMSContact.
 export interface SmsThread {
   key: string;
   modemImei: string;

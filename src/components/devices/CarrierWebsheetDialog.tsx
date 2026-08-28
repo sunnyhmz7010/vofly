@@ -44,7 +44,7 @@ export function CarrierWebsheetDialog({ open, websheet, onClose, onDone }: Carri
     function isValid(data: unknown): data is { type: string; token?: string; callback?: unknown } {
       if (!data || typeof data !== "object") return false;
       const d = data as Record<string, unknown>;
-      if (d.type !== "vohive-websheet-callback") return false;
+      if (d.type !== "vofly-websheet-callback") return false;
       const t = typeof d.token === "string" ? d.token : "";
       return !(token && t && t !== token);
     }
@@ -82,7 +82,7 @@ export function CarrierWebsheetDialog({ open, websheet, onClose, onDone }: Carri
     }
     const onMessage = (e: MessageEvent) => handle(e.data);
     const onStorage = (e: StorageEvent) => {
-      if (e.key !== "vohive-websheet-complete" || !e.newValue) return;
+      if (e.key !== "vofly-websheet-complete" || !e.newValue) return;
       try {
         handle(JSON.parse(e.newValue));
       } catch {
@@ -93,7 +93,7 @@ export function CarrierWebsheetDialog({ open, websheet, onClose, onDone }: Carri
     window.addEventListener("storage", onStorage);
     let channel: BroadcastChannel | null = null;
     try {
-      channel = new BroadcastChannel("vohive-websheet");
+      channel = new BroadcastChannel("vofly-websheet");
       channel.onmessage = (e) => handle(e.data);
     } catch {
       channel = null;
