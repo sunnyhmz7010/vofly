@@ -14,6 +14,7 @@ USER_AGENT="vofly-updater/1.0 (+https://github.com/${REPO})"
 
 BINARY_PATH="/opt/vofly/bin/vofly"
 BACKUP_PATH="/opt/vofly/bin/vofly.bak"
+LINK_PATH="/usr/local/bin/vofly"
 ENV_FILE="/etc/vofly/env"
 DEFAULT_ADDR="0.0.0.0:7575"
 
@@ -70,6 +71,11 @@ run_root() {
   fi
   printf '需要 root 权限，请使用 sudo 运行。\n' >&2
   exit 1
+}
+
+ensure_cli_link() {
+  run_root install -d -m 755 "$(dirname "$LINK_PATH")"
+  run_root ln -sfn "$BINARY_PATH" "$LINK_PATH"
 }
 
 detect_os() {
@@ -303,12 +309,14 @@ try_download_file "$SUMS_URL" "$DOWNLOAD_DIR/SHA256SUMS" 644 || true
 verify_checksum "$DOWNLOAD_DIR/SHA256SUMS" "$DOWNLOAD_DIR/${ASSET_NAME}.sha256" "$ASSET_NAME" "$DOWNLOAD_DIR/$ASSET_NAME"
 
 if cmp -s "$DOWNLOAD_DIR/$ASSET_NAME" "$BINARY_PATH"; then
+  ensure_cli_link
   printf '当前已经是目标版本，无需升级。\n'
   exit 0
 fi
 
 run_root cp -f "$BINARY_PATH" "$BACKUP_PATH"
 run_root install -m 755 "$DOWNLOAD_DIR/$ASSET_NAME" "$BINARY_PATH"
+ensure_cli_link
 printf '已替换二进制：%s\n' "$BINARY_PATH"
 
 if restart_service; then

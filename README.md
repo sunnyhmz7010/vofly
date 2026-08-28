@@ -44,7 +44,21 @@
 curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh
 ```
 
-安装后默认监听 `0.0.0.0:7575`，数据库位于 `/opt/vofly/data/vofly.db`。需要 USB SIM 读卡器支持时：
+安装后默认监听 `0.0.0.0:7575`，数据库位于 `/opt/vofly/data/vofly.db`。首次安装会生成管理员初始密码并仅在终端显示一次；默认用户名为 `admin`，请立即记录密码并在登录后修改。
+
+只检查运行环境、不下载也不写入文件：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sh -s -- --check-env
+```
+
+安装指定版本：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh -s -- v0.1.0
+```
+
+需要 USB SIM 读卡器支持时：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh -s -- --with-pcsc
@@ -97,7 +111,8 @@ npm run build
 - 前端使用 React + TypeScript + Vite，页面和组件遵循统一的 vofly 设计令牌。
 - 后端 API 默认由 `http://127.0.0.1:7575` 提供；开发代理在 `vite.config.ts` 中配置。
 - 品牌图标统一使用 `public/icon-192.png` 与 `public/icon-512.png`，favicon 和触摸图标均来自同一套 PNG 资产。
-- 安装脚本使用 `/etc/vofly/env` 写入 `VOFLY_ADDR` 与 `VOFLY_DATABASE_PATH`，systemd 入口为 `/opt/vofly/bin/vofly serve`。
+- 安装脚本使用 `/etc/vofly/env` 写入 `VOFLY_ADDR` 与 `VOFLY_DATABASE_PATH`，systemd 入口为 `/opt/vofly/bin/vofly serve`，同时维护 `/usr/local/bin/vofly` CLI 链接。
+- 管理员账号只保存在 SQLite 数据库中；安装脚本首次安装时调用 `vofly bootstrap-admin` 生成随机密码，不会把密码写入环境文件或仓库。
 - 通话录音保存为 WAV，可在网页直接播放，也可通过二维码发送到手机；不需要额外音频转码运行库。
 - 本仓库不保存后端源码；任何后端实现、数据库迁移、设备控制逻辑都应在 `vofly-backend` 中维护。
 

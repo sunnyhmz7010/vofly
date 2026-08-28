@@ -2,7 +2,7 @@
 # vofly 一键安装脚本。
 # 用法：
 #   curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh
-#   sudo sh install.sh [--check-env] [--with-pcsc] [版本]
+#   sudo sh install.sh [--force] [--check-env] [--with-pcsc] [版本]
 
 set -eu
 
@@ -18,34 +18,43 @@ BIN_DIR="/opt/vofly/bin"
 DATA_DIR="/opt/vofly/data"
 BINARY_PATH="/opt/vofly/bin/vofly"
 BACKUP_PATH="/opt/vofly/bin/vofly.bak"
+LINK_PATH="/usr/local/bin/vofly"
 ENV_DIR="/etc/vofly"
 ENV_FILE="/etc/vofly/env"
 SYSTEMD_UNIT="/etc/systemd/system/vofly.service"
 DEFAULT_ADDR="0.0.0.0:7575"
 DEFAULT_DATABASE="/opt/vofly/data/vofly.db"
 
+FORCE=0
 CHECK_ENV=0
 WITH_PCSC=0
 VERSION_ARG=""
+FIRST_INSTALL=0
+INITIAL_ADMIN_PASSWORD=""
+ADMIN_NOTICE_PRINTED=0
+DOWNLOAD_DIR=""
 
 print_usage() {
   cat <<'USAGE'
 用法:
-  sudo sh install.sh [--check-env] [--with-pcsc] [版本]
+  sudo sh install.sh [--force] [--check-env] [--with-pcsc] [版本]
 
 选项:
-  --check-env       只检查运行环境，不写入任何文件
+  --force           即使当前已是目标版本，也重新下载并安装
+  --check-env       只检查运行环境，不下载、不安装、不写入任何文件
   --with-pcsc       安装并启用 pcscd 与 CCID 驱动（USB SIM 读卡器）
   -h|--help         显示帮助
 
 示例:
   curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh
   curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh -s -- --with-pcsc
+  curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh -s -- v0.1.0
 USAGE
 }
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
+    --force) FORCE=1 ;;
     --check-env) CHECK_ENV=1 ;;
     --with-pcsc) WITH_PCSC=1 ;;
     -h|--help)
@@ -68,6 +77,30 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
+if ! command -v install >/dev/null 2>&1; then
+  install() {
+    if [ "${1:-}" = "-d" ]; then
+      shift
+      mode="0755"
+      if [ "${1:-}" = "-m" ]; then
+        mode=$2
+        shift 2
+      fi
+      mkdir -p "$@"
+      chmod "$mode" "$@"
+      return
+    fi
+    mode="0755"
+    if [ "${1:-}" = "-m" ]; then
+      mode=$2
+      shift 2
+    fi
+    [ "$#" -eq 2 ] || return 2
+    cp "$1" "$2"
+    chmod "$mode" "$2"
+  }
+fi
+
 require_command() {
   command -v "$1" >/dev/null 2>&1 || {
     printf '缺少 %s。\n' "$1" >&2
@@ -75,17 +108,15 @@ require_command() {
   }
 }
 
+require_root() {
+  if [ "$(id -u)" -ne 0 ]; then
+    printf '需要 root 权限，请使用 sudo 运行。\n' >&2
+    exit 1
+  fi
+}
+
 run_root() {
-  if [ "$(id -u)" -eq 0 ]; then
-    "$@"
-    return
-  fi
-  if command -v sudo >/dev/null 2>&1; then
-    sudo "$@"
-    return
-  fi
-  printf '需要 root 权限，请使用 sudo 运行。\n' >&2
-  exit 1
+  "$@"
 }
 
 detect_os() {
@@ -130,6 +161,10 @@ normalize_version() {
   esac
 }
 
+version_without_v() {
+  printf '%s\n' "$1" | sed 's/^v//'
+}
+
 extract_tag_name() {
   printf '%s\n' "$1" | sed -n 's#.*/releases/tag/\([^/?#]*\).*#\1#p' | head -n 1
 }
@@ -158,6 +193,21 @@ resolve_version() {
   fi
 }
 
+installed_version() {
+  if [ ! -x "$BINARY_PATH" ]; then
+    return 1
+  fi
+  "$BINARY_PATH" version 2>/dev/null | awk '{print $2}' | sed -E 's/[[:space:]]*\(.*$//' | head -n 1
+}
+
+is_target_installed() {
+  current=$(installed_version || true)
+  if [ -z "$current" ]; then
+    return 1
+  fi
+  [ "$(version_without_v "$current")" = "$(version_without_v "$VERSION")" ]
+}
+
 file_sha256() {
   if command -v sha256sum >/dev/null 2>&1; then
     sha256sum "$1" | awk '{print $1}'
@@ -176,7 +226,7 @@ checksum_for_asset() {
     NF >= 2 {
       item = $NF
       sub(/^.*\//, "", item)
-      if (item == name) {
+      if (item == name || item == "*" name) {
         print $1
         exit
       }
@@ -240,19 +290,85 @@ verify_checksum() {
   printf '校验通过：%s（%s）\n' "$asset_name" "$source_name"
 }
 
+ensure_install_dirs() {
+  run_root install -d -m 755 "$BIN_DIR" "$DATA_DIR" "$ENV_DIR"
+}
+
+ensure_cli_link() {
+  run_root install -d -m 755 "$(dirname "$LINK_PATH")"
+  run_root ln -sfn "$BINARY_PATH" "$LINK_PATH"
+}
+
 write_default_env() {
-  if [ -f "$ENV_FILE" ]; then
-    printf '保留现有环境文件：%s\n' "$ENV_FILE"
-    return
-  fi
   tmp=$(mktemp "${TMPDIR:-/tmp}/vofly-env.XXXXXX")
-  cat >"$tmp" <<EOF
-VOFLY_ADDR=0.0.0.0:7575
-VOFLY_DATABASE_PATH=/opt/vofly/data/vofly.db
-EOF
+  if [ -f "$ENV_FILE" ]; then
+    grep -Ev '^VOFLY_ADMIN_(USERNAME|PASSWORD|PASSWORD_B64)=' "$ENV_FILE" >"$tmp" || true
+  else
+    : >"$tmp"
+  fi
+  if ! grep -q '^VOFLY_ADDR=' "$tmp"; then
+    printf 'VOFLY_ADDR=%s\n' "$DEFAULT_ADDR" >>"$tmp"
+  fi
+  if ! grep -q '^VOFLY_DATABASE_PATH=' "$tmp"; then
+    printf 'VOFLY_DATABASE_PATH=%s\n' "$DEFAULT_DATABASE" >>"$tmp"
+  fi
   run_root install -m 600 "$tmp" "$ENV_FILE"
   rm -f "$tmp"
-  printf '已创建环境文件：%s\n' "$ENV_FILE"
+  printf '已写入环境文件：%s\n' "$ENV_FILE"
+}
+
+generate_admin_password() {
+  secret=""
+  if command -v od >/dev/null 2>&1; then
+    secret=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
+  elif command -v hexdump >/dev/null 2>&1; then
+    secret=$(hexdump -n 16 -e '16/1 "%02x"' /dev/urandom 2>/dev/null || true)
+  elif command -v openssl >/dev/null 2>&1; then
+    secret=$(openssl rand -hex 16 2>/dev/null || true)
+  elif command -v sha256sum >/dev/null 2>&1; then
+    secret=$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | sha256sum | awk '{print substr($1, 1, 32)}')
+  else
+    secret=$(tr -dc 'a-f0-9' </dev/urandom | head -c 32)
+  fi
+  if [ -z "$secret" ]; then
+    printf '生成随机管理员密码失败。\n' >&2
+    exit 1
+  fi
+  printf '%s\n' "$secret"
+}
+
+bootstrap_admin() {
+  candidate=$1
+  secret=$(generate_admin_password)
+  result=$(printf '%s\n' "$secret" | "$candidate" bootstrap-admin --database "$DEFAULT_DATABASE" --username admin 2>/dev/null) || {
+    printf '待安装版本无法读取或初始化数据库；当前程序尚未被替换，请检查数据库与版本兼容性。\n' >&2
+    exit 1
+  }
+  case "$result" in
+    created)
+      FIRST_INSTALL=1
+      INITIAL_ADMIN_PASSWORD=$secret
+      ;;
+    exists)
+      ;;
+    *)
+      printf '管理员初始化返回未知结果：%s\n' "$result" >&2
+      exit 1
+      ;;
+  esac
+}
+
+print_admin_credentials() {
+  if [ "$FIRST_INSTALL" != "1" ] || [ "$ADMIN_NOTICE_PRINTED" = "1" ]; then
+    return
+  fi
+  ADMIN_NOTICE_PRINTED=1
+  printf '\n================ 安装完成 ================\n'
+  printf '首次安装已生成管理员初始密码（仅显示一次）：\n\n'
+  printf '    %s\n\n' "$INITIAL_ADMIN_PASSWORD"
+  printf '用户名：admin\n'
+  printf '请立即记录此密码；登录后可在 Web 设置或运行 vofly menu 修改。\n'
+  printf '==========================================\n'
 }
 
 write_systemd_unit() {
@@ -265,12 +381,36 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+User=root
+Group=root
 WorkingDirectory=/opt/vofly
 EnvironmentFile=/etc/vofly/env
 ExecStart=/opt/vofly/bin/vofly serve
 Restart=on-failure
 RestartSec=5s
-TimeoutStopSec=15s
+TimeoutStartSec=30s
+TimeoutStopSec=40s
+RuntimeDirectory=vofly
+RuntimeDirectoryMode=0755
+
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=false
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ReadWritePaths=/opt/vofly/data /opt/vofly/bin
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK AF_PACKET
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+UMask=0077
+LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target
@@ -323,6 +463,14 @@ restart_service() {
   fi
 }
 
+rollback_binary() {
+  if [ -f "$BACKUP_PATH" ]; then
+    printf '启动失败，回滚到上一版本。\n' >&2
+    run_root install -m 755 "$BACKUP_PATH" "$BINARY_PATH"
+    restart_service || true
+  fi
+}
+
 install_packages() {
   installer=$1
   shift
@@ -366,8 +514,9 @@ install_pcsc_packages() {
     packages=""
     opkg_has_package pcscd && packages="$packages pcscd"
     opkg_has_package libccid && packages="$packages libccid"
+    opkg_has_package ccid && packages="$packages ccid"
     if [ -z "$packages" ]; then
-      printf '当前 OpenWrt 软件源未提供 pcscd/libccid。\n' >&2
+      printf '当前 OpenWrt 软件源未提供 pcscd/libccid/ccid。\n' >&2
       return 1
     fi
     run_root opkg update
@@ -444,9 +593,35 @@ run_check_env() {
 }
 
 cleanup_downloads() {
-  if [ -n "${DOWNLOAD_DIR:-}" ] && [ -d "$DOWNLOAD_DIR" ]; then
+  if [ -n "$DOWNLOAD_DIR" ] && [ -d "$DOWNLOAD_DIR" ]; then
     rm -rf "$DOWNLOAD_DIR"
   fi
+}
+
+on_exit() {
+  status=$?
+  cleanup_downloads
+  if [ "$status" -ne 0 ]; then
+    print_admin_credentials
+  fi
+}
+
+finish_install() {
+  if [ "$WITH_PCSC" = "1" ]; then
+    install_pcsc_support || true
+  else
+    printf '如需 USB SIM 读卡器支持，可重新运行安装命令并追加 --with-pcsc。\n'
+  fi
+  if ! restart_service; then
+    rollback_binary
+    exit 1
+  fi
+  print_admin_credentials
+  PORT=$(env_port)
+  printf '\n访问地址：http://YOUR_IP:%s\n' "${PORT:-7575}"
+  printf 'CLI：%s\n' "$LINK_PATH"
+  printf '升级：curl -fsSL %s/update.sh | sudo sh\n' "$SOURCE_BASE_URL"
+  printf '卸载：curl -fsSL %s/uninstall.sh | sudo sh\n' "$SOURCE_BASE_URL"
 }
 
 if [ "$CHECK_ENV" = "1" ]; then
@@ -457,6 +632,9 @@ fi
 detect_os
 require_command curl
 require_command uname
+require_command ln
+require_root
+trap on_exit EXIT
 
 ARCH=$(detect_arch)
 VERSION=$(resolve_version)
@@ -467,33 +645,37 @@ SIDECAR_URL="${RELEASES_DOWNLOAD_URL}/${VERSION}/${ASSET_NAME}.sha256"
 
 printf '安装版本：%s\n目标架构：linux_%s\n安装目录：%s\n' "$VERSION" "$ARCH" "$INSTALL_ROOT"
 
+ensure_install_dirs
+write_default_env
+
+if [ "$FORCE" = "0" ] && is_target_installed; then
+  ensure_cli_link
+  bootstrap_admin "$BINARY_PATH"
+  write_systemd_unit
+  printf '当前已经是目标版本，已刷新环境、服务和 CLI 链接。\n'
+  finish_install
+  exit 0
+fi
+
 DOWNLOAD_DIR=$(mktemp -d "${TMPDIR:-/tmp}/vofly-install.XXXXXX")
-trap cleanup_downloads EXIT
 download_file "$ASSET_URL" "$DOWNLOAD_DIR/$ASSET_NAME" 755
 try_download_file "$SIDECAR_URL" "$DOWNLOAD_DIR/${ASSET_NAME}.sha256" 644 || true
 try_download_file "$SUMS_URL" "$DOWNLOAD_DIR/SHA256SUMS" 644 || true
 verify_checksum "$DOWNLOAD_DIR/SHA256SUMS" "$DOWNLOAD_DIR/${ASSET_NAME}.sha256" "$ASSET_NAME" "$DOWNLOAD_DIR/$ASSET_NAME"
+"$DOWNLOAD_DIR/$ASSET_NAME" version >/dev/null 2>&1 || {
+  printf '下载的二进制无法在当前系统运行；未替换现有安装。\n' >&2
+  exit 1
+}
 
-run_root install -d -m 755 "$BIN_DIR" "$DATA_DIR" "$ENV_DIR"
-write_default_env
+bootstrap_admin "$DOWNLOAD_DIR/$ASSET_NAME"
 
 if [ -f "$BINARY_PATH" ]; then
   run_root cp -f "$BINARY_PATH" "$BACKUP_PATH"
   printf '已备份旧二进制：%s\n' "$BACKUP_PATH"
 fi
 run_root install -m 755 "$DOWNLOAD_DIR/$ASSET_NAME" "$BINARY_PATH"
+ensure_cli_link
 printf '已安装二进制：%s\n' "$BINARY_PATH"
 
 write_systemd_unit
-restart_service
-
-if [ "$WITH_PCSC" = "1" ]; then
-  install_pcsc_support || true
-else
-  printf '如需 USB SIM 读卡器支持，可重新运行安装命令并追加 --with-pcsc。\n'
-fi
-
-PORT=$(env_port)
-printf '\n访问地址：http://YOUR_IP:%s\n' "${PORT:-7575}"
-printf '升级：curl -fsSL %s/update.sh | sudo sh\n' "$SOURCE_BASE_URL"
-printf '卸载：curl -fsSL %s/uninstall.sh | sudo sh\n' "$SOURCE_BASE_URL"
+finish_install
