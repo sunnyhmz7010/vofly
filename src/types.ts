@@ -399,6 +399,68 @@ export interface LogEntry {
   fields?: string | Record<string, unknown>;
 }
 
+export interface CommandDefinition {
+  name: string;
+  usage: string;
+  summary: string;
+  dangerous: boolean;
+  async: boolean;
+  deviceArgument: boolean;
+}
+
+export interface CommandExecution {
+  id: string;
+  input: string;
+  command: string;
+  source: string;
+  arguments?: string[];
+  state: "running" | "completed" | "failed" | string;
+  error?: string;
+  startedAt?: string;
+  completedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CommandAttachment {
+  type: "audio" | string;
+  recording?: string;
+  contentType?: string;
+  codec?: string;
+  size?: number;
+}
+
+export interface CommandEvent {
+  id: number;
+  executionId: string;
+  kind: "accepted" | "progress" | "result" | "error" | string;
+  text: string;
+  attachments?: CommandAttachment[];
+  execution?: CommandExecution;
+  createdAt: string;
+}
+
+export interface BalanceQuery {
+  id: string;
+  deviceId: string;
+  iccid: string;
+  ruleId: string;
+  transport: "sms" | "ussd" | "manual" | string;
+  state: "sending" | "awaiting_reply" | "completed" | "timed_out" | "failed" | string;
+  parseState: "pending" | "parsed" | "unparsed" | "manual" | string;
+  amount?: string;
+  currency?: string;
+  summary?: string;
+  rawResponse?: string;
+  responseSmsId?: number;
+  error?: string;
+  startedAt: string;
+  expiresAt: string;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface EsimProfile {
   iccid: string;
   name: string;
