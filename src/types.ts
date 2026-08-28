@@ -325,6 +325,8 @@ export interface SMSMessage {
   status: string;
   source?: string;
   deliveryState?: string;
+  /** Set for carrier OTA pushes (sim_data_download / oma_cp); never notified. */
+  otaKind?: string;
 }
 
 export interface UpstreamProxy {

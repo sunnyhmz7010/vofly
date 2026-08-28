@@ -167,6 +167,9 @@ export function ThreadPanel(props: ThreadPanelProps) {
 >
 <div className={cx("mb-1 flex items-center gap-2", outbound && "justify-end")}>
   {!outbound ? <span className="text-xs font-bold text-gray-700 dark:text-gray-200">{m.sender}</span> : null}
+  {!outbound && m.otaKind ? (
+    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:bg-amber-500/15 dark:text-amber-300" title="运营商 OTA 推送，不会触发通知">OTA</span>
+  ) : null}
   {isDesktop && outbound && hasDevice ? (
     <DeleteMsgButton loading={deletingMessageId === m.id} id={m.id} canHover={canHover} onDelete={() => onDeleteMessage(m)} />
   ) : null}
