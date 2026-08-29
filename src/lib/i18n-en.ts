@@ -1037,6 +1037,7 @@ export const EN_DICT: Record<string, string> = {
   "错误分类": "Error Category",
   "降序": "Descending",
   "隐藏敏感信息": "Hide sensitive info",
+  "NR5G 频段": "NR5G Band",
   "频段": "Band",
   "飞行": "Airplane",
   "飞行模式": "Airplane Mode",

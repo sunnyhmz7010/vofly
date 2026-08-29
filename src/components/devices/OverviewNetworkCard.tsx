@@ -120,7 +120,9 @@ export function OverviewNetworkCard({ device, onOpenOperatorSelection }: { devic
 			  {radioOffForVowifi
 				? t("蜂窝射频已关闭（VoWiFi 接管）")
 				: <>RSRP {modem?.signalRsrp ?? "--"} · RSRQ {modem?.signalRsrq ?? "--"} · SINR {modem?.signalSinr ?? "--"}
-					{modem?.nr5gSignalSinr !== undefined ? ` ·NR5G SINR ${modem.nr5gSignalSinr}` : null}</>}
+					{modem?.nr5gSignalRsrp !== undefined ? ` · NR5G RSRP ${modem.nr5gSignalRsrp}` : null}
+					{modem?.nr5gSignalRsrq !== undefined ? ` · NR5G RSRQ ${modem.nr5gSignalRsrq}` : null}
+					{modem?.nr5gSignalSinr !== undefined ? ` · NR5G SINR ${modem.nr5gSignalSinr}` : null}</>}
             </div>
           </div>
           <div className="ml-auto flex h-7 items-end gap-0.5">
@@ -134,6 +136,7 @@ export function OverviewNetworkCard({ device, onOpenOperatorSelection }: { devic
         <FieldRow label={t("网络模式")} value={netMode || "--"} monospace />
         <FieldRow label={t("频段")} value={modem?.radioBand || "--"} monospace />
         <FieldRow label={t("信道")} value={modem?.radioChannel ? String(modem.radioChannel) : "--"} monospace />
+		{modem?.nr5gRadioBand ? <FieldRow label={t("NR5G 频段")} value={modem.nr5gRadioBand} monospace /> : null}
 		<FieldRow label={t("注册状态")} value={vowifiRegistered ? t("WiFi Calling 已注册") : cellularRegistrationText} monospace />
       </div>
     </>

@@ -14,7 +14,11 @@ export interface ModemOpl {
 
 // Modem fields the overview tab reads beyond the shared ModemSummary.
 export interface DeviceModem extends ModemSummary {
+  nr5gSignalRsrp?: number;
+  nr5gSignalRsrq?: number;
   nr5gSignalSinr?: number;
+  nr5gRadioBand?: string;
+  nr5gRadioChannel?: number;
   pnn?: ModemPnn[];
   opl?: ModemOpl[];
 }
