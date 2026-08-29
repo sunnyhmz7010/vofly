@@ -4,7 +4,7 @@ import { Select } from "../ui/Select";
 import { useNotificationQR } from "../../lib/notificationOnboarding";
 import { ChannelHeader, Field, PasswordInput } from "./controls";
 import { NotificationQrConnect } from "./NotificationQrConnect";
-import type { PushplusForm, QQForm, TelegramForm, WeComBotForm, WeixinForm } from "./model";
+import type { FeishuBotForm, PushplusForm, QQForm, TelegramForm, WeComBotForm, WeixinForm } from "./model";
 
 interface ChannelProps<T> {
   value: T;
@@ -202,6 +202,71 @@ export function WeComBotTab({ value, onChange, onApplied }: InteractiveChannelPr
               <Input value={value.allowedGroupIds} onChange={(e) => onChange({ allowedGroupIds: e.target.value })} disabled={off} placeholder={t("多个使用英文逗号分隔")} />
             </Field>
           </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+const FEISHU_DOMAIN_OPTIONS = [
+  { value: "feishu", label: "飞书 (feishu.cn)" },
+  { value: "lark", label: "Lark (larksuite.com)" },
+];
+
+export function FeishuBotTab({ value, onChange, onApplied }: InteractiveChannelProps<FeishuBotForm>) {
+  const { t } = useI18n();
+  const qr = useNotificationQR("feishu-bot", {
+    onApplied: async () => {
+      await onApplied?.();
+    },
+  });
+  const off = !value.enabled;
+
+  return (
+    <div className="grid min-w-0 grid-cols-1 gap-6 pt-2 xl:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]">
+      <NotificationQrConnect
+        title={t("飞书扫码绑定")}
+        connected={value.enabled}
+        session={qr.session}
+        busy={qr.loading}
+        polling={qr.polling}
+        error={qr.error}
+        onStart={() => void qr.start()}
+        onCancel={() => void qr.cancel()}
+      />
+
+      <section className="min-w-0" aria-labelledby="feishu-bot-manual-title">
+        <ChannelHeader title={t("飞书机器人")} enabled={value.enabled} onToggle={(enabled) => onChange({ enabled })} />
+        <div className="space-y-4">
+          <div className="rounded-lg bg-gray-50 px-3 py-2 text-xs leading-5 text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
+            {t("扫码会自动创建飞书自定义应用并写入凭证；绑定后向机器人发一条私聊消息即可完成通知绑定，支持命令执行与录音文件回传。")}
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="App ID">
+              <Input value={value.appId} onChange={(e) => onChange({ appId: e.target.value })} disabled={off} placeholder="cli_xxx" />
+            </Field>
+            <Field label="App Secret">
+              <PasswordInput value={value.appSecret} onChange={(appSecret) => onChange({ appSecret })} disabled={off} placeholder="********" />
+            </Field>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label={t("租户域名")} hint={t("国际版 Lark 租户请选择 larksuite.com")}>
+              <Select
+                value={value.domain}
+                onChange={(domain) => onChange({ domain })}
+                options={FEISHU_DOMAIN_OPTIONS}
+                disabled={off}
+                placeholder={t("选择租户域名")}
+                className="w-full"
+              />
+            </Field>
+            <Field label={t("允许私聊用户 ID")} hint={t("首个私聊用户会自动绑定")}>
+              <Input value={value.allowedUserIds} onChange={(e) => onChange({ allowedUserIds: e.target.value })} disabled={off} placeholder={t("多个使用英文逗号分隔")} />
+            </Field>
+          </div>
+          <Field label={t("允许群聊 ID")} hint={t("多个使用英文逗号分隔")}>
+            <Input value={value.allowedGroupIds} onChange={(e) => onChange({ allowedGroupIds: e.target.value })} disabled={off} placeholder={t("多个使用英文逗号分隔")} />
+          </Field>
         </div>
       </section>
     </div>

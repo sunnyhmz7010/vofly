@@ -37,6 +37,16 @@ export interface WeComBotForm {
   allowedGroupIds: string;
 }
 
+export interface FeishuBotForm {
+  enabled: boolean;
+  appId: string;
+  appSecret: string;
+  // feishu=国内飞书，lark=国际版 Lark
+  domain: string;
+  allowedUserIds: string;
+  allowedGroupIds: string;
+}
+
 export interface HeaderRow {
   id: number;
   key: string;
@@ -112,6 +122,7 @@ export interface NotifyForms {
   qq: QQForm;
   weixin: WeixinForm;
   wecomBot: WeComBotForm;
+  feishuBot: FeishuBotForm;
   webhook: WebhookForm;
   bark: BarkForm;
 	email: EmailForm;
@@ -191,6 +202,7 @@ export function formsFromNotifications(data: Partial<NotificationSettings>): Not
   const qq = asRecord(data.qq);
   const weixin = asRecord(data.weixin);
   const wecomBot = asRecord(data.wecomBot ?? data.wecom_bot);
+  const feishuBot = asRecord(data.feishuBot ?? data.feishu_bot);
   const webhook = asRecord(data.webhook);
   const bark = asRecord(data.bark);
 	const email = asRecord(data.email);
@@ -228,6 +240,14 @@ export function formsFromNotifications(data: Partial<NotificationSettings>): Not
       websocketUrl: str(wecomBot.websocketUrl ?? wecomBot.websocket_url) || "wss://openws.work.weixin.qq.com",
       allowedUserIds: joinList(wecomBot.allowedUserIds ?? wecomBot.allowed_user_ids),
       allowedGroupIds: joinList(wecomBot.allowedGroupIds ?? wecomBot.allowed_group_ids),
+    },
+    feishuBot: {
+      enabled: !!feishuBot.enabled,
+      appId: str(feishuBot.appId ?? feishuBot.app_id),
+      appSecret: str(feishuBot.appSecret ?? feishuBot.app_secret),
+      domain: str(feishuBot.domain) || "feishu",
+      allowedUserIds: joinList(feishuBot.allowedUserIds ?? feishuBot.allowed_user_ids),
+      allowedGroupIds: joinList(feishuBot.allowedGroupIds ?? feishuBot.allowed_group_ids),
     },
     webhook: {
       enabled: !!webhook.enabled,
@@ -355,6 +375,17 @@ export function buildWeComBotPayload(form: WeComBotForm) {
   };
 }
 
+export function buildFeishuBotPayload(form: FeishuBotForm) {
+  return {
+    enabled: !!form.enabled,
+    app_id: form.appId || "",
+    app_secret: form.appSecret || "",
+    domain: form.domain === "lark" ? "lark" : "feishu",
+    allowed_user_ids: splitList(form.allowedUserIds),
+    allowed_group_ids: splitList(form.allowedGroupIds),
+  };
+}
+
 export function buildWecomPayload(form: WecomForm, forTest = false) {
 	const urls = Array.isArray(form.urls) ? form.urls : [];
 	return {
@@ -398,6 +429,7 @@ export function buildNotificationsPayload(forms: NotifyForms) {
     qq: buildQQPayload(forms.qq),
     weixin: buildWeixinPayload(forms.weixin),
     wecomBot: buildWeComBotPayload(forms.wecomBot),
+    feishuBot: buildFeishuBotPayload(forms.feishuBot),
     email: buildEmailPayload(forms.email),
     pushplus: {
       enabled: !!forms.pushplus.enabled,

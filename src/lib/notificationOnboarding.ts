@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, apiMessage } from "../api";
 
-export type NotificationQRChannel = "weixin" | "wecom-bot" | "qq";
+export type NotificationQRChannel = "weixin" | "wecom-bot" | "qq" | "feishu-bot";
 export type NotificationQRStatus = "wait" | "scaned" | "confirmed" | "applied" | "expired" | "canceled" | "error";
 export type NotificationQRTone = "neutral" | "active" | "success" | "warning" | "danger";
 

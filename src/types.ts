@@ -495,6 +495,8 @@ export interface NotificationSettings {
   weixin: Record<string, unknown>;
   wecomBot?: Record<string, unknown>;
   wecom_bot?: Record<string, unknown>;
+  feishuBot?: Record<string, unknown>;
+  feishu_bot?: Record<string, unknown>;
   webhook: Record<string, unknown>;
   bark: Record<string, unknown>;
   email: Record<string, unknown>;

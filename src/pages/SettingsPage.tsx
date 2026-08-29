@@ -21,7 +21,7 @@ import {
   formsFromNotifications,
   type NotifyForms,
 } from "../components/settings/model";
-import { PushplusTab, QQTab, TelegramTab, WeComBotTab, WeixinTab } from "../components/settings/BotTabs";
+import { FeishuBotTab, PushplusTab, QQTab, TelegramTab, WeComBotTab, WeixinTab } from "../components/settings/BotTabs";
 import { BarkTab, EmailTab, LarkTab, WebhookTab, WecomTab } from "../components/settings/PushTabs";
 import { PluginsCard } from "../components/settings/PluginsCard";
 import { HTTPSCard } from "../components/settings/HTTPSCard";
@@ -34,6 +34,7 @@ const NOTIFY_TABS = [
   { key: "qq", label: "QQ Bot" },
   { key: "weixin", label: "个人微信" },
   { key: "wecomBot", label: "企业微信长连接 Bot" },
+  { key: "feishuBot", label: "飞书机器人" },
   { key: "bark", label: "Bark" },
   { key: "email", label: "Email" },
   { key: "pushplus", label: "Pushplus" },
@@ -468,6 +469,9 @@ export default function SettingsPage() {
               ) : null}
               {activeTab === "wecomBot" ? (
                 <WeComBotTab value={forms.wecomBot} onChange={(p) => updateChannel("wecomBot", p)} onApplied={fetchNotifications} />
+              ) : null}
+              {activeTab === "feishuBot" ? (
+                <FeishuBotTab value={forms.feishuBot} onChange={(p) => updateChannel("feishuBot", p)} onApplied={fetchNotifications} />
               ) : null}
               {activeTab === "bark" ? (
                 <BarkTab value={forms.bark} onChange={(p) => updateChannel("bark", p)} testing={testingBark} onTest={onTestBark} />

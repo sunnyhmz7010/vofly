@@ -16,6 +16,7 @@ const {
   buildQQPayload,
   buildLarkPayload,
   buildNotificationsPayload,
+  buildFeishuBotPayload,
   buildWeComBotPayload,
   buildWeixinPayload,
   formsFromNotifications,
@@ -116,6 +117,14 @@ test("loads interactive bot notification forms", () => {
       allowedUserIds: ["wecom-user"],
       allowedGroupIds: ["wecom-group"],
     },
+    feishuBot: {
+      enabled: true,
+      appId: "feishu-app",
+      appSecret: "********",
+      domain: "feishu",
+      allowedUserIds: ["feishu-user"],
+      allowedGroupIds: ["feishu-group"],
+    },
   });
 
   assert.deepEqual(forms.qq, {
@@ -128,6 +137,11 @@ test("loads interactive bot notification forms", () => {
   assert.equal(forms.weixin.allowedUserIds, "wx-user");
   assert.equal(forms.weixin.allowedGroupIds, "wx-group");
   assert.equal(forms.wecomBot.secret, "********");
+  assert.equal(forms.feishuBot.appId, "feishu-app");
+  assert.equal(forms.feishuBot.appSecret, "********");
+  assert.equal(forms.feishuBot.domain, "feishu");
+  assert.equal(forms.feishuBot.allowedUserIds, "feishu-user");
+  assert.equal(forms.feishuBot.allowedGroupIds, "feishu-group");
 });
 
 test("builds interactive bot notification payloads", () => {
@@ -169,5 +183,20 @@ test("builds interactive bot notification payloads", () => {
     websocket_url: "wss://openws.work.weixin.qq.com",
     allowed_user_ids: ["wecom-user"],
     allowed_group_ids: ["wecom-group"],
+  });
+  assert.deepEqual(buildFeishuBotPayload({
+    enabled: true,
+    appId: "feishu-app",
+    appSecret: "secret",
+    domain: "lark",
+    allowedUserIds: "feishu-user",
+    allowedGroupIds: "feishu-group",
+  }), {
+    enabled: true,
+    app_id: "feishu-app",
+    app_secret: "secret",
+    domain: "lark",
+    allowed_user_ids: ["feishu-user"],
+    allowed_group_ids: ["feishu-group"],
   });
 });

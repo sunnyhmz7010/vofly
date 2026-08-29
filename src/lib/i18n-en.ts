@@ -429,6 +429,13 @@ export const EN_DICT: Record<string, string> = {
   "企业微信 Bot ID": "WeCom Bot ID",
   多个使用英文逗号分隔: "Separate multiple values with English commas",
   首个私聊用户会自动绑定: "The first direct user is bound automatically",
+  "飞书扫码绑定": "Feishu QR Binding",
+  飞书机器人: "Feishu Bot",
+  "扫码会自动创建飞书自定义应用并写入凭证；绑定后向机器人发一条私聊消息即可完成通知绑定，支持命令执行与录音文件回传。":
+    "Scanning creates a Feishu custom app and stores its credentials automatically. After binding, send the bot one direct message to finish notification binding. Command execution and recording file replies are supported.",
+  租户域名: "Tenant Domain",
+  "国际版 Lark 租户请选择 larksuite.com": "International Lark tenants should select larksuite.com",
+  选择租户域名: "Select tenant domain",
   "启用 Pushplus 推送": "Enable Pushplus",
   "该渠道仅用于单向通知，不提供设备控制功能。新短信会逐条推送；启用通知的自动任务也会推送执行结果。":
     "This channel is for one-way notifications only and provides no device controls. New SMS messages are delivered individually, and notification-enabled automatic tasks also send their results.",
