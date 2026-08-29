@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CallRegular, MicRegular, QrCode24Regular, Speaker0Regular } from "@fluentui/react-icons";
-import { api, apiMessage, camelize } from "../api";
+import { ApiError, api, apiMessage, camelize } from "../api";
 import { QrSendModal, type QrSendPayload } from "../components/QrSendModal";
 import { Button, Input, PageHeader, Select, StatusDot, Tag } from "../components/ui";
 import { tf, useI18n } from "../lib/i18n";
 
 // 独立通话页：跨设备拨号、当前通话、持久化通话记录与录音回放。
 // 后端契约：/devices、/devices/{id}/calls、/devices/{id}/calls/{dial|answer|hangup}、
-// /devices/{id}/calls/media（WebSocket PCM 桥）、/call-records、/call-recordings/{id}。
+// /devices/{id}/calls/webrtc（WebRTC 音频优先）、/devices/{id}/calls/media（WebSocket PCM 桥兜底）、
+// /call-records、/call-recordings/{id}。
 
 interface DeviceListItem {
   id: string;
@@ -171,6 +172,103 @@ function validDialNumber(value: string) {
   return /^[+]?[0-9*#]+$/.test(trimmed);
 }
 
+// 预期内的 WebRTC 回退状态：请求无效(400)、后端未提供端点(404)、非 VoWiFi 会话(501)、协商失败(502)。
+const WEBRTC_FALLBACK_STATUSES = [400, 404, 501, 502];
+
+// 强制 PCMU/8000：从收发双端能力里去重挑选；浏览器不支持能力查询时返回空列表并沿用默认编解码。
+function pcmuCodecPreferences(): RTCRtpCodec[] {
+  const capabilities: RTCRtpCodec[] = [
+    ...(RTCRtpSender.getCapabilities("audio")?.codecs ?? []),
+    ...(RTCRtpReceiver.getCapabilities("audio")?.codecs ?? []),
+  ];
+  const unique = new Map<string, RTCRtpCodec>();
+  for (const codec of capabilities) {
+    if (codec.mimeType.toLowerCase() !== "audio/pcmu" || codec.clockRate !== SAMPLE_RATE) continue;
+    unique.set(`${codec.mimeType}/${codec.clockRate}/${codec.channels ?? 1}`, codec);
+  }
+  return [...unique.values()];
+}
+
+// WebRTC 通话音频桥：建立成功返回 true；任何失败都返回 false，由调用方回退到 CallAudioBridge。
+class CallWebRTCBridge {
+  private pc: RTCPeerConnection | null = null;
+  private stream: MediaStream | null = null;
+  private audio: HTMLAudioElement | null = null;
+  private stopped = false;
+  onStateChange: (connected: boolean) => void = () => {};
+
+  async start(deviceId: string, callId: string, audio: HTMLAudioElement | null): Promise<boolean> {
+    this.audio = audio;
+    if (typeof RTCPeerConnection === "undefined") return false;
+    const pc = new RTCPeerConnection();
+    this.pc = pc;
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === "connected") this.onStateChange(true);
+      else if (pc.connectionState === "failed" || pc.connectionState === "disconnected" || pc.connectionState === "closed") {
+        this.onStateChange(false);
+      }
+    };
+    pc.ontrack = (event) => {
+      if (!this.audio) return;
+      this.audio.srcObject = event.streams[0] || new MediaStream([event.track]);
+      void this.audio.play().catch(() => {});
+    };
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+      });
+      if (this.stopped) {
+        stream.getTracks().forEach((track) => track.stop());
+        return false;
+      }
+      this.stream = stream;
+      const transceiver = pc.addTransceiver("audio", { direction: "sendrecv" });
+      const track = stream.getAudioTracks()[0];
+      if (track) void transceiver.sender.replaceTrack(track);
+      const preferences = pcmuCodecPreferences();
+      if (preferences.length > 0) transceiver.setCodecPreferences(preferences);
+      await pc.setLocalDescription(await pc.createOffer());
+      const offer = pc.localDescription?.sdp || "";
+      if (this.stopped || !offer) return false;
+      // 后端会按 call_id 替换既有挂载，因此重新 offer 是安全的。
+      const answer = (
+        await api<{ answer?: string }>(`/devices/${encodeURIComponent(deviceId)}/calls/webrtc`, {
+          method: "POST",
+          body: { call_id: callId, offer },
+        })
+      ).answer;
+      if (this.stopped || !answer) return false;
+      await pc.setRemoteDescription({ type: "answer", sdp: answer });
+      this.onStateChange(true);
+      return true;
+    } catch (error) {
+      if (error instanceof ApiError && !WEBRTC_FALLBACK_STATUSES.includes(error.status)) {
+        console.warn("WebRTC 通话媒体建立失败", error.status, apiMessage(error));
+      }
+      return false;
+    }
+  }
+
+  stop() {
+    this.stopped = true;
+    this.stream?.getTracks().forEach((track) => track.stop());
+    this.stream = null;
+    if (this.pc) {
+      this.pc.ontrack = null;
+      this.pc.onconnectionstatechange = null;
+      try {
+        this.pc.close();
+      } catch {
+        /* 已关闭的连接直接忽略 */
+      }
+    }
+    this.pc = null;
+    if (this.audio) this.audio.srcObject = null;
+    this.audio = null;
+    this.onStateChange(false);
+  }
+}
+
 function callRecordingFileName(callId: string) {
   const clean = callId.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 80) || "recording";
   return `call_${clean}.wav`;
@@ -190,7 +288,9 @@ export default function PhonePage() {
   const [qrPayload, setQrPayload] = useState<QrSendPayload | null>(null);
   const [qrPreparingId, setQrPreparingId] = useState("");
   const bridgeRef = useRef<CallAudioBridge | null>(null);
+  const webrtcRef = useRef<CallWebRTCBridge | null>(null);
   const mediaCallIdRef = useRef("");
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const deviceOptions = useMemo(
     () => devices.map((device) => ({ value: device.id, label: device.name || device.id })),
@@ -250,18 +350,35 @@ export default function PhonePage() {
     const callId = activeCall?.id || "";
     if (wantMedia && !mediaConnected && mediaCallIdRef.current !== callId) {
       mediaCallIdRef.current = callId;
-      const bridge = new CallAudioBridge();
-      bridge.onStateChange = setMediaConnected;
-      bridgeRef.current = bridge;
-      void bridge.start(deviceId, callId);
-    } else if ((!wantMedia || mediaCallIdRef.current !== callId) && bridgeRef.current) {
-      bridgeRef.current.stop();
+      // 优先尝试 WebRTC（后端按 call_id 挂载 RTP 桥），未建立时回退到 WebSocket PCM 桥。
+      const webrtc = new CallWebRTCBridge();
+      webrtc.onStateChange = setMediaConnected;
+      webrtcRef.current = webrtc;
+      void webrtc.start(deviceId, callId, remoteAudioRef.current).then((established) => {
+        if (established || webrtcRef.current !== webrtc) return;
+        webrtcRef.current = null;
+        const bridge = new CallAudioBridge();
+        bridge.onStateChange = setMediaConnected;
+        bridgeRef.current = bridge;
+        void bridge.start(deviceId, callId);
+      });
+    } else if ((!wantMedia || mediaCallIdRef.current !== callId) && (bridgeRef.current || webrtcRef.current)) {
+      bridgeRef.current?.stop();
       bridgeRef.current = null;
+      webrtcRef.current?.stop();
+      webrtcRef.current = null;
       mediaCallIdRef.current = "";
     }
   }, [deviceId, vowifiReady, activeCall, mediaConnected]);
 
-  useEffect(() => () => bridgeRef.current?.stop(), []);
+  useEffect(
+    () => () => {
+      bridgeRef.current?.stop();
+      webrtcRef.current?.stop();
+      mediaCallIdRef.current = "";
+    },
+    [],
+  );
 
   async function dial() {
     const number = dialNumber.trim();
@@ -338,6 +455,9 @@ export default function PhonePage() {
   return (
     <div className="phone-page mx-auto w-full max-w-[1500px]">
       <PageHeader title={t("通话")} subtitle={t("网页麦克风与扬声器 IMS 通话、通话记录与录音回放")} />
+
+      {/* WebRTC 下行播放：隐藏元素，自动播放远端音轨 */}
+      <audio ref={remoteAudioRef} autoPlay className="hidden" />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <section className="space-y-4">
