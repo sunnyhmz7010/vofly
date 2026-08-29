@@ -4,6 +4,7 @@ import { ApiError, api, apiMessage, camelize } from "../api";
 import { QrSendModal, type QrSendPayload } from "../components/QrSendModal";
 import { Button, Input, PageHeader, Select, StatusDot, Tag } from "../components/ui";
 import { tf, useI18n } from "../lib/i18n";
+import { usePhoneControlLease } from "../lib/phoneLease";
 
 // 独立通话页：跨设备拨号、当前通话、持久化通话记录与录音回放。
 // 后端契约：/devices、/devices/{id}/calls、/devices/{id}/calls/{dial|answer|hangup}、
@@ -327,6 +328,8 @@ export default function PhonePage() {
   const webrtcRef = useRef<CallWebRTCBridge | null>(null);
   const mediaCallIdRef = useRef("");
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+  // 多标签页控制租约：同一活动通话仅允许一个标签页操作，其余只读观察（对齐 hideck）。
+  const { controlsLocked, claim, release } = usePhoneControlLease();
 
   const deviceOptions = useMemo(
     () => devices.map((device) => ({ value: device.id, label: device.name || device.id })),
@@ -386,6 +389,15 @@ export default function PhonePage() {
     setLastDTMF("");
   }, [activeCall?.id]);
 
+  // 通话结束（含对端挂断）时释放控制租约，避免无主租约锁住其他标签页。
+  const lastActiveCallIdRef = useRef("");
+  useEffect(() => {
+    const callId = activeCall?.id || "";
+    const previous = lastActiveCallIdRef.current;
+    lastActiveCallIdRef.current = callId;
+    if (previous && !callId) release();
+  }, [activeCall, release]);
+
   useEffect(() => {
     const wantMedia =
       !!deviceId && vowifiReady && !!activeCall && activeCall.state === "active" && activeCall.mediaReady === true;
@@ -424,14 +436,16 @@ export default function PhonePage() {
 
   async function dial() {
     const number = dialNumber.trim();
-    if (!deviceId || !number || !validDialNumber(number) || dialing) return;
+    if (controlsLocked || !deviceId || !number || !validDialNumber(number) || dialing) return;
     setDialing(true);
+    claim(); // 拨号即声明控制权（最新声明胜出，可接管其他标签页的陈旧/漏看租约）
     try {
       await api(`/devices/${encodeURIComponent(deviceId)}/calls/dial`, { method: "POST", body: { number } });
       setDialNumber("");
       await refresh();
       await loadRecords();
     } catch (error) {
+      release(); // 拨号失败：本次声明不作数
       window.alert(apiMessage(error));
     } finally {
       setDialing(false);
@@ -439,16 +453,19 @@ export default function PhonePage() {
   }
 
   async function act(action: "answer" | "hangup", callId: string) {
-    if (acting || !deviceId) return;
+    if (controlsLocked || acting || !deviceId) return;
     setActing(true);
+    claim(); // 接听/挂断即声明控制权（最新声明胜出）
     try {
       await api(`/devices/${encodeURIComponent(deviceId)}/calls/${action}`, {
         method: "POST",
         body: callId ? { call_id: callId } : {},
       });
+      if (action === "hangup") release(); // 挂断成功即释放租约
       await refresh();
       await loadRecords();
     } catch (error) {
+      if (action === "answer") release(); // 接听失败：本次声明不作数
       window.alert(apiMessage(error));
     } finally {
       setActing(false);
@@ -459,8 +476,9 @@ export default function PhonePage() {
   // 设备侧 REST 始终兜底 —— WebRTC 桥不向 IMS 转发 telephone-event，
   // 运营商听到的按键音必须由设备媒体通道发送（对齐 hideck 的服务端发送路径）。
   async function sendDTMF(digit: string) {
-    if (!deviceId || !activeCall || dtmfSending) return;
+    if (controlsLocked || !deviceId || !activeCall || dtmfSending) return;
     setDtmfSending(true);
+    claim(); // 发送按键前声明控制权（最新声明胜出）
     setLastDTMF(digit);
     try {
       webrtcRef.current?.sendDTMF(digit);
@@ -521,6 +539,16 @@ export default function PhonePage() {
       {/* WebRTC 下行播放：隐藏元素，自动播放远端音轨 */}
       <audio ref={remoteAudioRef} autoPlay className="hidden" />
 
+      {/* 控制权在其他标签页：只读观察横幅（状态轮询不受影响） */}
+      {controlsLocked ? (
+        <p
+          role="status"
+          className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400"
+        >
+          {t("通话控制已被另一个标签页接管")}
+        </p>
+      ) : null}
+
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <section className="space-y-4">
           <div className="ui-card p-5">
@@ -543,12 +571,18 @@ export default function PhonePage() {
                 value={dialNumber}
                 onChange={(event) => setDialNumber(event.target.value)}
                 placeholder={t("例如 +12025550123 或 *100#")}
-                disabled={dialing || !deviceId}
+                disabled={dialing || !deviceId || controlsLocked}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") void dial();
                 }}
               />
-              <Button variant="primary" loading={dialing} disabled={!deviceId} onClick={() => void dial()} icon={<CallRegular />}>
+              <Button
+                variant="primary"
+                loading={dialing}
+                disabled={!deviceId || controlsLocked}
+                onClick={() => void dial()}
+                icon={<CallRegular />}
+              >
                 {t("拨打")}
               </Button>
             </div>
@@ -586,11 +620,11 @@ export default function PhonePage() {
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {activeCall.state === "ringing" ? (
-                    <Button variant="primary" loading={acting} onClick={() => void act("answer", activeCall.id)}>
+                    <Button variant="primary" loading={acting} disabled={controlsLocked} onClick={() => void act("answer", activeCall.id)}>
                       {t("接听")}
                     </Button>
                   ) : null}
-                  <Button variant="danger" loading={acting} onClick={() => void act("hangup", activeCall.id)}>
+                  <Button variant="danger" loading={acting} disabled={controlsLocked} onClick={() => void act("hangup", activeCall.id)}>
                     {t("挂断")}
                   </Button>
                   {mediaConnected ? (
@@ -614,7 +648,7 @@ export default function PhonePage() {
                         <button
                           key={key.digit}
                           type="button"
-                          disabled={dtmfSending}
+                          disabled={dtmfSending || controlsLocked}
                           aria-label={key.letters ? `${key.digit}（${key.letters}）` : key.digit}
                           onClick={() => void sendDTMF(key.digit)}
                           className="flex h-12 flex-col items-center justify-center rounded-lg border border-gray-200 bg-white/70 text-gray-900 transition hover:border-sky-400 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-gray-100 dark:hover:border-sky-500/60 dark:hover:bg-sky-500/10"

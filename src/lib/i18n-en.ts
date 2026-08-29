@@ -1336,6 +1336,7 @@ export const EN_DICT: Record<string, string> = {
   "暂无进行中的通话": "No active calls",
   "DTMF 拨号键": "DTMF Keypad",
   "已发送：{digit}": "Sent: {digit}",
+  "通话控制已被另一个标签页接管": "Call control has been taken over by another tab",
   "通话记录与录音": "Call history & recordings",
   "暂无通话记录": "No call records",
   "共 {count} 条记录": "{count} records in total",
