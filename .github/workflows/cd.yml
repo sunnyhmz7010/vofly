@@ -91,12 +91,6 @@ jobs:
             -ldflags "-s -w -X 'vofly/internal/buildinfo.Version=${{ env.VERSION }}' -X 'vofly/internal/buildinfo.BuildTime=$(date -u +'%Y-%m-%dT%H:%M:%SZ')'" \
             -o ../dist/vofly ./cmd/vofly
 
-      - name: Compress with UPX
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y upx-ucl || sudo apt-get install -y upx
-          upx --best --lzma dist/vofly || upx -9 dist/vofly
-
       - name: Package artifact
         run: |
           OUT="vofly_${{ env.VERSION }}_linux_${{ matrix.artifact_arch }}"
