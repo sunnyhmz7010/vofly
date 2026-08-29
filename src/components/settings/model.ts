@@ -9,6 +9,8 @@ export interface TelegramForm {
   adminId: string;
   baseUrl: string;
   proxy: string;
+  // 录音展示模式：voice=语音气泡（默认），audio=音频卡片
+  recordingMode: string;
 }
 
 export interface QQForm {
@@ -203,6 +205,8 @@ export function formsFromNotifications(data: Partial<NotificationSettings>): Not
       adminId: telegram.adminId === null || telegram.adminId === undefined ? "" : String(telegram.adminId),
       baseUrl: str(telegram.baseUrl),
       proxy: str(telegram.proxy),
+      // 未配置时默认语音气泡；仅保留后端校验的 voice/audio 两个值。
+      recordingMode: str(telegram.recordingMode ?? telegram.recording_mode) === "audio" ? "audio" : "voice",
     },
     qq: {
       enabled: !!qq.enabled,
@@ -388,6 +392,8 @@ export function buildNotificationsPayload(forms: NotifyForms) {
       adminId: forms.telegram.adminId.trim(),
       baseUrl: forms.telegram.baseUrl || "",
       proxy: forms.telegram.proxy || "",
+      // api() 统一 snakeize 后即为后端校验的 recording_mode（voice|audio）
+      recordingMode: forms.telegram.recordingMode === "audio" ? "audio" : "voice",
     },
     qq: buildQQPayload(forms.qq),
     weixin: buildWeixinPayload(forms.weixin),

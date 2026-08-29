@@ -36,6 +36,19 @@ export function TelegramTab({ value, onChange }: ChannelProps<TelegramForm>) {
             <Input value={value.adminId} onChange={(e) => onChange({ adminId: e.target.value })} disabled={off} type="number" inputMode="numeric" placeholder={t("例如 123456")} />
           </Field>
         </div>
+        <Field label={t("录音展示模式")} hint={t("控制通话录音在 Telegram 中以语音气泡还是音频卡片发送。")}>
+          <Select
+            value={value.recordingMode}
+            onChange={(recordingMode) => onChange({ recordingMode })}
+            options={[
+              { value: "voice", label: t("语音气泡 (voice)") },
+              { value: "audio", label: t("音频卡片 (audio)") },
+            ]}
+            disabled={off}
+            placeholder={t("选择录音展示模式")}
+            className="w-full"
+          />
+        </Field>
         <Field label={t("TG API 反代（可选）")} hint={t("反向代理地址 (例如 https://api.telegram.org/bot%s/%s)")}>
           <Input value={value.baseUrl} onChange={(e) => onChange({ baseUrl: e.target.value })} disabled={off} placeholder={t("留空直连 api.telegram.org；需要反代时填写")} />
         </Field>

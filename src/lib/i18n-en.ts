@@ -445,6 +445,12 @@ export const EN_DICT: Record<string, string> = {
     "Leave empty to connect directly to api.telegram.org; fill in when a reverse proxy is needed",
   "用于连接 API 服务器的 HTTP 代理": "HTTP proxy used to reach the API server",
   "例如 http://127.0.0.1:7890": "e.g. http://127.0.0.1:7890",
+  "录音展示模式": "Recording display mode",
+  "控制通话录音在 Telegram 中以语音气泡还是音频卡片发送。":
+    "Controls whether call recordings are sent to Telegram as a voice bubble or an audio card.",
+  "选择录音展示模式": "Select recording display mode",
+  "语音气泡 (voice)": "Voice bubble (voice)",
+  "音频卡片 (audio)": "Audio card (audio)",
   "Pushplus 用户的 Token": "Your Pushplus token",
   "群组编码 (Topic)": "Topic",
   "群组编码，不填则发给个人": "Group topic; leave empty to message yourself",
