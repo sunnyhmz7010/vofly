@@ -31,7 +31,7 @@ test("QR receive offline service worker is shipped", async () => {
   assert.match(worker, /\/assets\//);
 });
 
-test("installer scripts follow current VOFLY environment layout without audio transcode dependencies", async () => {
+test("installer scripts follow current VOFLY environment layout with opt-in ffmpeg", async () => {
   const install = await source("install.sh");
   const update = await source("update.sh");
   const uninstall = await source("uninstall.sh");
@@ -44,10 +44,14 @@ test("installer scripts follow current VOFLY environment layout without audio tr
   assert.match(install, /EnvironmentFile=\/etc\/vofly\/env/);
   assert.match(install, /ExecStart=\/opt\/vofly\/bin\/vofly serve/);
   assert.match(install, /--with-pcsc/);
+  assert.match(install, /--with-ffmpeg/);
+  assert.match(install, /install_ffmpeg_support/);
+  assert.match(install, /install_ffmpeg_packages/);
   assert.match(update, /vofly_/);
   assert.match(uninstall, /--purge/);
 
-  assert.doesNotMatch(joined, /libmp3lame|opencore-amr|ffmpeg|vofly -c|config\.yaml/);
+  // 录音转码只允许调用外部 ffmpeg 二进制；不得捆绑或直连 lame/amr 编解码库。
+  assert.doesNotMatch(joined, /libmp3lame|opencore-amr|vofly -c|config\.yaml/);
 });
 
 test("installer bootstraps the access secret and exposes the vofly CLI without storing credentials", async () => {

@@ -58,6 +58,16 @@ curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh 
 
 不支持自动安装的系统请手动安装，例如 Debian/Ubuntu：`sudo apt install pcscd libccid`。
 
+#### 🎙️ 通话录音 MP3 转码（可选）
+
+通话录音会混音上行与下行两路音频；装有 `ffmpeg` 时自动转码为 MP3，缺失时保存为 WAV。需要 MP3 时在安装命令后追加 `--with-ffmpeg`，脚本会在支持的软件包管理器上自动安装 ffmpeg（失败仅警告，不阻断安装）：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh -s -- --with-ffmpeg
+```
+
+也可稍后手动安装，例如 Debian/Ubuntu：`sudo apt install ffmpeg`。
+
 #### 🔄 更新
 
 ```bash

@@ -2,7 +2,7 @@
 # vofly 一键安装脚本。
 # 用法：
 #   curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh
-#   sudo sh install.sh [--force] [--check-env] [--with-pcsc] [版本]
+#   sudo sh install.sh [--force] [--check-env] [--with-pcsc] [--with-ffmpeg] [版本]
 
 set -eu
 
@@ -28,6 +28,7 @@ DEFAULT_DATABASE="/opt/vofly/data/vofly.db"
 FORCE=0
 CHECK_ENV=0
 WITH_PCSC=0
+WITH_FFMPEG=0
 VERSION_ARG=""
 FIRST_INSTALL=0
 INITIAL_ADMIN_PASSWORD=""
@@ -43,6 +44,7 @@ print_usage() {
   --force           即使当前已是目标版本，也重新下载并安装
   --check-env       只检查运行环境，不下载、不安装、不写入任何文件
   --with-pcsc       安装并启用 pcscd 与 CCID 驱动（USB SIM 读卡器）
+  --with-ffmpeg     安装 ffmpeg（通话录音 MP3 转码；缺失时录音保持 WAV）
   -h|--help         显示帮助
 
 示例:
@@ -57,6 +59,7 @@ while [ "$#" -gt 0 ]; do
     --force) FORCE=1 ;;
     --check-env) CHECK_ENV=1 ;;
     --with-pcsc) WITH_PCSC=1 ;;
+    --with-ffmpeg) WITH_FFMPEG=1 ;;
     -h|--help)
       print_usage
       exit 0
@@ -552,6 +555,58 @@ install_pcsc_support() {
   printf 'USB SIM 读卡器依赖已就绪。\n'
 }
 
+install_ffmpeg_packages() {
+  if command -v apt-get >/dev/null 2>&1; then
+    run_root apt-get update -y
+    install_packages "run_root apt-get install -y" ffmpeg
+    return $?
+  fi
+  if command -v dnf >/dev/null 2>&1; then
+    install_packages "run_root dnf install -y" ffmpeg
+    return $?
+  fi
+  if command -v yum >/dev/null 2>&1; then
+    install_packages "run_root yum install -y" ffmpeg
+    return $?
+  fi
+  if command -v apk >/dev/null 2>&1; then
+    install_packages "run_root apk add --no-cache" ffmpeg
+    return $?
+  fi
+  if command -v pacman >/dev/null 2>&1; then
+    install_packages "run_root pacman -Sy --noconfirm" ffmpeg
+    return $?
+  fi
+  if command -v opkg >/dev/null 2>&1; then
+    if ! opkg_has_package ffmpeg; then
+      printf '当前 OpenWrt 软件源未提供 ffmpeg。\n' >&2
+      return 1
+    fi
+    run_root opkg update
+    install_packages "run_root opkg install" ffmpeg
+    return $?
+  fi
+  printf '未识别包管理器，请手动安装 ffmpeg。\n' >&2
+  return 1
+}
+
+install_ffmpeg_support() {
+  printf '安装通话录音 MP3 转码依赖：ffmpeg。\n'
+  if command -v ffmpeg >/dev/null 2>&1; then
+    printf 'ffmpeg 已安装：%s\n' "$(command -v ffmpeg)"
+    return 0
+  fi
+  if ! install_ffmpeg_packages; then
+    printf 'ffmpeg 自动安装失败；通话录音将保存为 WAV，可稍后手动安装。\n' >&2
+    return 1
+  fi
+  if ! command -v ffmpeg >/dev/null 2>&1; then
+    printf 'ffmpeg 包已安装但命令未进入 PATH；通话录音将保存为 WAV。\n' >&2
+    return 1
+  fi
+  printf '通话录音 MP3 转码依赖已就绪。\n'
+}
+
 run_check_env() {
   printf 'vofly 运行环境检查（只读）\n\n'
   failed=0
@@ -588,6 +643,11 @@ run_check_env() {
   else
     printf '[提示] USB SIM 读卡器需要 pcscd/CCID；安装时可追加 --with-pcsc。\n'
   fi
+  if command -v ffmpeg >/dev/null 2>&1; then
+    printf '[通过] ffmpeg：已安装，通话录音可转码 MP3。\n'
+  else
+    printf '[提示] 通话录音 MP3 转码需要 ffmpeg；安装时可追加 --with-ffmpeg。\n'
+  fi
   return "$failed"
 }
 
@@ -610,6 +670,11 @@ finish_install() {
     install_pcsc_support || true
   else
     printf '如需 USB SIM 读卡器支持，可重新运行安装命令并追加 --with-pcsc。\n'
+  fi
+  if [ "$WITH_FFMPEG" = "1" ]; then
+    install_ffmpeg_support || true
+  else
+    printf '如需通话录音 MP3 转码，可重新运行安装命令并追加 --with-ffmpeg。\n'
   fi
   if ! restart_service; then
     rollback_binary
