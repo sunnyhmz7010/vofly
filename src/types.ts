@@ -427,6 +427,8 @@ export interface CommandAttachment {
   contentType?: string;
   codec?: string;
   size?: number;
+  // 音频附件关联的通话 ID（可选下发），用于在线回放 /api/call-recordings/{call_id}。
+  callId?: string;
 }
 
 export interface CommandEvent {

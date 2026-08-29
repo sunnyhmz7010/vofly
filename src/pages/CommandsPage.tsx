@@ -595,9 +595,24 @@ export default function CommandsPage() {
                     </pre>
                     {event.attachments?.length ? (
                       <div className="mt-2 space-y-1 text-xs text-gray-400">
-                        {event.attachments.map((attachment, index) => (
-                          <div key={`${attachment.type}-${index}`}>{attachment.type} · {attachment.recording || attachment.contentType || attachment.codec || "--"}</div>
-                        ))}
+                        {event.attachments.map((attachment, index) => {
+                          const caption = `${attachment.type} · ${attachment.recording || attachment.contentType || attachment.codec || "--"}`;
+                          // 带通话 ID 的音频附件直接挂到录音接口在线播放；其余保持文本行。
+                          if (attachment.type === "audio" && attachment.callId) {
+                            return (
+                              <div key={`${attachment.type}-${index}`} className="space-y-1">
+                                <audio
+                                  controls
+                                  preload="none"
+                                  className="h-8 w-full"
+                                  src={`/api/call-recordings/${encodeURIComponent(attachment.callId)}`}
+                                />
+                                <div>{caption}</div>
+                              </div>
+                            );
+                          }
+                          return <div key={`${attachment.type}-${index}`}>{caption}</div>;
+                        })}
                       </div>
                     ) : null}
                   </article>
