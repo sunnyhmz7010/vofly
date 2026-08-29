@@ -985,6 +985,11 @@ export const EN_DICT: Record<string, string> = {
   "设备网络未连接，请先启动网络": "Device network not connected; start the network first",
   "设备路径": "Device Path",
   "设备运行模式": "Device Operation Mode",
+  "MBIM（开发中）": "MBIM (in development)",
+  "MBIM 控制面暂不支持运行时切换": "The MBIM control plane does not support runtime switching yet",
+  "正在校验硬件并切换后端，请稍候…": "Verifying hardware and switching backend, please wait…",
+  "保存后将进行硬件校验并切换后端，可能需要约 30 秒；失败会自动回退到原后端":
+    "Saving will verify the hardware and switch the backend; this can take about 30 seconds. On failure the previous backend is restored automatically",
   "设备配置": "Device Config",
   "设备配置已添加": "Device config added",
   "设备重新扫描完成": "Device rescan completed",

@@ -1,6 +1,7 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SettingsRegular, DeleteRegular, SaveRegular } from "@fluentui/react-icons";
-import { Button, Input, Select } from "../ui";
+import { Button, Input, Select, Tooltip } from "../ui";
+import { api } from "../../api";
 import { isDeviceOnline, isQmiControl } from "./shared";
 import { CellularIMSConfigCard } from "./CellularIMSConfigCard";
 import type { DeviceConfig } from "../../types";
@@ -37,22 +38,64 @@ export function DeviceConfigTab({ editConfig, deviceStatus, saving, deleting, on
   const isMbim = String(editConfig?.deviceBackend || "").toLowerCase() === "mbim";
 	const isReader = editConfig?.deviceType === "usb_sim_reader";
 	const supportsCellularIMS = !isReader && editConfig?.deviceType !== "wifi_410";
-	const deviceOnline = deviceStatus ? isDeviceOnline(deviceStatus) : false;
+  const deviceOnline = deviceStatus ? isDeviceOnline(deviceStatus) : false;
+  const deviceId = editConfig?.id || "";
+
+  // The backend selector is switchable at runtime now: saving a changed value
+  // makes the server verify the target hardware, re-open the device under the
+  // new control plane and roll back on failure. The stored (truth) backend is
+  // fetched separately because the add/config loader force-labels QMI-control
+  // devices as "qmi"; without the correction a stored "at" choice would be
+  // silently switched back on the next save.
+  const [storedBackend, setStoredBackend] = useState<string | null>(null);
+  const [userAdjusted, setUserAdjusted] = useState(false);
 
   useEffect(() => {
-    if (isQmi && editConfig && editConfig.deviceBackend !== "qmi") onEditConfig({ ...editConfig, deviceBackend: "qmi" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isQmi]);
+    setStoredBackend(null);
+    setUserAdjusted(false);
+    if (!deviceId) return;
+    let cancelled = false;
+    api<{ config?: DeviceConfig }>(`/devices/${deviceId}/config`)
+      .then((res) => {
+        if (cancelled) return;
+        const backend = String(res?.config?.deviceBackend || "").toLowerCase();
+        setStoredBackend(backend || null);
+      })
+      .catch(() => {
+        if (!cancelled) setStoredBackend(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [deviceId]);
 
-  const backendOptions = isReader ? [{ value: "pcsc", label: "PC/SC" }] : [
-    ...(isMbim
-      ? []
-      : [
-          { value: "at", label: "AT", disabled: isQmi },
-          { value: "qmi", label: "QMI", disabled: !controlDevice && editConfig?.deviceBackend !== "qmi" },
-        ]),
-    ...(isMbim ? [{ value: "mbim", label: "MBIM" }] : []),
-  ];
+  useEffect(() => {
+    if (userAdjusted || !storedBackend || !editConfig) return;
+    if (String(editConfig.deviceBackend || "").toLowerCase() !== storedBackend) {
+      onEditConfig({ ...editConfig, deviceBackend: storedBackend as DeviceConfig["deviceBackend"] });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storedBackend, deviceId]);
+
+  const currentBackend = String(editConfig?.deviceBackend || "").toLowerCase();
+  const backendChanged = !isReader && storedBackend !== null && currentBackend !== storedBackend;
+  const switching = saving && backendChanged;
+
+  const backendOptions = isReader
+    ? [{ value: "pcsc", label: "PC/SC" }]
+    : [
+        { value: "at", label: "AT" },
+        { value: "qmi", label: "QMI", disabled: !controlDevice && currentBackend !== "qmi" },
+        {
+          value: "mbim",
+          label: (
+            <Tooltip content={t("MBIM 控制面暂不支持运行时切换")}>
+              <span>{t("MBIM（开发中）")}</span>
+            </Tooltip>
+          ),
+          disabled: true,
+        },
+      ];
 
   return (
     <div>
@@ -118,22 +161,35 @@ export function DeviceConfigTab({ editConfig, deviceStatus, saving, deleting, on
               <div>
                 <div className="text-sm font-bold text-gray-800 dark:text-gray-100">{t("设备运行模式")}</div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {isQmi
-                    ? t("QMI 负责驻网状态与数据会话；AT 负责 SIM/eSIM、射频、短信、通话和终端指令")
-                    : isMbim
-                      ? t("MBIM 负责数据会话；AT 负责 SIM/eSIM、射频、短信、通话和终端指令")
+                  {isMbim
+                    ? t("MBIM 负责数据会话；AT 负责 SIM/eSIM、射频、短信、通话和终端指令")
+                    : isQmi
+                      ? t("QMI 负责驻网状态与数据会话；AT 负责 SIM/eSIM、射频、短信、通话和终端指令")
                       : t("AT 模式通过串口管理驻网与 PDP 数据会话")}
                 </div>
               </div>
               <Select
                 value={editConfig.deviceBackend}
-                onChange={(v) => onEditConfig({ ...editConfig, deviceBackend: v as DeviceConfig["deviceBackend"] })}
-                className="w-[120px]"
+                onChange={(v) => {
+                  setUserAdjusted(true);
+                  onEditConfig({ ...editConfig, deviceBackend: v as DeviceConfig["deviceBackend"] });
+                }}
+                className="w-[140px]"
                 placeholder="AT"
-				disabled={isQmi || isMbim || isReader}
+                disabled={isReader || saving}
                 options={backendOptions}
               />
             </div>
+            {switching ? (
+              <div className="flex items-center gap-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+                <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
+                {t("正在校验硬件并切换后端，请稍候…")}
+              </div>
+            ) : backendChanged ? (
+              <div className="text-xs text-amber-600 dark:text-amber-400">
+                {t("保存后将进行硬件校验并切换后端，可能需要约 30 秒；失败会自动回退到原后端")}
+              </div>
+            ) : null}
           </div>
           {supportsCellularIMS ? (
             <div className="lg:col-span-2">
