@@ -274,6 +274,13 @@ function callRecordingFileName(callId: string) {
   return `call_${clean}.wav`;
 }
 
+// QTX1-W 传输默认按 WAV 标注；录音引用以 .mp3 结尾时按实际编码标注为 MP3。
+const QR_WAV_MIME_TYPE = "audio/wav";
+
+function recordingMimeType(recordingPath: string | undefined) {
+  return recordingPath && /\.mp3$/i.test(recordingPath) ? "audio/mpeg" : QR_WAV_MIME_TYPE;
+}
+
 export default function PhonePage() {
   const { t } = useI18n();
   const [devices, setDevices] = useState<DeviceListItem[]>([]);
@@ -427,7 +434,7 @@ export default function PhonePage() {
       const buffer = await response.arrayBuffer();
       setQrPayload({
         name: callRecordingFileName(record.callId),
-        mimeType: "audio/wav",
+        mimeType: recordingMimeType(record.recordingPath),
         bytes: new Uint8Array(buffer),
       });
     } catch (error) {

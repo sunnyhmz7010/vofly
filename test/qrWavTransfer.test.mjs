@@ -22,6 +22,15 @@ test("phone page exposes WAV recordings through QTX1-W QR transfer", async () =>
   assert.match(qrModal, /canvas/);
 });
 
+test("QR transfer maps MP3 recordings to audio/mpeg while keeping the WAV default", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+
+  assert.match(phonePage, /QR_WAV_MIME_TYPE = "audio\/wav"/);
+  assert.match(phonePage, /"audio\/mpeg"/);
+  assert.match(phonePage, /\.mp3/);
+  assert.match(phonePage, /recordingMimeType\(record\.recordingPath\)/);
+});
+
 test("QR receive offline service worker is shipped", async () => {
   await access(new URL("public/sw.js", root));
   const worker = await source("public/sw.js");
