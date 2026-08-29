@@ -7,8 +7,8 @@ import { tf, useI18n } from "../lib/i18n";
 
 // 独立通话页：跨设备拨号、当前通话、持久化通话记录与录音回放。
 // 后端契约：/devices、/devices/{id}/calls、/devices/{id}/calls/{dial|answer|hangup}、
-// /devices/{id}/calls/webrtc（WebRTC 音频优先）、/devices/{id}/calls/media（WebSocket PCM 桥兜底）、
-// /call-records、/call-recordings/{id}。
+// /devices/{id}/calls/dtmf（通话中 DTMF）、/devices/{id}/calls/webrtc（WebRTC 音频优先）、
+// /devices/{id}/calls/media（WebSocket PCM 桥兜底）、/call-records、/call-recordings/{id}。
 
 interface DeviceListItem {
   id: string;
@@ -175,16 +175,19 @@ function validDialNumber(value: string) {
 // 预期内的 WebRTC 回退状态：请求无效(400)、后端未提供端点(404)、非 VoWiFi 会话(501)、协商失败(502)。
 const WEBRTC_FALLBACK_STATUSES = [400, 404, 501, 502];
 
-// 强制 PCMU/8000：从收发双端能力里去重挑选；浏览器不支持能力查询时返回空列表并沿用默认编解码。
-function pcmuCodecPreferences(): RTCRtpCodec[] {
+// 强制 PCMU/8000 并保留 telephone-event：后者是浏览器端 DTMF（RTCRtpSender.insertDTMF）
+// 能协商的前提。浏览器不支持能力查询时返回空列表并沿用默认编解码。
+function callCodecPreferences(): RTCRtpCodec[] {
   const capabilities: RTCRtpCodec[] = [
     ...(RTCRtpSender.getCapabilities("audio")?.codecs ?? []),
     ...(RTCRtpReceiver.getCapabilities("audio")?.codecs ?? []),
   ];
   const unique = new Map<string, RTCRtpCodec>();
   for (const codec of capabilities) {
-    if (codec.mimeType.toLowerCase() !== "audio/pcmu" || codec.clockRate !== SAMPLE_RATE) continue;
-    unique.set(`${codec.mimeType}/${codec.clockRate}/${codec.channels ?? 1}`, codec);
+    const mime = codec.mimeType.toLowerCase();
+    if (codec.clockRate !== SAMPLE_RATE) continue;
+    if (mime !== "audio/pcmu" && mime !== "audio/telephone-event") continue;
+    unique.set(`${mime}/${codec.clockRate}/${codec.channels ?? 1}`, codec);
   }
   return [...unique.values()];
 }
@@ -192,6 +195,7 @@ function pcmuCodecPreferences(): RTCRtpCodec[] {
 // WebRTC 通话音频桥：建立成功返回 true；任何失败都返回 false，由调用方回退到 CallAudioBridge。
 class CallWebRTCBridge {
   private pc: RTCPeerConnection | null = null;
+  private transceiver: RTCRtpTransceiver | null = null;
   private stream: MediaStream | null = null;
   private audio: HTMLAudioElement | null = null;
   private stopped = false;
@@ -223,9 +227,10 @@ class CallWebRTCBridge {
       }
       this.stream = stream;
       const transceiver = pc.addTransceiver("audio", { direction: "sendrecv" });
+      this.transceiver = transceiver;
       const track = stream.getAudioTracks()[0];
       if (track) void transceiver.sender.replaceTrack(track);
-      const preferences = pcmuCodecPreferences();
+      const preferences = callCodecPreferences();
       if (preferences.length > 0) transceiver.setCodecPreferences(preferences);
       await pc.setLocalDescription(await pc.createOffer());
       const offer = pc.localDescription?.sdp || "";
@@ -249,10 +254,24 @@ class CallWebRTCBridge {
     }
   }
 
+  // WebRTC 侧 DTMF：telephone-event 协商成功后从音频收发器取 sender 注入
+  // RFC 4733 事件；协商失败或浏览器不支持时返回 false，由调用方走 REST 兜底。
+  sendDTMF(digit: string, durationMs = 200): boolean {
+    const dtmf = this.transceiver?.sender?.dtmf;
+    if (!dtmf) return false;
+    try {
+      dtmf.insertDTMF(digit, durationMs);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   stop() {
     this.stopped = true;
     this.stream?.getTracks().forEach((track) => track.stop());
     this.stream = null;
+    this.transceiver = null;
     if (this.pc) {
       this.pc.ontrack = null;
       this.pc.onconnectionstatechange = null;
@@ -274,6 +293,14 @@ function callRecordingFileName(callId: string) {
   return `call_${clean}.wav`;
 }
 
+// 与 hideck 拨号盘一致的 12 键布局（1-9、*、0、#），字母提示便于记忆。
+const DTMF_KEYS = [
+  { digit: "1", letters: "" }, { digit: "2", letters: "ABC" }, { digit: "3", letters: "DEF" },
+  { digit: "4", letters: "GHI" }, { digit: "5", letters: "JKL" }, { digit: "6", letters: "MNO" },
+  { digit: "7", letters: "PQRS" }, { digit: "8", letters: "TUV" }, { digit: "9", letters: "WXYZ" },
+  { digit: "*", letters: "" }, { digit: "0", letters: "+" }, { digit: "#", letters: "" },
+];
+
 // QTX1-W 传输默认按 WAV 标注；录音引用以 .mp3 结尾时按实际编码标注为 MP3。
 const QR_WAV_MIME_TYPE = "audio/wav";
 
@@ -292,6 +319,8 @@ export default function PhonePage() {
   const [acting, setActing] = useState(false);
   const [mediaConnected, setMediaConnected] = useState(false);
   const [records, setRecords] = useState<CallRecord[]>([]);
+  const [dtmfSending, setDtmfSending] = useState(false);
+  const [lastDTMF, setLastDTMF] = useState("");
   const [qrPayload, setQrPayload] = useState<QrSendPayload | null>(null);
   const [qrPreparingId, setQrPreparingId] = useState("");
   const bridgeRef = useRef<CallAudioBridge | null>(null);
@@ -350,6 +379,12 @@ export default function PhonePage() {
   const activeCall = callsPayload?.calls.find(isActiveCall) || null;
   const transport = callsPayload?.transport || "";
   const vowifiReady = transport === "vowifi";
+  const dtmfAvailable = transport === "vowifi" || transport === "volte";
+
+  // 通话切换或结束后清空最近按键提示。
+  useEffect(() => {
+    setLastDTMF("");
+  }, [activeCall?.id]);
 
   useEffect(() => {
     const wantMedia =
@@ -417,6 +452,26 @@ export default function PhonePage() {
       window.alert(apiMessage(error));
     } finally {
       setActing(false);
+    }
+  }
+
+  // 通话中发送一位 DTMF：WebRTC 桥接时先经 sender.dtmf 注入浏览器侧事件；
+  // 设备侧 REST 始终兜底 —— WebRTC 桥不向 IMS 转发 telephone-event，
+  // 运营商听到的按键音必须由设备媒体通道发送（对齐 hideck 的服务端发送路径）。
+  async function sendDTMF(digit: string) {
+    if (!deviceId || !activeCall || dtmfSending) return;
+    setDtmfSending(true);
+    setLastDTMF(digit);
+    try {
+      webrtcRef.current?.sendDTMF(digit);
+      await api(`/devices/${encodeURIComponent(deviceId)}/calls/dtmf`, {
+        method: "POST",
+        body: { call_id: activeCall.id, digits: digit },
+      });
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setDtmfSending(false);
     }
   }
 
@@ -546,6 +601,33 @@ export default function PhonePage() {
                     </span>
                   ) : null}
                 </div>
+                {activeCall.state === "active" && dtmfAvailable ? (
+                  <div className="mt-4 border-t border-sky-200/70 pt-3 dark:border-sky-500/20">
+                    <div className="mb-2 flex items-center justify-between text-xs font-bold text-gray-500 dark:text-gray-400">
+                      <span>{t("DTMF 拨号键")}</span>
+                      {lastDTMF ? (
+                        <span aria-live="polite">{tf("已发送：{digit}", { digit: lastDTMF })}</span>
+                      ) : null}
+                    </div>
+                    <div className="grid max-w-[264px] grid-cols-3 gap-2" role="group" aria-label={t("DTMF 拨号键")}>
+                      {DTMF_KEYS.map((key) => (
+                        <button
+                          key={key.digit}
+                          type="button"
+                          disabled={dtmfSending}
+                          aria-label={key.letters ? `${key.digit}（${key.letters}）` : key.digit}
+                          onClick={() => void sendDTMF(key.digit)}
+                          className="flex h-12 flex-col items-center justify-center rounded-lg border border-gray-200 bg-white/70 text-gray-900 transition hover:border-sky-400 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-gray-100 dark:hover:border-sky-500/60 dark:hover:bg-sky-500/10"
+                        >
+                          <span className="font-mono text-lg leading-none">{key.digit}</span>
+                          <small className="mt-1 min-h-[12px] text-[9px] tracking-[0.12em] text-gray-400">
+                            {key.letters || "\u00a0"}
+                          </small>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400 dark:border-white/10 dark:text-gray-500">
