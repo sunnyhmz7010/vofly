@@ -48,7 +48,7 @@ curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh 
 curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh -s -- --with-pcsc
 ```
 
-不支持自动安装的系统请手动安装，例如 Debian/Ubuntu：`sudo apt install pcscd libccid`。
+也可稍后手动安装，例如 Debian/Ubuntu：`sudo apt install pcscd libccid`。
 
 #### 🎙️ 通话录音 MP3 转码（可选）
 
