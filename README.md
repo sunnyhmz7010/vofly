@@ -78,8 +78,6 @@ curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/uninstall.s
 curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/uninstall.sh | sudo sh -s -- --purge
 ```
 
-#### 💿 手动二进制安装
-
 ## 🗂️ 项目结构
 
 ```text
