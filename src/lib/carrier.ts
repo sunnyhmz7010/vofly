@@ -1,7 +1,6 @@
 // MCC/MNC → carrier lookup. The offline table combines Android's maintained
-// carrier ID database with the legacy global table as a fallback. Refresh it
-// with scripts/update-carriers.py; runtime registration never depends on an
-// external lookup service.
+// carrier ID database with the legacy global table as a fallback. Runtime
+// registration never depends on an external lookup service.
 import table from "./mccmnc.json";
 
 interface MccMncTable {
