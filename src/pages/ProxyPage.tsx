@@ -312,7 +312,6 @@ export default function ProxyPage() {
     <div className="mx-auto max-w-7xl">
       <PageHeader
         title={t("代理管理")}
-        subtitle={t("管理 VoWiFi 上游代理、MCC 国家规则以及实体 SIM / eSIM Profile 绑定")}
         actions={(
           <div className="flex gap-2">
             <Button icon={<GlobeRegular />} onClick={() => setCountryDialogOpen(true)}>{t("MCC 国家规则")}</Button>

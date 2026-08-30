@@ -43,11 +43,10 @@ function CardIcon({ children, small }: { children: ReactNode; small?: boolean })
   );
 }
 
-function CardTitle({ title, subtitle }: { title: string; subtitle: string }) {
+function CardTitle({ title }: { title: string }) {
   return (
     <div>
       <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100">{title}</h3>
-      <p className="text-xs text-gray-500">{subtitle}</p>
     </div>
   );
 }
@@ -73,7 +72,7 @@ export function SecurityCard({
         <CardIcon>
           <KeyRegular className="text-[24px]" />
         </CardIcon>
-        <CardTitle title={t("安全")} subtitle={t("更新访问凭证")} />
+        <CardTitle title={t("更改访问密令")} />
       </div>
       <div className="relative z-10 space-y-4">
         <div className="space-y-1">
@@ -108,7 +107,7 @@ export function SecurityCard({
         </div>
         <div className="pt-4">
           <Button variant="primary" size="large" loading={loading} onClick={onSubmit} className="w-full !border-0" icon={<CheckmarkRegular />}>
-            {t("更新凭证")}
+            {t("确认更改")}
           </Button>
         </div>
       </div>
@@ -139,7 +138,7 @@ export function SystemInfoCard({
         <CardIcon>
           <InfoRegular className="text-[24px]" />
         </CardIcon>
-        <CardTitle title={t("系统信息")} subtitle={t("运行环境")} />
+        <CardTitle title={t("系统信息")} />
       </div>
       <div className="relative z-10 space-y-4 text-sm">
         <div className="rounded-lg bg-gray-50 p-3 dark:bg-white/5">

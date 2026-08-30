@@ -279,7 +279,6 @@ export default function LogsPage() {
     <div className="max-w-7xl mx-auto">
       <PageHeader
         title={t("设备与业务日志")}
-        subtitle={t("记录硬件、驻网、WiFi Calling、短信、通话和用户操作；敏感信息已自动打码")}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button

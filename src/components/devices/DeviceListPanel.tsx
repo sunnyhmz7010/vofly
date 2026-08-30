@@ -83,7 +83,7 @@ export function DeviceListPanel(props: DeviceListPanelProps) {
       {loading && filteredDevices.length === 0 ? (
         <ListSkeleton rows={8} />
       ) : filteredDevices.length === 0 ? (
-        <EmptyState title={t("暂无设备")} subtitle={t("点击右上角“添加设备”开始接管")} />
+        <EmptyState title={t("暂无设备")} />
       ) : (
         <div className="device-list-scroll max-h-[65vh] overflow-y-auto pr-1">
           <div className="device-list-grid">

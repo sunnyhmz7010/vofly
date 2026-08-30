@@ -30,6 +30,7 @@ export interface EsimEuiccGroupProps {
   onTogglePolicy: (iccid: string) => void;
   onDelete: (iccid: string, name: string | undefined, aidHex?: string) => void;
   onPolicyChanged: () => void;
+	onToggleRoamingData?: (enabled: boolean) => Promise<boolean>;
 }
 
 function normAid(aid?: string): string {
@@ -156,6 +157,7 @@ export function EsimEuiccGroup(props: EsimEuiccGroupProps) {
               onTogglePolicy={() => props.onTogglePolicy(p.iccid)}
               onDelete={() => props.onDelete(p.iccid, p.name, group.aidHex)}
               onPolicyChanged={props.onPolicyChanged}
+			  onToggleRoamingData={props.onToggleRoamingData}
             />
           ))}
         </div>

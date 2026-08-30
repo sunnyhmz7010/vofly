@@ -68,7 +68,7 @@ export function ContactList(props: ContactListProps) {
         <ListSkeleton rows={10} />
       ) : contacts.length === 0 ? (
         <div className="flex flex-1 items-center justify-center p-6">
-          <EmptyState title={t("暂无会话")} subtitle={t("等待设备收到测试短信，或点击“发送测试短信”")} icon={<ChatMultipleRegular />} />
+          <EmptyState title={t("暂无会话")} icon={<ChatMultipleRegular />} />
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-auto">

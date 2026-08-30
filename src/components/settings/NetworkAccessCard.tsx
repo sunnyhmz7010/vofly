@@ -51,7 +51,7 @@ export function NetworkAccessCard({
           <CardIcon>
             <GlobeRegular className="text-[24px]" />
           </CardIcon>
-          <CardTitle title={t("网络访问")} subtitle={t("控制允许访问系统的来源网段")} />
+          <CardTitle title={t("网络访问")} />
         </div>
         <Button
           variant="primary"

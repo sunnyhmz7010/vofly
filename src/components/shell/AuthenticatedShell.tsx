@@ -49,7 +49,7 @@ export function AuthenticatedShell({
   const [isMobile, setIsMobile] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [plugins, setPlugins] = useState<InstalledPlugin[]>([]);
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
   const { t, lang } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
@@ -144,28 +144,6 @@ export function AuthenticatedShell({
     );
   }
 
-  function userCard() {
-    return (
-      <div className="ui-panel-muted flex items-center gap-3 p-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
-          <SettingsRegular className="h-[18px] w-[18px]" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-bold">{user?.username || "Admin"}</div>
-          <div className="truncate text-xs text-gray-400">{user?.role || "Administrator"}</div>
-        </div>
-        <button
-          type="button"
-          onClick={onLogout}
-          aria-label={t("退出登录")}
-          className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10"
-        >
-          <SignOutRegular className="h-[18px] w-[18px]" />
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-full">
       {!isMobile && (
@@ -180,12 +158,10 @@ export function AuthenticatedShell({
             {!collapsed && (
               <div className="ml-3">
                 <div className="sidebar-brand-title">vofly</div>
-                <div className="text-[10px] font-medium leading-tight tracking-wide text-gray-400 dark:text-gray-500">{t("高通模块测试工具")}</div>
               </div>
             )}
           </div>
           {menuList(collapsed)}
-          {!collapsed && <div className="absolute bottom-4 w-full px-3">{userCard()}</div>}
         </aside>
       )}
 
@@ -195,11 +171,9 @@ export function AuthenticatedShell({
             <BrandLogo className="sidebar-brand-logo" />
             <div className="ml-3">
               <div className="sidebar-brand-title">vofly</div>
-              <div className="text-[10px] font-medium leading-tight tracking-wide text-gray-400 dark:text-gray-500">{t("高通模块测试工具")}</div>
             </div>
           </div>
           {menuList(false)}
-          <div className="absolute bottom-4 w-full px-3">{userCard()}</div>
         </div>
       </Drawer>
 
@@ -223,6 +197,15 @@ export function AuthenticatedShell({
             <VersionBadge />
             <LanguageSwitch />
             <SwitchDark isDark={isDark} onToggle={onToggleTheme} />
+            <button
+              type="button"
+              onClick={onLogout}
+              aria-label={t("退出登录")}
+              title={t("退出登录")}
+              className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-500/10"
+            >
+              <SignOutRegular className="h-[18px] w-[18px]" />
+            </button>
           </div>
         </header>
         <main className="flex-1 overflow-auto bg-gray-50/50 p-4 dark:bg-transparent sm:p-6">

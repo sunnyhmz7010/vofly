@@ -23,7 +23,8 @@ export function getCardPolicy(iccid: string) {
   return api<CardPolicy>(`/cards/${iccid}/policy`);
 }
 export interface CardPolicyUpdate {
-  vowifiEnabled?: boolean;
+	networkEnabled?: boolean;
+	vowifiEnabled?: boolean;
   airplaneEnabled?: boolean;
   apn?: string;
   ipVersion?: "IP" | "IPV6" | "IPV4V6";
@@ -53,7 +54,7 @@ export function setCellularIMSMode(deviceId: string, mode: CellularIMSMode) {
 export function updateCardPolicy(iccid: string, body: CardPolicyUpdate) {
   return api<CardPolicy>(`/cards/${iccid}/policy`, { method: "PUT", body });
 }
-export function putCardPolicy(iccid: string, body: { vowifiEnabled: boolean; airplaneEnabled: boolean }) {
+export function putCardPolicy(iccid: string, body: { networkEnabled?: boolean; vowifiEnabled: boolean; airplaneEnabled: boolean }) {
   return ok(updateCardPolicy(iccid, body));
 }
 

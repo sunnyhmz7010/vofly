@@ -278,6 +278,7 @@ export interface OperatorSelection {
 
 export interface CardPolicy {
   iccid: string;
+  networkEnabled: boolean;
   vowifiEnabled: boolean;
   airplaneEnabled: boolean;
   apn?: string;

@@ -50,7 +50,6 @@ export default function LoginPage() {
             <h2 className="bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-3xl font-bold text-transparent dark:from-white dark:to-gray-400">
               vofly
             </h2>
-            <p className="mt-3 text-sm tracking-wide text-gray-500 dark:text-gray-400">{t("高通模块专业测试工具")}</p>
           </div>
           <form onSubmit={submit} className="relative z-10 space-y-6">
             <div className="space-y-2">
@@ -65,6 +64,12 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   value={secret}
                   onChange={(event) => setSecret(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      event.currentTarget.form?.requestSubmit();
+                    }
+                  }}
                 />
               </div>
             </div>

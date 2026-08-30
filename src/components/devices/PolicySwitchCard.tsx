@@ -4,7 +4,6 @@ import { useI18n } from "../../lib/i18n";
 
 export interface PolicySwitchCardProps {
   title: string;
-  subtitle?: string;
   checked: boolean;
   disabled?: boolean;
   pending?: boolean;
@@ -14,7 +13,7 @@ export interface PolicySwitchCardProps {
   compact?: boolean;
 }
 
-export function PolicySwitchCard({ title, subtitle, checked, disabled, pending, failed, onToggle, tone = "indigo", compact }: PolicySwitchCardProps) {
+export function PolicySwitchCard({ title, checked, disabled, pending, failed, onToggle, tone = "indigo", compact }: PolicySwitchCardProps) {
   const { t } = useI18n();
   const status = (
     <div className="flex items-center gap-2">
@@ -42,7 +41,6 @@ export function PolicySwitchCard({ title, subtitle, checked, disabled, pending, 
       <div className="flex items-center justify-between">
         <div>
           <div className="text-sm font-bold text-gray-800 dark:text-gray-100">{title}</div>
-          {subtitle ? <div className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</div> : null}
         </div>
         {status}
       </div>

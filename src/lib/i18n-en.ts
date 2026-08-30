@@ -61,7 +61,6 @@ export const EN_DICT: Record<string, string> = {
 
   // External extensions.
   "插件": "Plugins",
-  "通过 URL 或本地插件包扩展 vofly 功能": "Extend vofly with a URL or a local plugin package",
   "插件列表加载失败": "Failed to load plugins",
   "请输入插件包 URL": "Enter a plugin package URL",
   "插件页面以当前管理员权限运行，插件后端还可以运行外部代码。仅安装你完全信任的插件。":
@@ -100,7 +99,6 @@ export const EN_DICT: Record<string, string> = {
   "尚未绑定 SIM / Profile": "No SIMs or profiles bound",
   "请确认设备在线并已读取到 SIM 卡 ICCID。": "Make sure the device is online and its SIM ICCID has been read.",
   "点击添加，从 SIM / Profile 列表中选择。": "Click Add and select from the SIM / profile list.",
-  "管理 VoWiFi 上游代理以及实体 SIM / eSIM Profile 绑定": "Manage VoWiFi upstream proxies and physical SIM / eSIM profile bindings",
   "点击“新增代理”创建 SOCKS5 上游代理，再按 ICCID 绑定实体 SIM 或 eSIM Profile；未绑定的卡默认直连。":
     "Create a SOCKS5 upstream proxy, then bind a physical SIM or eSIM profile by ICCID. Unbound SIMs use a direct connection.",
   "VoWiFi 会按当前 ICCID 选择代理。同一 ICCID 只能绑定一个代理，一个代理可以绑定多台设备上的多个 Profile。":
@@ -126,9 +124,6 @@ export const EN_DICT: Record<string, string> = {
   "所选 Profile 绑定已删除": "Selected profile bindings deleted",
   "删除绑定失败": "Failed to delete bindings",
   "绑定到该代理的 Profile 将自动解绑并恢复直连。": "Profiles bound to this proxy will be unbound and return to direct routing.",
-  "管理 VoWiFi 上游代理和 eSIM Profile 绑定": "Manage VoWiFi upstream proxies and eSIM profile bindings",
-  "禁用后，已绑定 Profile 的 VoWiFi 将停止使用该线路，不会泄漏到直连":
-    "When disabled, bound profiles stop using this VoWiFi route and do not leak traffic to a direct connection.",
   "点击“新增代理”创建 SOCKS5 上游代理，再按 ICCID 绑定需要使用它的 eSIM Profile；未绑定 Profile 默认直连。":
     "Create a SOCKS5 upstream proxy, then bind eSIM profiles by ICCID. Unbound profiles use a direct connection.",
   "绑定后，该设备的 VoWiFi 建链和通信都会使用此 SOCKS5 代理；解绑后恢复直连。配置变更会立即尝试重连 VoWiFi。":
@@ -167,7 +162,6 @@ export const EN_DICT: Record<string, string> = {
   "绑定失败": "Binding failed",
   "设备已解绑并恢复直连": "Device unbound and restored to direct routing",
   "解绑失败": "Unbind failed",
-  "管理 VoWiFi 上游代理和设备绑定": "Manage VoWiFi upstream proxies and device bindings",
   "禁用后，已绑定设备的 VoWiFi 将停止使用该线路，不会泄漏到直连":
     "When disabled, bound devices stop using this VoWiFi route and do not leak traffic to a direct connection.",
   // ---- 外壳 / 导航 ----
@@ -178,8 +172,6 @@ export const EN_DICT: Record<string, string> = {
   自动任务: "Automatic Tasks",
   "按周期切换指定 eSIM Profile，并在设备串行队列中执行短信、通话或漫游公网 IP 任务": "Switch to a selected eSIM profile on schedule, then run SMS, call, or roaming public-IP jobs in a per-device queue",
 	"按周期切换指定 eSIM Profile，并在设备串行队列中执行短信或通话任务": "Switch to a selected eSIM profile on schedule, then run SMS or call jobs in a per-device queue",
-  "按周期使用指定 SIM 卡或切换到指定 eSIM Profile，并在设备串行队列中执行短信、通话或漫游公网 IP 任务": "Use the selected SIM or switch to the selected eSIM profile on schedule, then run SMS, call, or roaming public-IP jobs in a per-device queue",
-	"按周期使用指定 SIM 卡或切换到指定 eSIM Profile，并在设备串行队列中执行短信或通话任务": "Use the selected SIM or switch to the selected eSIM profile on schedule, then run SMS or call jobs in a per-device queue",
   添加任务: "Add Task",
   "设备 / Profile": "Device / Profile",
   "设备 / SIM / Profile": "Device / SIM / Profile",
@@ -271,8 +263,6 @@ export const EN_DICT: Record<string, string> = {
   "请输入用户名和密码": "Please enter your username and password",
   欢迎回来: "Welcome back",
   "登录失败，请检查凭证": "Sign-in failed. Check your credentials.",
-  "高通模块专业测试工具": "Qualcomm Module Professional Test Tool",
-  "高通模块测试工具": "Qualcomm Module Test Tool",
   用户名: "Username",
   密码: "Password",
   登录: "Sign In",
@@ -280,8 +270,6 @@ export const EN_DICT: Record<string, string> = {
   // ---- 仪表盘 ----
   设备监控: "Device Monitor",
   实时查看设备状态与出口: "Live view of device status and egress IP",
-  "实时监测模组检测状态与出口连通性": "Live view of module test status and egress connectivity",
-  "接管 EC20 模组并执行射频、网络、SIM 与终端功能检测": "Take over EC20 modules and run RF, network, SIM and terminal function tests",
   设备总数: "Total Devices",
   在线: "Online",
   离线: "Offline",
@@ -311,7 +299,6 @@ export const EN_DICT: Record<string, string> = {
   "{online}/{total} 台在线": "{online}/{total} online",
 
   // ---- 设置页：通用 ----
-  管理网关参数与运行信息: "Manage gateway parameters and runtime info",
   保存通知配置: "Save Notification Settings",
   "正在加载通知配置…": "Loading notification settings…",
   通知: "Notifications",
@@ -329,11 +316,11 @@ export const EN_DICT: Record<string, string> = {
 
   // ---- 设置页：安全卡 ----
   安全: "Security",
-  更新访问凭证: "Update access credentials",
+  更改访问密令: "Change access secret",
   当前密码: "Current Password",
   新密码: "New Password",
   确认新密码: "Confirm New Password",
-  更新凭证: "Update Credentials",
+  确认更改: "Confirm Change",
   两次输入的新密码不一致: "The two new passwords do not match",
   "密码已更新，请重新登录": "Password updated. Please sign in again.",
   密码更新失败: "Failed to update password",
@@ -342,7 +329,6 @@ export const EN_DICT: Record<string, string> = {
 
   // ---- 设置页：系统信息卡 ----
   系统信息: "System Information",
-  运行环境: "Runtime environment",
   版本: "Version",
   检查更新: "Check for Updates",
   "发现新版本:": "New version available:",
@@ -364,7 +350,6 @@ export const EN_DICT: Record<string, string> = {
 
   // ---- 设置页：网络访问卡 ----
   网络访问: "Network Access",
-  控制允许访问系统的来源网段: "Control which source networks may access the system",
   保存访问策略: "Save Access Policy",
   "正在加载访问策略…": "Loading access policy…",
   内网优先: "Internal Only",
@@ -549,8 +534,6 @@ export const EN_DICT: Record<string, string> = {
   已导出日志: "Logs exported",
   "查看系统运行日志，支持过滤和搜索": "View system runtime logs with filtering and search",
   设备与业务日志: "Device & Service Logs",
-  "记录硬件、驻网、WiFi Calling、短信、通话和用户操作；敏感信息已自动打码":
-    "Hardware, network registration, WiFi Calling, SMS, calls, and user operations. Sensitive identities are automatically redacted.",
   业务分类: "Category",
   全部业务: "All Services",
   硬件与模块: "Hardware & Modem",
@@ -692,9 +675,7 @@ export const EN_DICT: Record<string, string> = {
   "永久删除整个对话？": "Permanently delete the entire conversation?",
   删除对话: "Delete Conversation",
   已删除对话: "Conversation deleted",
-  "通过收发测试验证模组 SMS 收发功能是否正常": "Verify modem SMS send/receive with loopback tests",
   短信加载失败: "Failed to load messages",
-  汇总全部设备检测记录: "Test records across all devices",
   删除短信: "Delete Message",
   设备: "Device",
   操作: "Actions",
@@ -819,10 +800,6 @@ export const EN_DICT: Record<string, string> = {
   "名称不能为空": "Name is required",
   "名称修改成功": "Name updated",
   "否": "No",
-  "启用时强制关闭蜂窝射频；关闭 VoWiFi 后仍保持飞行模式":
-    "Enabling forces cellular RF off; airplane mode remains on after VoWiFi is disabled.",
-  "只有手动关闭此开关才允许设备连接基站":
-    "The device may connect to a cellular base station only after you manually turn this switch off.",
   "命令": "Command",
   "命令 / 回复": "Command / Reply",
   "回复": "Reply",
@@ -1066,12 +1043,14 @@ export const EN_DICT: Record<string, string> = {
   保存配置: "Save Config",
   "切换 IP": "Rotate IP",
   "漫游数据": "Roaming Data",
+	"VoWiFi / 飞行模式 / 漫游数据开关跟着 SIM 卡走，切换即时生效": "VoWiFi, airplane mode, and roaming data follow the selected SIM and apply immediately",
+	"检测到 eSIM 配置": "eSIM configuration detected",
+	"VoWiFi、飞行模式和漫游数据请前往 eSIM 配置中按 Profile 管理": "Manage VoWiFi, airplane mode, and roaming data per Profile in eSIM configuration",
 	"公网 IP": "Public IP",
 	"检测": "Detect",
 	"国家/地区": "Country / Region",
 	"公网 IP 检测失败": "Public IP detection failed",
 	"导出代理": "Export Proxy",
-	"将模块漫游数据导出为主机 HTTP 或 SOCKS5 代理": "Export modem roaming data as host HTTP or SOCKS5 proxies",
 	"添加代理": "Add Proxy",
 	"网络接口": "Network Interface",
 	"协议": "Protocol",
@@ -1153,8 +1132,6 @@ export const EN_DICT: Record<string, string> = {
   当前代理: "This Proxy",
   直连: "Direct",
   "没有匹配的国家或 MCC": "No matching country or MCC",
-  "管理 VoWiFi 上游代理、MCC 国家规则以及实体 SIM / eSIM Profile 绑定":
-    "Manage VoWiFi upstream proxies, MCC country rules, and physical SIM / eSIM profile bindings",
   "点击“新增代理”创建 SOCKS5 上游代理，再配置国家规则或 ICCID 绑定；未匹配的卡默认直连。":
     "Create a SOCKS5 upstream proxy, then configure country rules or ICCID bindings. Unmatched SIMs connect directly by default.",
   "VoWiFi 通过此 Socks5 代理连接运营商，实现跨区域本地 VoWiFi。":
@@ -1311,8 +1288,6 @@ export const EN_DICT: Record<string, string> = {
   "VoLTE 未就绪": "VoLTE not ready",
   "设备离线，无法读取或修改模组 IMS 配置。": "The device is offline; its modem IMS configuration cannot be read or changed.",
   "VoWiFi 通话": "VoWiFi Calls",
-  "网页麦克风与扬声器 IMS 通话、通话记录与录音回放":
-    "Browser microphone & speaker IMS calls, call history, and recording playback",
   "选择要拨号的设备": "Pick a device to dial from",
   "通过网页麦克风和扬声器进行 IMS 通话": "Place IMS calls using your browser microphone and speakers",
   "当前为基站直连（电路交换）通话，网页音频仅 VoWiFi IMS 通话可用":
@@ -1344,8 +1319,6 @@ export const EN_DICT: Record<string, string> = {
 
   // ---- 命令中心 ----
   "命令中心": "Command Center",
-  "执行 Web slash 命令，查看实时事件，并快速触发余额查询和高风险设备动作":
-    "Run web slash commands, watch live events, and quickly trigger balance queries or high-risk device actions",
   "vofly 命令会话": "vofly Command Session",
   "实时连接": "Live connection",
   "正在重连": "Reconnecting",

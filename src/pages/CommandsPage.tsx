@@ -504,7 +504,6 @@ export default function CommandsPage() {
     <div className="commands-page mx-auto w-full max-w-[1500px]">
       <PageHeader
         title={t("命令中心")}
-        subtitle={t("执行 Web slash 命令，查看实时事件，并快速触发余额查询和高风险设备动作")}
         actions={
           <Button loading={refreshing} onClick={() => void refreshAll()} icon={<ArrowSyncRegular />}>
             {t("刷新")}

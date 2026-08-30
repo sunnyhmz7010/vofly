@@ -21,6 +21,7 @@ export interface DeviceEsimTabProps {
   rebooting?: boolean;
   onRebootModem?: () => Promise<boolean>;
   onProfileChanged?: () => void;
+	onToggleRoamingData?: (enabled: boolean) => Promise<boolean>;
 }
 
 interface EsimLoadFailure {
@@ -70,7 +71,7 @@ function applyDisableLocal(groups: EsimProfileGroup[], iccid: string, aidHex?: s
   }));
 }
 
-export function DeviceEsimTab({ deviceId, deviceImei, isActive, deviceOnline, rebooting, onRebootModem, onProfileChanged }: DeviceEsimTabProps) {
+export function DeviceEsimTab({ deviceId, deviceImei, isActive, deviceOnline, rebooting, onRebootModem, onProfileChanged, onToggleRoamingData }: DeviceEsimTabProps) {
   const { t } = useI18n();
   const [initialLoading, setInitialLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -513,6 +514,7 @@ export function DeviceEsimTab({ deviceId, deviceImei, isActive, deviceOnline, re
           onTogglePolicy={(iccid) => setPolicyIccid((prev) => (prev === iccid ? null : iccid))}
           onDelete={openDelete}
           onPolicyChanged={() => loadOverview(true)}
+		  onToggleRoamingData={onToggleRoamingData}
         />
       ))}
       <EsimNotificationsModal
@@ -536,7 +538,7 @@ export function DeviceEsimTab({ deviceId, deviceImei, isActive, deviceOnline, re
         />
       ) : null}
       {groups.length === 0 && !chipInfo && !loadFailure?.channelStuck ? (
-        <EmptyState title={t("未检测到 eUICC")} subtitle={t("此SIM卡可能不支持 eUICC 功能")} />
+        <EmptyState title={t("未检测到 eUICC")} />
       ) : null}
       <DeleteProfileModal
         open={!!deleteTarget}

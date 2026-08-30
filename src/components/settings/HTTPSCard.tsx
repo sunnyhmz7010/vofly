@@ -29,7 +29,6 @@ export function HTTPSCard({
           </CardIcon>
           <CardTitle
             title={zh ? "本机自签 HTTPS" : "Local self-signed HTTPS"}
-            subtitle={zh ? "为安全连接提供 HTTPS" : "HTTPS for secure connections"}
           />
         </div>
         <Switch checked={enabled} disabled={loading || saving} loading={saving} onChange={onToggle} />

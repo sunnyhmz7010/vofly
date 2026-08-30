@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import type { SystemInfo } from "../../types";
+import { formatVersionLabel } from "./versionFormat";
 
 export function VersionBadge() {
   const [version, setVersion] = useState<string>("");
@@ -20,11 +21,11 @@ export function VersionBadge() {
     };
   }, []);
 
-  const label = version ? `v${version}` : "vdev";
+  const label = formatVersionLabel(version);
   return (
     <span
       className="flex h-7 items-center justify-center rounded-lg px-2 font-mono text-xs text-gray-400 select-none dark:text-gray-500"
-      title={version ? `vofly v${version}` : "vofly dev build"}
+      title={version ? `vofly ${label}` : "vofly dev build"}
     >
       {label}
     </span>

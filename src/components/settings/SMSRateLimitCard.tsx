@@ -31,7 +31,6 @@ export function SMSRateLimitCard({
         </CardIcon>
         <CardTitle
           title={zh ? "短信发送速率限制" : "SMS send rate limit"}
-          subtitle={zh ? "所有设备与 SIM 卡共享的全局发送额度" : "One global quota shared by every device and SIM"}
         />
       </div>
       <div className="relative z-10 space-y-4">

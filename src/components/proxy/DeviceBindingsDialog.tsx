@@ -176,7 +176,7 @@ export function DeviceBindingsDialog(props: DeviceBindingsDialogProps) {
             </tbody>
           </table>
           {loadingProfiles ? <div className="px-6 py-12 text-center text-sm text-gray-400">{t("读取 Profile 中...")}</div> : null}
-          {!loadingProfiles && rows.length === 0 ? <EmptyState title={adding ? t("没有可显示的 SIM / Profile") : t("尚未绑定 SIM / Profile")} subtitle={adding ? t("请确认设备在线并已读取到 SIM 卡 ICCID。") : t("点击添加，从 SIM / Profile 列表中选择。")}/>: null}
+          {!loadingProfiles && rows.length === 0 ? <EmptyState title={adding ? t("没有可显示的 SIM / Profile") : t("尚未绑定 SIM / Profile")}/>: null}
         </div>
       </div>
     </Modal>

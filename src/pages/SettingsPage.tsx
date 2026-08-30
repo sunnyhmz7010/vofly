@@ -397,7 +397,7 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <PageHeader title={t("系统设置")} subtitle={t("管理网关参数与运行信息")} />
+      <PageHeader title={t("系统设置")} />
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         <SecurityCard
           value={password}
@@ -447,7 +447,7 @@ export default function SettingsPage() {
               <CardIcon>
                 <AlertRegular className="text-[24px]" />
               </CardIcon>
-              <CardTitle title={t("通知")} subtitle={t("Telegram / QQ / 个人微信 / 企业微信长连接 Bot / Bark / Email / Pushplus / Webhook / 飞书 / Lark 群机器人")} />
+              <CardTitle title={t("通知")} />
             </div>
             <Button variant="primary" loading={savingNotif} disabled={loadingNotif} onClick={onSaveNotifications} className="!border-0" icon={<CheckmarkRegular />}>
               {t("保存通知配置")}

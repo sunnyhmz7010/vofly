@@ -618,7 +618,6 @@ export default function SmsPage() {
     <div ref={pageRef} className="sms-page flex h-[calc(100vh-140px)] flex-col">
       <PageHeader
         title={t("短信功能检测")}
-        subtitle={t("通过收发测试验证模组 SMS 收发功能是否正常")}
         actions={
           <div className="flex items-center gap-2">
             <RefreshButton loading={contactsLoading} onClick={refreshAll} />
@@ -677,7 +676,7 @@ export default function SmsPage() {
                   >
                     <div className="min-w-0">
                       <div className="truncate text-sm font-bold text-gray-800 dark:text-gray-100">{d.label}</div>
-                      <div className="truncate text-xs text-gray-400">{d.id === "all" ? t("汇总全部设备检测记录") : d.id}</div>
+                      <div className="truncate text-xs text-gray-400">{d.id === "all" ? t("全部设备") : d.id}</div>
                     </div>
                     {d.id !== "all" ? (
                       <span className={cx("h-2 w-2 rounded-full", d.healthy ? "bg-green-500" : "bg-red-500")} />

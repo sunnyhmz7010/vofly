@@ -534,7 +534,7 @@ export default function PhonePage() {
 
   return (
     <div className="phone-page mx-auto w-full max-w-[1500px]">
-      <PageHeader title={t("通话")} subtitle={t("网页麦克风与扬声器 IMS 通话、通话记录与录音回放")} />
+      <PageHeader title={t("通话")} />
 
       {/* WebRTC 下行播放：隐藏元素，自动播放远端音轨 */}
       <audio ref={remoteAudioRef} autoPlay className="hidden" />

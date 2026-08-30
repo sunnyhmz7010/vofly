@@ -2,7 +2,7 @@
 # vofly 一键安装脚本。
 # 用法：
 #   curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh
-#   sudo sh install.sh [--force] [--check-env] [--with-pcsc] [--with-ffmpeg] [版本]
+#   sudo sh install.sh [--force] [--with-pcsc] [--with-ffmpeg] [版本]
 
 set -eu
 
@@ -22,11 +22,11 @@ LINK_PATH="/usr/local/bin/vofly"
 ENV_DIR="/etc/vofly"
 ENV_FILE="/etc/vofly/env"
 SYSTEMD_UNIT="/etc/systemd/system/vofly.service"
+INSTALLED_PACKAGES_FILE="/etc/vofly/installed-packages"
 DEFAULT_ADDR="0.0.0.0:7575"
 DEFAULT_DATABASE="/opt/vofly/data/vofly.db"
 
 FORCE=0
-CHECK_ENV=0
 WITH_PCSC=0
 WITH_FFMPEG=0
 VERSION_ARG=""
@@ -38,11 +38,10 @@ DOWNLOAD_DIR=""
 print_usage() {
   cat <<'USAGE'
 用法:
-  sudo sh install.sh [--force] [--check-env] [--with-pcsc] [版本]
+  sudo sh install.sh [--force] [--with-pcsc] [--with-ffmpeg] [版本]
 
 选项:
   --force           即使当前已是目标版本，也重新下载并安装
-  --check-env       只检查运行环境，不下载、不安装、不写入任何文件
   --with-pcsc       安装并启用 pcscd 与 CCID 驱动（USB SIM 读卡器）
   --with-ffmpeg     安装 ffmpeg（通话录音 MP3 转码；缺失时录音保持 WAV）
   -h|--help         显示帮助
@@ -57,7 +56,6 @@ USAGE
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --force) FORCE=1 ;;
-    --check-env) CHECK_ENV=1 ;;
     --with-pcsc) WITH_PCSC=1 ;;
     --with-ffmpeg) WITH_FFMPEG=1 ;;
     -h|--help)
@@ -473,60 +471,183 @@ rollback_binary() {
   fi
 }
 
+PACKAGE_MANAGER=""
+PACKAGE_INDEX_UPDATED=0
+
+detect_package_manager() {
+  if command -v apt-get >/dev/null 2>&1 && command -v dpkg-query >/dev/null 2>&1; then
+    PACKAGE_MANAGER=apt
+    return 0
+  fi
+  if command -v dnf >/dev/null 2>&1 && command -v rpm >/dev/null 2>&1; then
+    PACKAGE_MANAGER=dnf
+    return 0
+  fi
+  if command -v yum >/dev/null 2>&1 && command -v rpm >/dev/null 2>&1; then
+    PACKAGE_MANAGER=yum
+    return 0
+  fi
+  if command -v apk >/dev/null 2>&1; then
+    PACKAGE_MANAGER=apk
+    return 0
+  fi
+  if command -v pacman >/dev/null 2>&1; then
+    PACKAGE_MANAGER=pacman
+    return 0
+  fi
+  if command -v opkg >/dev/null 2>&1; then
+    PACKAGE_MANAGER=opkg
+    return 0
+  fi
+  printf '未识别包管理器，无法自动安装 vofly 运行依赖。\n' >&2
+  return 1
+}
+
+package_snapshot() {
+  case "$PACKAGE_MANAGER" in
+    apt)
+      dpkg-query -W -f='${db:Status-Abbrev} ${binary:Package}\n' 2>/dev/null |
+        awk '$1 ~ /^ii/ {print $2}' | LC_ALL=C sort -u
+      ;;
+    dnf|yum)
+      rpm -qa --qf '%{NAME}\n' | LC_ALL=C sort -u
+      ;;
+    apk)
+      apk info -e 2>/dev/null | sed -E 's/-[0-9][0-9A-Za-z.]*-r[0-9]+$//' | LC_ALL=C sort -u
+      ;;
+    pacman)
+      pacman -Qq | LC_ALL=C sort -u
+      ;;
+    opkg)
+      opkg list-installed 2>/dev/null | awk '{print $1}' | LC_ALL=C sort -u
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+record_new_packages() {
+  before_file=$1
+  after_file=$2
+  new_file=$(mktemp "${TMPDIR:-/tmp}/vofly-packages.XXXXXX")
+  comm -13 "$before_file" "$after_file" >"$new_file"
+  if [ -s "$new_file" ]; then
+    while IFS= read -r package; do
+      [ -n "$package" ] || continue
+      printf '%s|%s\n' "$PACKAGE_MANAGER" "$package" >>"$INSTALLED_PACKAGES_FILE"
+    done <"$new_file"
+    sort -u "$INSTALLED_PACKAGES_FILE" >"${new_file}.sorted"
+    run_root install -m 600 "${new_file}.sorted" "$INSTALLED_PACKAGES_FILE"
+    rm -f "${new_file}.sorted"
+  fi
+  rm -f "$new_file"
+}
+
 install_packages() {
-  installer=$1
-  shift
-  failed=0
-  for package in "$@"; do
-    if ! $installer "$package"; then
-      printf '未安装：%s\n' "$package" >&2
-      failed=1
-    fi
-  done
-  return "$failed"
+  before_file=$(mktemp "${TMPDIR:-/tmp}/vofly-packages-before.XXXXXX")
+  after_file=$(mktemp "${TMPDIR:-/tmp}/vofly-packages-after.XXXXXX")
+  package_snapshot >"$before_file"
+  install_status=0
+  case "$PACKAGE_MANAGER" in
+    apt)
+      if [ "$PACKAGE_INDEX_UPDATED" = "0" ]; then
+        run_root apt-get update -y || install_status=$?
+        PACKAGE_INDEX_UPDATED=1
+      fi
+      [ "$install_status" -ne 0 ] || run_root apt-get install -y -- "$@" || install_status=$?
+      ;;
+    dnf) run_root dnf install -y -- "$@" || install_status=$? ;;
+    yum) run_root yum install -y -- "$@" || install_status=$? ;;
+    apk) run_root apk add --no-cache "$@" || install_status=$? ;;
+    pacman) run_root pacman -Sy --noconfirm -- "$@" || install_status=$? ;;
+    opkg)
+      if [ "$PACKAGE_INDEX_UPDATED" = "0" ]; then
+        run_root opkg update || install_status=$?
+        PACKAGE_INDEX_UPDATED=1
+      fi
+      [ "$install_status" -ne 0 ] || run_root opkg install "$@" || install_status=$?
+      ;;
+    *)
+      printf '未识别包管理器：%s\n' "$PACKAGE_MANAGER" >&2
+      install_status=1
+      ;;
+  esac
+  package_snapshot >"$after_file" || install_status=1
+  record_new_packages "$before_file" "$after_file"
+  rm -f "$before_file" "$after_file"
+  return "$install_status"
 }
 
 opkg_has_package() {
   opkg list 2>/dev/null | cut -d' ' -f1 | grep -qx "$1"
 }
 
-install_pcsc_packages() {
-  if command -v apt-get >/dev/null 2>&1; then
-    run_root apt-get update -y
-    install_packages "run_root apt-get install -y" pcscd libccid
-    return $?
-  fi
-  if command -v dnf >/dev/null 2>&1; then
-    install_packages "run_root dnf install -y" pcsc-lite ccid
-    return $?
-  fi
-  if command -v yum >/dev/null 2>&1; then
-    install_packages "run_root yum install -y" pcsc-lite ccid
-    return $?
-  fi
-  if command -v apk >/dev/null 2>&1; then
-    install_packages "run_root apk add --no-cache" pcsc-lite ccid
-    return $?
-  fi
-  if command -v pacman >/dev/null 2>&1; then
-    install_packages "run_root pacman -Sy --noconfirm" pcsclite ccid
-    return $?
-  fi
-  if command -v opkg >/dev/null 2>&1; then
-    packages=""
-    opkg_has_package pcscd && packages="$packages pcscd"
-    opkg_has_package libccid && packages="$packages libccid"
-    opkg_has_package ccid && packages="$packages ccid"
-    if [ -z "$packages" ]; then
-      printf '当前 OpenWrt 软件源未提供 pcscd/libccid/ccid。\n' >&2
+install_runtime_dependencies() {
+  printf '安装 vofly 运行依赖（QMI、网络工具与 CA 证书）。\n'
+  case "$PACKAGE_MANAGER" in
+    apt) install_packages libqmi-utils iproute2 ca-certificates ;;
+    dnf|yum) install_packages libqmi-utils iproute ca-certificates ;;
+    apk) install_packages qmi-utils iproute2 ca-certificates ;;
+    pacman) install_packages libqmi iproute2 ca-certificates ;;
+    opkg)
+      qmi_package=""
+      opkg_has_package libqmi-utils && qmi_package=libqmi-utils
+      if [ -z "$qmi_package" ] && opkg_has_package libqmi; then
+        qmi_package=libqmi
+      fi
+      if [ -z "$qmi_package" ] && opkg_has_package qmi-utils; then
+        qmi_package=qmi-utils
+      fi
+      if [ -z "$qmi_package" ]; then
+        printf '当前 OpenWrt 软件源未提供 libqmi-utils、libqmi 或 qmi-utils。\n' >&2
+        return 1
+      fi
+      packages="$qmi_package"
+      ip_package=""
+      opkg_has_package ip-full && ip_package=ip-full
+      if [ -z "$ip_package" ] && opkg_has_package ip-tiny; then
+        ip_package=ip-tiny
+      fi
+      [ -n "$ip_package" ] && packages="$packages $ip_package"
+      if [ -z "$ip_package" ] && ! command -v ip >/dev/null 2>&1; then
+        printf '当前 OpenWrt 软件源未提供 ip-full/ip-tiny，且系统没有 ip 命令。\n' >&2
+        return 1
+      fi
+      opkg_has_package ca-certificates && packages="$packages ca-certificates"
+      install_packages $packages
+      ;;
+    *)
+      printf '未识别包管理器：%s\n' "$PACKAGE_MANAGER" >&2
       return 1
-    fi
-    run_root opkg update
-    install_packages "run_root opkg install" $packages
-    return $?
-  fi
-  printf '未识别包管理器，请手动安装 pcscd 与 CCID 驱动。\n' >&2
-  return 1
+      ;;
+  esac
+}
+
+install_pcsc_packages() {
+  case "$PACKAGE_MANAGER" in
+    apt) install_packages pcscd libccid ;;
+    dnf|yum) install_packages pcsc-lite ccid ;;
+    apk) install_packages pcsc-lite ccid ;;
+    pacman) install_packages pcsclite ccid ;;
+    opkg)
+      packages=""
+      opkg_has_package pcscd && packages="$packages pcscd"
+      opkg_has_package libccid && packages="$packages libccid"
+      if [ -z "$packages" ] && opkg_has_package ccid; then
+        packages="$packages ccid"
+      fi
+      [ -n "$packages" ] || {
+        printf '当前 OpenWrt 软件源未提供 pcscd/libccid/ccid。\n' >&2
+        return 1
+      }
+      install_packages $packages
+      ;;
+    *)
+      printf '未识别包管理器，请手动安装 pcscd 与 CCID 驱动。\n' >&2
+      return 1
+      ;;
+  esac
 }
 
 start_pcsc_service() {
@@ -556,38 +677,11 @@ install_pcsc_support() {
 }
 
 install_ffmpeg_packages() {
-  if command -v apt-get >/dev/null 2>&1; then
-    run_root apt-get update -y
-    install_packages "run_root apt-get install -y" ffmpeg
-    return $?
+  if [ "$PACKAGE_MANAGER" = "opkg" ] && ! opkg_has_package ffmpeg; then
+    printf '当前 OpenWrt 软件源未提供 ffmpeg。\n' >&2
+    return 1
   fi
-  if command -v dnf >/dev/null 2>&1; then
-    install_packages "run_root dnf install -y" ffmpeg
-    return $?
-  fi
-  if command -v yum >/dev/null 2>&1; then
-    install_packages "run_root yum install -y" ffmpeg
-    return $?
-  fi
-  if command -v apk >/dev/null 2>&1; then
-    install_packages "run_root apk add --no-cache" ffmpeg
-    return $?
-  fi
-  if command -v pacman >/dev/null 2>&1; then
-    install_packages "run_root pacman -Sy --noconfirm" ffmpeg
-    return $?
-  fi
-  if command -v opkg >/dev/null 2>&1; then
-    if ! opkg_has_package ffmpeg; then
-      printf '当前 OpenWrt 软件源未提供 ffmpeg。\n' >&2
-      return 1
-    fi
-    run_root opkg update
-    install_packages "run_root opkg install" ffmpeg
-    return $?
-  fi
-  printf '未识别包管理器，请手动安装 ffmpeg。\n' >&2
-  return 1
+  install_packages ffmpeg
 }
 
 install_ffmpeg_support() {
@@ -605,50 +699,6 @@ install_ffmpeg_support() {
     return 1
   fi
   printf '通话录音 MP3 转码依赖已就绪。\n'
-}
-
-run_check_env() {
-  printf 'vofly 运行环境检查（只读）\n\n'
-  failed=0
-  if [ "$(uname -s)" = "Linux" ]; then
-    printf '[通过] 操作系统：Linux\n'
-  else
-    printf '[失败] 操作系统不是 Linux。\n'
-    failed=1
-  fi
-  if detect_arch >/dev/null 2>&1; then
-    printf '[通过] CPU 架构：%s\n' "$(detect_arch)"
-  else
-    failed=1
-  fi
-  if command -v curl >/dev/null 2>&1; then
-    printf '[通过] curl：%s\n' "$(command -v curl)"
-  else
-    printf '[失败] 缺少 curl。\n'
-    failed=1
-  fi
-  if command -v sha256sum >/dev/null 2>&1 || command -v shasum >/dev/null 2>&1; then
-    printf '[通过] SHA256 校验工具已可用。\n'
-  else
-    printf '[失败] 缺少 sha256sum 或 shasum。\n'
-    failed=1
-  fi
-  if command -v systemctl >/dev/null 2>&1; then
-    printf '[通过] systemd：已检测到。\n'
-  else
-    printf '[提示] 未检测到 systemd；仍可手动前台运行。\n'
-  fi
-  if command -v pcscd >/dev/null 2>&1; then
-    printf '[通过] pcscd：已安装。\n'
-  else
-    printf '[提示] USB SIM 读卡器需要 pcscd/CCID；安装时可追加 --with-pcsc。\n'
-  fi
-  if command -v ffmpeg >/dev/null 2>&1; then
-    printf '[通过] ffmpeg：已安装，通话录音可转码 MP3。\n'
-  else
-    printf '[提示] 通话录音 MP3 转码需要 ffmpeg；安装时可追加 --with-ffmpeg。\n'
-  fi
-  return "$failed"
 }
 
 cleanup_downloads() {
@@ -688,17 +738,15 @@ finish_install() {
   printf '卸载：curl -fsSL %s/uninstall.sh | sudo sh\n' "$SOURCE_BASE_URL"
 }
 
-if [ "$CHECK_ENV" = "1" ]; then
-  run_check_env
-  exit $?
-fi
-
 detect_os
 require_command curl
 require_command uname
 require_command ln
 require_root
 trap on_exit EXIT
+
+detect_package_manager
+install_runtime_dependencies
 
 ARCH=$(detect_arch)
 VERSION=$(resolve_version)

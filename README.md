@@ -17,7 +17,7 @@
 ### 📋 前置要求
 
 - Linux 主机（x86_64 / arm64 / armv7），具备模组串口或 USB 访问权限
-- `curl` 与 `sha256sum`（安装脚本依赖）
+- 安装脚本会自动安装 QMI、网络工具和 CA 证书等运行依赖
 - USB SIM 读卡器依赖系统 `pcscd` 服务与 CCID 驱动，可通过安装脚本 `--with-pcsc` 选装
 
 ### 📦 安装与运行
@@ -29,14 +29,6 @@ curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh 
 ```
 
 安装后默认监听 `0.0.0.0:7575`，数据库位于 `/opt/vofly/data/vofly.db`。首次安装会生成管理员初始密码并仅在终端显示一次；默认用户名为 `admin`，请立即记录密码并在登录后修改。
-
-#### 🔍 仅检查依赖不安装
-
-只检查 Linux、架构、curl、SHA256 工具、systemd、pcscd 状态，不下载、不安装、不写文件：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sh -s -- --check-env
-```
 
 #### 📌 安装指定版本
 

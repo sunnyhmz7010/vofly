@@ -3,7 +3,7 @@ import { Button, Spinner } from "../ui";
 import { PolicySwitchCard } from "./PolicySwitchCard";
 import { CardPolicyAPN } from "./CardPolicyAPN";
 import { useCardPolicyToggles } from "./useCardPolicyToggles";
-import { getCardPolicy, putCardPolicy, enableVoWiFi, disableVoWiFi, setFlightMode } from "./deviceActions";
+import { getCardPolicy, putCardPolicy, updateCardPolicy, enableVoWiFi, disableVoWiFi, setFlightMode } from "./deviceActions";
 import type { CardPolicy } from "../../types";
 import { useI18n } from "../../lib/i18n";
 
@@ -13,13 +13,16 @@ export interface EsimCardPolicyInlineProps {
   isActiveCard: boolean;
   deviceOnline: boolean;
   onPolicyChanged: () => void;
+	onToggleRoamingData?: (enabled: boolean) => Promise<boolean>;
 }
 
-export function EsimCardPolicyInline({ deviceId, iccid, isActiveCard, deviceOnline, onPolicyChanged }: EsimCardPolicyInlineProps) {
+export function EsimCardPolicyInline({ deviceId, iccid, isActiveCard, deviceOnline, onPolicyChanged, onToggleRoamingData }: EsimCardPolicyInlineProps) {
   const { t } = useI18n();
   const [policy, setPolicy] = useState<CardPolicy | null>(null);
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(false);
+	const [networkPending, setNetworkPending] = useState(false);
+	const [networkFailed, setNetworkFailed] = useState(false);
 
   const mode = isActiveCard && deviceOnline ? "live" : "stored";
   const noteText = mode === "live" ? "" : deviceOnline ? t("改动将在此卡激活后生效") : t("设备离线，改动已保存，激活/上线后生效");
@@ -50,6 +53,31 @@ export function EsimCardPolicyInline({ deviceId, iccid, isActiveCard, deviceOnli
     onChanged: onPolicyChanged,
   });
   const { local } = toggles;
+
+	const toggleNetwork = async (enabled: boolean) => {
+	  if (!policy || networkPending) return;
+	  setNetworkPending(true);
+	  setNetworkFailed(false);
+	  try {
+		if (mode === "stored") {
+		  const saved = await updateCardPolicy(iccid, {
+			networkEnabled: enabled,
+			vowifiEnabled: enabled ? false : policy.vowifiEnabled,
+			airplaneEnabled: enabled ? false : policy.airplaneEnabled,
+		  });
+		  setPolicy(saved);
+		} else {
+		  const ok = await onToggleRoamingData?.(enabled);
+		  if (!ok) throw new Error("network policy failed");
+		  await load();
+		}
+		await onPolicyChanged();
+	  } catch {
+		setNetworkFailed(true);
+	  } finally {
+		setNetworkPending(false);
+	  }
+	};
 
   return (
     <div className="space-y-3 rounded-lg bg-gray-50/60 px-4 py-3 dark:bg-white/5">
@@ -87,6 +115,15 @@ export function EsimCardPolicyInline({ deviceId, iccid, isActiveCard, deviceOnli
               failed={toggles.airplaneFailed}
               onToggle={toggles.onAirplaneToggle}
             />
+			<PolicySwitchCard
+			  compact
+			  title={t("漫游数据")}
+			  checked={policy?.networkEnabled ?? false}
+			  disabled={networkPending || (mode === "live" && !onToggleRoamingData)}
+			  pending={networkPending}
+			  failed={networkFailed}
+			  onToggle={(value) => void toggleNetwork(value)}
+			/>
           </div>
           <CardPolicyAPN
             deviceId={deviceId}

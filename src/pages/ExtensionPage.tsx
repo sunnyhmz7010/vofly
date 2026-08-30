@@ -34,7 +34,7 @@ export default function ExtensionPage() {
     : selected.contribution.label;
   return (
     <div className="mx-auto max-w-7xl">
-      <PageHeader title={label} subtitle={`${selected.plugin.name} · ${selected.plugin.version}`} />
+      <PageHeader title={label} />
       <iframe
         title={label}
         src={pluginAssetURL(selected.plugin, selected.contribution)}

@@ -150,7 +150,6 @@ export default function ExportProxyPage() {
     <div className="mx-auto max-w-7xl">
       <PageHeader
         title={t("导出代理")}
-        subtitle={t("将模块漫游数据导出为主机 HTTP 或 SOCKS5 代理")}
         actions={<Button variant="primary" icon={<AddRegular />} onClick={() => edit()} disabled={!devices.length}>{t("添加代理")}</Button>}
       />
 

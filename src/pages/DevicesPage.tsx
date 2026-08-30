@@ -247,9 +247,9 @@ export default function DevicesPage() {
     [setSearchParams],
   );
 
-  const handleToggleRoamingData = useCallback(async (enabled: boolean) => {
-    const id = selectedIdRef.current.trim();
-	if (!id || dataToggling) return;
+	const handleToggleRoamingData = useCallback(async (enabled: boolean): Promise<boolean> => {
+	    const id = selectedIdRef.current.trim();
+	if (!id || dataToggling) return false;
 	setDataToggling(true);
 	setDataToggleTarget(enabled);
 	message.info(enabled ? t("正在开启漫游数据，请稍候") : t("正在关闭漫游数据，请稍候"));
@@ -296,8 +296,10 @@ export default function DevicesPage() {
 		throw new Error(terminal.lastError || (enabled ? t("开启漫游数据失败") : t("关闭漫游数据失败")));
 	  }
 	  message.success(enabled ? t("漫游数据已开启，仅供 Export Proxy 使用") : t("漫游数据已关闭"));
+	  return true;
     } catch (e) {
 	  message.error(apiMessage(e) || (enabled ? t("开启漫游数据失败") : t("关闭漫游数据失败")));
+	  return false;
     } finally {
 	  await refreshAll();
 	  setDataToggling(false);
@@ -685,7 +687,6 @@ export default function DevicesPage() {
     <div className="devices-page mx-auto w-full max-w-[1500px]">
       <PageHeader
         title={t("设备管理")}
-        subtitle={t("接管 EC20 模组并执行射频、网络、SIM 与终端功能检测")}
         actions={
           <div className="flex items-center gap-2">
             <RefreshButton loading={listLoading} onClick={refreshAll} />
@@ -741,13 +742,9 @@ export default function DevicesPage() {
             <>
 			<DeviceDetailHeader
 				device={detail}
-				dataToggling={dataToggling || detail.modemPhase === "rebooting" || ["starting", "stopping"].includes(detail.networkPhase || "")}
-				dataToggleTarget={detail.modemPhase === "rebooting" ? null : dataToggling ? dataToggleTarget : detail.networkPhase === "starting" ? true : detail.networkPhase === "stopping" ? false : null}
-				modemRebooting={detail.modemPhase === "rebooting"}
                 rebooting={rebooting}
                 reconnectingVoWiFi={reconnectingVoWiFi}
                 onCopyText={handleCopyText}
-				onToggleRoamingData={handleToggleRoamingData}
                 onReconnectVowifi={handleReconnectVoWiFi}
                 onRebootModem={handleRebootModem}
                 onOpenSms={handleOpenSms}
@@ -767,6 +764,7 @@ export default function DevicesPage() {
                       rebooting={rebooting}
                       onRebootModem={handleRebootModem}
                       onProfileChanged={handleProfileChanged}
+					  onToggleRoamingData={handleToggleRoamingData}
                     />
                   ) : null}
                   {activeTab === "at" ? (
@@ -777,7 +775,7 @@ export default function DevicesPage() {
                     <DeviceConfigTab editConfig={editConfig} deviceStatus={detail} saving={saving} deleting={deleting} onSave={handleSaveConfig} onDelete={handleDeleteDevice} onEditConfig={setEditConfig} />
                   ) : null}
                   {activeTab === "card" ? (
-                    <CardPolicyPanel deviceId={detail.id} iccid={detail.modem?.iccid} policy={cardPolicy} deviceOnline={detailOnline} onPolicyChanged={handlePolicyChanged} wifiCallingOnly={isReader} />
+                    <CardPolicyPanel deviceId={detail.id} iccid={detail.modem?.iccid} policy={cardPolicy} deviceOnline={detailOnline} onPolicyChanged={handlePolicyChanged} onToggleRoamingData={handleToggleRoamingData} onOpenEsim={() => handleTabChange("esim")} wifiCallingOnly={isReader} />
                   ) : null}
                 </div>
               </div>

@@ -23,6 +23,7 @@ export interface EsimProfileRowProps {
   onTogglePolicy: () => void;
   onDelete: () => void;
   onPolicyChanged: () => void;
+	onToggleRoamingData?: (enabled: boolean) => Promise<boolean>;
 }
 
 export function EsimProfileRow(props: EsimProfileRowProps) {
@@ -97,6 +98,7 @@ export function EsimProfileRow(props: EsimProfileRowProps) {
             isActiveCard={active}
             deviceOnline={props.deviceOnline}
             onPolicyChanged={props.onPolicyChanged}
+			onToggleRoamingData={props.onToggleRoamingData}
           />
         </div>
       ) : null}

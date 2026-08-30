@@ -432,7 +432,6 @@ export default function AutomaticTasksPage() {
     <div className="mx-auto max-w-7xl">
       <PageHeader
         title={t("自动任务")}
-		subtitle={t("按周期使用指定 SIM 卡或切换到指定 eSIM Profile，并在设备串行队列中执行短信、通话或漫游公网 IP 任务")}
         actions={<Button variant="primary" icon={<AddRegular />} onClick={() => edit()} disabled={!devices.length}>{t("添加任务")}</Button>}
       />
 

@@ -10,8 +10,10 @@ INSTALL_ROOT="/opt/vofly"
 BIN_DIR="/opt/vofly/bin"
 BINARY_PATH="/opt/vofly/bin/vofly"
 BACKUP_PATH="/opt/vofly/bin/vofly.bak"
+LINK_PATH="/usr/local/bin/vofly"
 ENV_DIR="/etc/vofly"
 ENV_FILE="/etc/vofly/env"
+INSTALLED_PACKAGES_FILE="/etc/vofly/installed-packages"
 SYSTEMD_UNIT="/etc/systemd/system/vofly.service"
 
 PURGE=0
@@ -68,6 +70,61 @@ safe_purge_path() {
   esac
 }
 
+remove_package_batch() {
+  manager=$1
+  packages=$2
+  set -f
+  set -- $packages
+  set +f
+  [ "$#" -gt 0 ] || return 0
+  case "$manager" in
+    apt)
+      command -v apt-get >/dev/null 2>&1 || return 1
+      run_root apt-get remove -y -- "$@"
+      ;;
+    dnf)
+      command -v dnf >/dev/null 2>&1 || return 1
+      run_root dnf remove -y -- "$@"
+      ;;
+    yum)
+      command -v yum >/dev/null 2>&1 || return 1
+      run_root yum remove -y -- "$@"
+      ;;
+    apk)
+      command -v apk >/dev/null 2>&1 || return 1
+      run_root apk del -- "$@"
+      ;;
+    pacman)
+      command -v pacman >/dev/null 2>&1 || return 1
+      run_root pacman -Rns --noconfirm -- "$@"
+      ;;
+    opkg)
+      command -v opkg >/dev/null 2>&1 || return 1
+      run_root opkg remove "$@"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+remove_recorded_packages() {
+  if [ ! -s "$INSTALLED_PACKAGES_FILE" ]; then
+    return 0
+  fi
+  failed=0
+  for manager in apt dnf yum apk pacman opkg; do
+    packages=$(awk -F'|' -v manager="$manager" '$1 == manager && $2 != "" {print $2}' "$INSTALLED_PACKAGES_FILE")
+    [ -n "$packages" ] || continue
+    printf '清理 vofly 安装的系统包（%s）。\n' "$manager"
+    if ! remove_package_batch "$manager" "$packages"; then
+      printf '系统包清理失败，保留记录以便重试：%s\n' "$INSTALLED_PACKAGES_FILE" >&2
+      failed=1
+    fi
+  done
+  return "$failed"
+}
+
 if command -v systemctl >/dev/null 2>&1; then
   run_root systemctl stop vofly.service >/dev/null 2>&1 || true
   run_root systemctl disable vofly.service >/dev/null 2>&1 || true
@@ -85,6 +142,21 @@ for file in "$BINARY_PATH" "$BACKUP_PATH"; do
     printf '已删除：%s\n' "$file"
   fi
 done
+
+if [ -f "$LINK_PATH" ] || [ -L "$LINK_PATH" ]; then
+  run_root rm -f "$LINK_PATH"
+  printf '已删除：%s\n' "$LINK_PATH"
+fi
+
+if ! remove_recorded_packages; then
+  printf '应用文件已删除，但系统包未全部清理；请再次运行卸载脚本重试。\n' >&2
+  exit 1
+fi
+
+if [ -f "$INSTALLED_PACKAGES_FILE" ]; then
+  run_root rm -f "$INSTALLED_PACKAGES_FILE"
+  printf '已删除：%s\n' "$INSTALLED_PACKAGES_FILE"
+fi
 
 if [ "$PURGE" = "1" ]; then
   safe_purge_path "$INSTALL_ROOT"

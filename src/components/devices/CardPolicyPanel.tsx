@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CardUiRegular } from "@fluentui/react-icons";
+import { ArrowRightRegular, CardUiRegular } from "@fluentui/react-icons";
 import { Button, Input, Tag, message } from "../ui";
 import { PolicySwitchCard } from "./PolicySwitchCard";
 import { CardPolicyAPN } from "./CardPolicyAPN";
@@ -7,7 +7,8 @@ import { useCardPolicyToggles } from "./useCardPolicyToggles";
 import { enableVoWiFi, disableVoWiFi, setFlightMode, updateCardPolicy } from "./deviceActions";
 import type { CardPolicy } from "../../types";
 import { useI18n } from "../../lib/i18n";
-import { apiMessage } from "../../api";
+import { api, apiMessage } from "../../api";
+import { hasEsimConfiguration } from "./cardPolicyPresentation";
 
 export interface CardPolicyPanelProps {
   deviceId: string;
@@ -15,16 +16,21 @@ export interface CardPolicyPanelProps {
   policy: CardPolicy | null;
   deviceOnline: boolean;
 	onPolicyChanged: () => void | Promise<void>;
+	onToggleRoamingData: (enabled: boolean) => Promise<boolean>;
+	onOpenEsim: () => void;
 	wifiCallingOnly?: boolean;
 	vowifiUnsupported?: boolean;
 }
 
-export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolicyChanged, wifiCallingOnly = false, vowifiUnsupported = false }: CardPolicyPanelProps) {
+export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolicyChanged, onToggleRoamingData, onOpenEsim, wifiCallingOnly = false, vowifiUnsupported = false }: CardPolicyPanelProps) {
   const { t } = useI18n();
   const operable = deviceOnline && !!iccid;
   const currentPolicy = policy?.iccid === iccid ? policy : null;
   const [customPhoneNumber, setCustomPhoneNumber] = useState(currentPolicy?.customPhoneNumber || "");
   const [phoneSaving, setPhoneSaving] = useState(false);
+  const [esimDetected, setEsimDetected] = useState(false);
+  const [dataPending, setDataPending] = useState(false);
+  const [dataFailed, setDataFailed] = useState(false);
   const flags = currentPolicy
     ? { vowifiEnabled: currentPolicy.vowifiEnabled, airplaneEnabled: currentPolicy.airplaneEnabled }
     : null;
@@ -38,6 +44,34 @@ export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolic
   const isManual = currentPolicy?.source === "user" || currentPolicy?.source === "manual";
   const sourceLabel = currentPolicy ? (isManual ? t("手动设置") : t("自动默认")) : "";
   const { local } = toggles;
+  const networkEnabled = currentPolicy?.networkEnabled ?? false;
+
+  useEffect(() => {
+    let mounted = true;
+    setEsimDetected(false);
+    if (!deviceId) return () => { mounted = false; };
+    api<{ chipInfo?: unknown; profiles?: unknown }>(`/devices/${encodeURIComponent(deviceId)}/esim`)
+      .then((snapshot) => {
+        if (mounted) setEsimDetected(hasEsimConfiguration(snapshot));
+      })
+      .catch(() => {
+        if (mounted) setEsimDetected(false);
+      });
+    return () => { mounted = false; };
+  }, [deviceId]);
+
+  const toggleRoamingData = async (enabled: boolean) => {
+    if (dataPending) return;
+    setDataPending(true);
+    setDataFailed(false);
+    const ok = await onToggleRoamingData(enabled);
+    setDataPending(false);
+    if (!ok) {
+      setDataFailed(true);
+      return;
+    }
+    await onPolicyChanged();
+  };
   const savedPhoneNumber = currentPolicy?.customPhoneNumber || "";
   const phoneChanged = customPhoneNumber.trim() !== savedPhoneNumber;
 
@@ -68,7 +102,7 @@ export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolic
         </div>
         <div>
           <div className="text-lg font-bold text-gray-900 dark:text-white">{t("卡策略")}</div>
-		  <div className="text-xs text-gray-500 dark:text-gray-400">{wifiCallingOnly ? t("USB SIM 读卡器仅用于 WiFi Calling，策略跟随 ICCID 保存") : t("VoWiFi / 飞行模式 开关跟着 SIM 卡走，切换即时生效")}</div>
+		  <div className="text-xs text-gray-500 dark:text-gray-400">{wifiCallingOnly ? t("USB SIM 读卡器仅用于 WiFi Calling，策略跟随 ICCID 保存") : t("VoWiFi / 飞行模式 / 漫游数据开关跟着 SIM 卡走，切换即时生效")}</div>
         </div>
       </div>
       {!iccid ? (
@@ -120,10 +154,17 @@ export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolic
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-			{!vowifiUnsupported ? <PolicySwitchCard
+		  {esimDetected ? (
+			<button type="button" onClick={onOpenEsim} className="ui-panel-muted flex w-full items-center justify-between gap-4 p-5 text-left transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/10">
+			  <div className="min-w-0">
+				<div className="text-sm font-bold text-gray-900 dark:text-white">{t("检测到 eSIM 配置")}</div>
+				<div className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t("VoWiFi、飞行模式和漫游数据请前往 eSIM 配置中按 Profile 管理")}</div>
+			  </div>
+			  <ArrowRightRegular className="h-5 w-5 flex-shrink-0 text-indigo-500" />
+			</button>
+		  ) : <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {!vowifiUnsupported ? <PolicySwitchCard
               title="VoWiFi"
-              subtitle={t("启用时强制关闭蜂窝射频；关闭 VoWiFi 后仍保持飞行模式")}
               tone="orange"
               checked={local.vowifiEnabled}
               disabled={!operable || toggles.vowifiPending}
@@ -131,9 +172,8 @@ export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolic
               failed={toggles.vowifiFailed}
               onToggle={toggles.onVoWiFiToggle}
 			/> : null}
-			{!wifiCallingOnly ? <PolicySwitchCard
+            {!wifiCallingOnly ? <PolicySwitchCard
               title={t("飞行模式")}
-              subtitle={t("只有手动关闭此开关才允许设备连接基站")}
               tone="indigo"
               checked={local.airplaneEnabled}
               disabled={!operable || local.vowifiEnabled || toggles.airplanePending}
@@ -141,7 +181,16 @@ export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolic
               failed={toggles.airplaneFailed}
               onToggle={toggles.onAirplaneToggle}
 			/> : null}
-          </div>
+			{!wifiCallingOnly ? <PolicySwitchCard
+			  title={t("漫游数据")}
+			  tone="indigo"
+			  checked={networkEnabled}
+			  disabled={!operable || dataPending}
+			  pending={dataPending}
+			  failed={dataFailed}
+			  onToggle={(value) => void toggleRoamingData(value)}
+			/> : null}
+		  </div>}
 		  {!wifiCallingOnly ? <CardPolicyAPN
             deviceId={deviceId}
             iccid={iccid}

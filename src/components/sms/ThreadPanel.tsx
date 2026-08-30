@@ -211,7 +211,7 @@ export function ThreadPanel(props: ThreadPanelProps) {
         </div>
       ) : (
         <div className="flex flex-1 items-center justify-center p-6">
-          <EmptyState title={t("请选择一个会话")} subtitle={t("从左侧联系人列表进入短信明细")} />
+          <EmptyState title={t("请选择一个会话")} />
         </div>
       )}
 {activeThread ? (

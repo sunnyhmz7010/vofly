@@ -22,12 +22,10 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 
 export function ToggleRow({
   title,
-  subtitle,
   checked,
   onChange,
 }: {
   title: string;
-  subtitle: string;
   checked: boolean;
   onChange: (value: boolean) => void;
 }) {
@@ -35,7 +33,6 @@ export function ToggleRow({
     <div className="ui-panel-muted flex items-center justify-between rounded-lg p-3">
       <div>
         <div className="text-sm font-bold text-gray-800 dark:text-gray-100">{title}</div>
-        <div className="text-xs text-gray-500">{subtitle}</div>
       </div>
       <Switch checked={checked} onChange={onChange} />
     </div>
