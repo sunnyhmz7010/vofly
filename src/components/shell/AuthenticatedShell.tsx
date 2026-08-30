@@ -29,9 +29,9 @@ import { listPlugins, type InstalledPlugin } from "../../extensions";
 const NAV = [
   { to: "/", label: "仪表盘", icon: BoardRegular, end: true },
   { to: "/devices", label: "设备管理", icon: RouterRegular },
+  { to: "/sms", label: "短信", icon: MailRegular },
   { to: "/phone", label: "通话", icon: CallRegular },
   { to: "/proxy", label: "代理管理", icon: GlobeRegular },
-  { to: "/sms", label: "短信检测", icon: MailRegular },
   { to: "/commands", label: "命令中心", icon: WindowConsoleRegular },
   { to: "/automatic-tasks", label: "自动任务", icon: SendClockRegular },
   { to: "/logs", label: "实时日志", icon: DocumentTextRegular },

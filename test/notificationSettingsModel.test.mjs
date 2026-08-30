@@ -19,6 +19,7 @@ const {
   buildFeishuBotPayload,
   buildWeComBotPayload,
   buildWeixinPayload,
+  buildMeoWPayload,
   formsFromNotifications,
 } = await import(moduleURL);
 
@@ -198,5 +199,18 @@ test("builds interactive bot notification payloads", () => {
     domain: "lark",
     allowed_user_ids: ["feishu-user"],
     allowed_group_ids: ["feishu-group"],
+  });
+});
+
+test("loads and builds MeoW notification settings", () => {
+  const forms = formsFromNotifications({ meow: { enabled: true, nickname: " Sunny " } });
+  assert.deepEqual(forms.meow, { enabled: true, nickname: " Sunny " });
+  assert.deepEqual(buildMeoWPayload({ enabled: true, nickname: " Sunny " }), {
+    enabled: true,
+    nickname: " Sunny ",
+  });
+  assert.deepEqual(buildNotificationsPayload(forms).meow, {
+    enabled: true,
+    nickname: " Sunny ",
   });
 });

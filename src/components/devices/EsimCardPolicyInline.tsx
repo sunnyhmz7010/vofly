@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { Button, Spinner } from "../ui";
+import { Button, Input, Spinner, message } from "../ui";
 import { PolicySwitchCard } from "./PolicySwitchCard";
 import { CardPolicyAPN } from "./CardPolicyAPN";
 import { useCardPolicyToggles } from "./useCardPolicyToggles";
 import { getCardPolicy, putCardPolicy, updateCardPolicy, enableVoWiFi, disableVoWiFi, setFlightMode } from "./deviceActions";
 import type { CardPolicy } from "../../types";
+import { apiMessage } from "../../api";
 import { useI18n } from "../../lib/i18n";
+import { isCardPolicyModeDisabled } from "./cardPolicyPresentation";
 
 export interface EsimCardPolicyInlineProps {
   deviceId: string;
@@ -23,6 +25,8 @@ export function EsimCardPolicyInline({ deviceId, iccid, isActiveCard, deviceOnli
   const [loading, setLoading] = useState(false);
 	const [networkPending, setNetworkPending] = useState(false);
 	const [networkFailed, setNetworkFailed] = useState(false);
+  const [customPhoneNumber, setCustomPhoneNumber] = useState("");
+  const [phoneSaving, setPhoneSaving] = useState(false);
 
   const mode = isActiveCard && deviceOnline ? "live" : "stored";
   const noteText = mode === "live" ? "" : deviceOnline ? t("改动将在此卡激活后生效") : t("设备离线，改动已保存，激活/上线后生效");
@@ -36,6 +40,7 @@ export function EsimCardPolicyInline({ deviceId, iccid, isActiveCard, deviceOnli
     try {
       const data = await getCardPolicy(iccid);
       setPolicy(data);
+      setCustomPhoneNumber(data.customPhoneNumber || "");
     } catch {
       setFailed(true);
     } finally {
@@ -53,6 +58,31 @@ export function EsimCardPolicyInline({ deviceId, iccid, isActiveCard, deviceOnli
     onChanged: onPolicyChanged,
   });
   const { local } = toggles;
+	const networkEnabled = policy?.networkEnabled ?? false;
+	const modeFlags = { networkEnabled, vowifiEnabled: local.vowifiEnabled, airplaneEnabled: local.airplaneEnabled };
+
+  useEffect(() => {
+    setCustomPhoneNumber(policy?.customPhoneNumber || "");
+  }, [iccid, policy?.customPhoneNumber]);
+
+	const savedPhoneNumber = policy?.customPhoneNumber || "";
+	const phoneChanged = customPhoneNumber.trim() !== savedPhoneNumber;
+
+  const saveCustomPhoneNumber = async () => {
+    if (phoneSaving || !phoneChanged) return;
+    setPhoneSaving(true);
+    try {
+      const saved = await updateCardPolicy(iccid, { customPhoneNumber: customPhoneNumber.trim() });
+      setPolicy(saved);
+      setCustomPhoneNumber(saved.customPhoneNumber || "");
+      message.success(saved.customPhoneNumber ? t("自定义手机号已保存") : t("已恢复显示系统读取的号码"));
+      await onPolicyChanged();
+    } catch (error) {
+      message.error(apiMessage(error) || t("保存自定义手机号失败"));
+    } finally {
+      setPhoneSaving(false);
+    }
+  };
 
 	const toggleNetwork = async (enabled: boolean) => {
 	  if (!policy || networkPending) return;
@@ -97,11 +127,41 @@ export function EsimCardPolicyInline({ deviceId, iccid, isActiveCard, deviceOnli
         <>
           {noteText ? <div className="text-[11px] text-amber-600 dark:text-amber-400">{noteText}</div> : null}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="ui-panel-muted p-3 sm:col-span-2">
+              <div className="mb-1.5 text-xs font-bold uppercase tracking-wider text-gray-500">{t("自定义手机号")}</div>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={customPhoneNumber}
+                  onChange={(event) => setCustomPhoneNumber(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") void saveCustomPhoneNumber();
+                  }}
+                  placeholder={t("请输入手机号（可留空）")}
+                  inputMode="tel"
+                  maxLength={32}
+                  disabled={phoneSaving}
+                  aria-label={t("自定义手机号")}
+                />
+                <Button
+                  variant="primary"
+                  size="small"
+                  className="shrink-0 !border-0"
+                  loading={phoneSaving}
+                  disabled={!phoneChanged}
+                  onClick={() => void saveCustomPhoneNumber()}
+                >
+                  {t("保存")}
+                </Button>
+              </div>
+              <div className="mt-1.5 text-[11px] leading-4 text-gray-500 dark:text-gray-400">
+                {t("支持开头的 + 和 3-20 位数字；留空时显示系统从 SIM/网络读取的号码")}
+              </div>
+            </div>
             <PolicySwitchCard
               compact
               title="VoWiFi"
               checked={local.vowifiEnabled}
-              disabled={toggles.vowifiPending}
+              disabled={toggles.vowifiPending || isCardPolicyModeDisabled("vowifi", modeFlags)}
               pending={toggles.vowifiPending}
               failed={toggles.vowifiFailed}
               onToggle={toggles.onVoWiFiToggle}
@@ -110,7 +170,7 @@ export function EsimCardPolicyInline({ deviceId, iccid, isActiveCard, deviceOnli
               compact
               title={t("飞行")}
               checked={local.airplaneEnabled}
-              disabled={local.vowifiEnabled || toggles.airplanePending}
+              disabled={local.vowifiEnabled || toggles.airplanePending || isCardPolicyModeDisabled("airplane", modeFlags)}
               pending={toggles.airplanePending}
               failed={toggles.airplaneFailed}
               onToggle={toggles.onAirplaneToggle}
@@ -118,8 +178,8 @@ export function EsimCardPolicyInline({ deviceId, iccid, isActiveCard, deviceOnli
 			<PolicySwitchCard
 			  compact
 			  title={t("漫游数据")}
-			  checked={policy?.networkEnabled ?? false}
-			  disabled={networkPending || (mode === "live" && !onToggleRoamingData)}
+			  checked={networkEnabled}
+			  disabled={networkPending || (mode === "live" && !onToggleRoamingData) || isCardPolicyModeDisabled("network", modeFlags)}
 			  pending={networkPending}
 			  failed={networkFailed}
 			  onToggle={(value) => void toggleNetwork(value)}

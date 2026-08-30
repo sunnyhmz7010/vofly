@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { CallRegular, MicRegular, QrCode24Regular, Speaker0Regular } from "@fluentui/react-icons";
 import { ApiError, api, apiMessage, camelize } from "../api";
 import { QrSendModal, type QrSendPayload } from "../components/QrSendModal";
 import { Button, Input, PageHeader, Select, StatusDot, Tag } from "../components/ui";
 import { tf, useI18n } from "../lib/i18n";
 import { usePhoneControlLease } from "../lib/phoneLease";
+import { requestedPhoneDeviceId } from "../lib/phoneNavigation";
 
 // 独立通话页：跨设备拨号、当前通话、持久化通话记录与录音回放。
 // 后端契约：/devices、/devices/{id}/calls、/devices/{id}/calls/{dial|answer|hangup}、
@@ -311,6 +313,7 @@ function recordingMimeType(recordingPath: string | undefined) {
 
 export default function PhonePage() {
   const { t } = useI18n();
+  const [searchParams] = useSearchParams();
   const [devices, setDevices] = useState<DeviceListItem[]>([]);
   const [deviceId, setDeviceId] = useState("");
   const [callsPayload, setCallsPayload] = useState<CallsPayload | null>(null);
@@ -341,11 +344,16 @@ export default function PhonePage() {
       const res = await api<{ devices?: DeviceListItem[] }>("/devices");
       const list = camelize<DeviceListItem[]>(res.devices || []);
       setDevices(list);
-      setDeviceId((current) => current || list[0]?.id || "");
+      const requested = requestedPhoneDeviceId(`?${searchParams.toString()}`);
+      setDeviceId((current) => {
+        if (requested && list.some((device) => device.id === requested)) return requested;
+        if (current && list.some((device) => device.id === current)) return current;
+        return list[0]?.id || "";
+      });
     } catch (error) {
       setLoadError(apiMessage(error));
     }
-  }, []);
+  }, [searchParams]);
 
   const refresh = useCallback(async () => {
     if (!deviceId) return;

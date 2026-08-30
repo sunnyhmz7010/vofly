@@ -14,6 +14,7 @@ import {
   buildBarkPayload,
   buildEmailPayload,
   buildLarkPayload,
+  buildMeoWPayload,
   buildNotificationsPayload,
   buildWecomPayload,
   buildWebhookPayload,
@@ -22,7 +23,7 @@ import {
   type NotifyForms,
 } from "../components/settings/model";
 import { FeishuBotTab, PushplusTab, QQTab, TelegramTab, WeComBotTab, WeixinTab } from "../components/settings/BotTabs";
-import { BarkTab, EmailTab, LarkTab, WebhookTab, WecomTab } from "../components/settings/PushTabs";
+import { BarkTab, EmailTab, LarkTab, MeoWTab, WebhookTab, WecomTab } from "../components/settings/PushTabs";
 import { PluginsCard } from "../components/settings/PluginsCard";
 import { HTTPSCard } from "../components/settings/HTTPSCard";
 import { SMSRateLimitCard } from "../components/settings/SMSRateLimitCard";
@@ -41,6 +42,7 @@ const NOTIFY_TABS = [
   { key: "webhook", label: "Webhook" },
   { key: "wecom", label: "企业微信消息推送" },
   { key: "lark", label: "飞书 / Lark 群机器人" },
+  { key: "meow", label: "MeoW" },
 ];
 
 const EMPTY_SYSTEM_INFO: SystemInfo = { version: "", buildTime: "", config: "" };
@@ -60,6 +62,7 @@ export default function SettingsPage() {
   const [testingEmail, setTestingEmail] = useState(false);
   const [testingWecom, setTestingWecom] = useState(false);
   const [testingLark, setTestingLark] = useState(false);
+  const [testingMeow, setTestingMeow] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [applyingUpdate, setApplyingUpdate] = useState(false);
@@ -331,6 +334,21 @@ export default function SettingsPage() {
     }
   }, [forms.lark]);
 
+  const onTestMeow = useCallback(async () => {
+		setTestingMeow(true);
+		try {
+			await api("/settings/notifications/meow/test", {
+				method: "POST",
+				body: buildMeoWPayload(forms.meow, true),
+			});
+			message.success(t("测试通知已发送"));
+		} catch (error) {
+			message.error(apiMessage(error) || t("MeoW 通知测试失败"));
+		} finally {
+			setTestingMeow(false);
+		}
+	}, [forms.meow, t]);
+
   const onCheckUpdate = useCallback(async () => {
     setCheckingUpdate(true);
     try {
@@ -495,6 +513,9 @@ export default function SettingsPage() {
               ) : null}
               {activeTab === "lark" ? (
                 <LarkTab value={forms.lark} onChange={(p) => updateChannel("lark", p)} testing={testingLark} onTest={onTestLark} />
+              ) : null}
+              {activeTab === "meow" ? (
+                <MeoWTab value={forms.meow} onChange={(p) => updateChannel("meow", p)} testing={testingMeow} onTest={onTestMeow} />
               ) : null}
             </div>
           )}

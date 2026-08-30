@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowRightRegular, CardUiRegular } from "@fluentui/react-icons";
-import { Button, Input, Tag, message } from "../ui";
+import { Button, Input, message } from "../ui";
 import { PolicySwitchCard } from "./PolicySwitchCard";
 import { CardPolicyAPN } from "./CardPolicyAPN";
 import { useCardPolicyToggles } from "./useCardPolicyToggles";
@@ -8,7 +8,7 @@ import { enableVoWiFi, disableVoWiFi, setFlightMode, updateCardPolicy } from "./
 import type { CardPolicy } from "../../types";
 import { useI18n } from "../../lib/i18n";
 import { api, apiMessage } from "../../api";
-import { hasEsimConfiguration } from "./cardPolicyPresentation";
+import { hasEsimConfiguration, isCardPolicyModeDisabled } from "./cardPolicyPresentation";
 
 export interface CardPolicyPanelProps {
   deviceId: string;
@@ -41,10 +41,9 @@ export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolic
     onChanged: onPolicyChanged,
   });
 
-  const isManual = currentPolicy?.source === "user" || currentPolicy?.source === "manual";
-  const sourceLabel = currentPolicy ? (isManual ? t("手动设置") : t("自动默认")) : "";
   const { local } = toggles;
   const networkEnabled = currentPolicy?.networkEnabled ?? false;
+  const modeFlags = { networkEnabled, vowifiEnabled: local.vowifiEnabled, airplaneEnabled: local.airplaneEnabled };
 
   useEffect(() => {
     let mounted = true;
@@ -121,7 +120,6 @@ export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolic
                 <div className="mb-0.5 text-xs font-bold uppercase tracking-wider text-gray-500">{t("当前卡 ICCID")}</div>
                 <div className="truncate font-mono text-sm text-gray-800 dark:text-gray-100" title={iccid}>{iccid}</div>
               </div>
-              {sourceLabel ? <Tag type={isManual ? "primary" : "info"}>{sourceLabel}</Tag> : null}
             </div>
             <div className="ui-panel-muted p-3">
               <div className="mb-1.5 text-xs font-bold uppercase tracking-wider text-gray-500">{t("自定义手机号")}</div>
@@ -167,7 +165,7 @@ export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolic
               title="VoWiFi"
               tone="orange"
               checked={local.vowifiEnabled}
-              disabled={!operable || toggles.vowifiPending}
+              disabled={!operable || toggles.vowifiPending || isCardPolicyModeDisabled("vowifi", modeFlags)}
               pending={toggles.vowifiPending}
               failed={toggles.vowifiFailed}
               onToggle={toggles.onVoWiFiToggle}
@@ -176,7 +174,7 @@ export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolic
               title={t("飞行模式")}
               tone="indigo"
               checked={local.airplaneEnabled}
-              disabled={!operable || local.vowifiEnabled || toggles.airplanePending}
+              disabled={!operable || local.vowifiEnabled || toggles.airplanePending || isCardPolicyModeDisabled("airplane", modeFlags)}
               pending={toggles.airplanePending}
               failed={toggles.airplaneFailed}
               onToggle={toggles.onAirplaneToggle}
@@ -185,7 +183,7 @@ export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolic
 			  title={t("漫游数据")}
 			  tone="indigo"
 			  checked={networkEnabled}
-			  disabled={!operable || dataPending}
+			  disabled={!operable || dataPending || isCardPolicyModeDisabled("network", modeFlags)}
 			  pending={dataPending}
 			  failed={dataFailed}
 			  onToggle={(value) => void toggleRoamingData(value)}

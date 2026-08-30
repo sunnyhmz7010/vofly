@@ -103,6 +103,11 @@ export interface LarkForm {
 	payloadTemplate: string;
 }
 
+export interface MeoWForm {
+	enabled: boolean;
+	nickname: string;
+}
+
 export const DEFAULT_WECOM_PAYLOAD_TEMPLATE = `{
   "msgtype": "text",
   "text": {
@@ -129,6 +134,7 @@ export interface NotifyForms {
 	pushplus: PushplusForm;
 	wecom: WecomForm;
 	lark: LarkForm;
+	meow: MeoWForm;
 }
 
 // 系统保留头，自定义同名头会被忽略（品牌 vofly）
@@ -209,6 +215,7 @@ export function formsFromNotifications(data: Partial<NotificationSettings>): Not
 	const pushplus = asRecord(data.pushplus);
 	const wecom = asRecord(data.wecom);
 	const lark = asRecord(data.lark);
+	const meow = asRecord(data.meow);
   return {
     telegram: {
       enabled: !!telegram.enabled,
@@ -295,6 +302,10 @@ export function formsFromNotifications(data: Partial<NotificationSettings>): Not
 			signingEnabled: !!lark.signingEnabled,
 			secret: lark.signingEnabled ? str(lark.secret) : "",
 			payloadTemplate: str(lark.payloadTemplate ?? lark.payload_template) || DEFAULT_LARK_PAYLOAD_TEMPLATE,
+		},
+		meow: {
+			enabled: !!meow.enabled,
+			nickname: str(meow.nickname),
 		},
 	};
 }
@@ -413,6 +424,13 @@ export function buildLarkPayload(form: LarkForm, forTest = false) {
 	return payload;
 }
 
+export function buildMeoWPayload(form: MeoWForm, forTest = false) {
+	return {
+		enabled: !!form.enabled,
+		nickname: forTest ? String(form.nickname || "").trim() : form.nickname || "",
+	};
+}
+
 export function buildNotificationsPayload(forms: NotifyForms) {
   return {
     telegram: {
@@ -441,5 +459,6 @@ export function buildNotificationsPayload(forms: NotifyForms) {
 		bark: buildBarkPayload(forms.bark),
 		wecom: buildWecomPayload(forms.wecom),
 		lark: buildLarkPayload(forms.lark),
+		meow: buildMeoWPayload(forms.meow),
 	};
 }

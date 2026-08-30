@@ -65,3 +65,24 @@ test("security card uses the requested Chinese labels", async () => {
   assert.match(cards, /t\("确认更改"\)/);
   assert.doesNotMatch(cards, /t\("更新访问凭证"\)|t\("更新凭证"\)/);
 });
+
+test("sidebar places SMS above calls and uses the short SMS label", async () => {
+  const shell = await source("src/components/shell/AuthenticatedShell.tsx");
+  const smsIndex = shell.indexOf('{ to: "/sms", label: "短信"');
+  const callIndex = shell.indexOf('{ to: "/phone", label: "通话"');
+
+  assert.ok(smsIndex >= 0, "sidebar SMS entry is missing");
+  assert.ok(callIndex > smsIndex, "SMS must appear before calls");
+  assert.doesNotMatch(shell, /label: "短信检测"/);
+});
+
+test("device and SMS pages expose the requested navigation labels", async () => {
+  const header = await source("src/components/devices/DeviceDetailHeader.tsx");
+  const devices = await source("src/pages/DevicesPage.tsx");
+  const sms = await source("src/pages/SmsPage.tsx");
+
+  assert.match(header, /onOpenCall/);
+  assert.match(devices, /phonePathForDevice\(id\)/);
+  assert.match(sms, /title=\{t\("短信"\)\}/);
+  assert.match(sms, /d\.id !== "all" \? <div className="truncate text-xs text-gray-400">\{d\.id\}<\/div> : null/);
+});

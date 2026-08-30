@@ -19,6 +19,7 @@ import { CarrierWebsheetDialog, type CarrierWebsheet } from "../components/devic
 import { copyText, isDeviceOnline, isQmiControl, isRecoveringPhase, readEventStream, simOperatorDisplay } from "../components/devices/shared";
 import type { AddDeviceForm, DeviceDetail, LoadError } from "../components/devices/types";
 import { tf, useI18n } from "../lib/i18n";
+import { phonePathForDevice } from "../lib/phoneNavigation";
 
 const VALID_TABS = new Set(["overview", "esim", "at", "ussd", "config", "card"]);
 const CELLULAR_DATA_POLL_MS = 1000;
@@ -369,6 +370,10 @@ export default function DevicesPage() {
   const handleOpenSms = useCallback(() => {
     const id = selectedIdRef.current;
     if (id) navigate(`/sms?device=${id}`);
+  }, [navigate]);
+  const handleOpenCall = useCallback(() => {
+    const id = selectedIdRef.current;
+    if (id) navigate(phonePathForDevice(id));
   }, [navigate]);
   const handleSaveConfig = useCallback(async () => {
     const id = selectedIdRef.current.trim();
@@ -748,6 +753,7 @@ export default function DevicesPage() {
                 onReconnectVowifi={handleReconnectVoWiFi}
                 onRebootModem={handleRebootModem}
                 onOpenSms={handleOpenSms}
+                onOpenCall={handleOpenCall}
 				wifiCallingOnly={isReader}
 				modemControlOnly={isNative410}
               />
