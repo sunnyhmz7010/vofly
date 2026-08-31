@@ -1124,6 +1124,24 @@ export default function PhonePage() {
                       ) : (
                         <p className="mt-2 text-gray-400">{t("暂无 AI 转写")}</p>
                       )}
+                      <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("AI 时间线")}</div>
+                      {recordDetail.events.filter((event) => event.type !== "transcript").length > 0 ? (
+                        <div className="mt-2 space-y-1">
+                          {recordDetail.events
+                            .filter((event) => event.type !== "transcript")
+                            .map((event, index) => (
+                              <p key={event.id ?? index} className="text-gray-500 dark:text-gray-400">
+                                <span className="font-semibold">
+                                  {event.type}
+                                  {event.createdAt ? ` · ${formatClock(event.createdAt)}` : ""}：
+                                </span>
+                                {aiEventText(event)}
+                              </p>
+                            ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-gray-400">{t("暂无 AI 时间线事件")}</p>
+                      )}
                       <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("AI 摘要")}</div>
                       {aiSummaryText(recordDetail.summary) ? (
                         <p className="mt-2 text-gray-500 dark:text-gray-400">{aiSummaryText(recordDetail.summary)}</p>

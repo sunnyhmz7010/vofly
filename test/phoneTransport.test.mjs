@@ -57,6 +57,9 @@ test("phone page loads AI call record details for transcripts and summaries", as
   assert.match(phonePage, /\/call-records\/\$\{encodeURIComponent\(record\.callId\)\}/);
   assert.match(phonePage, /AI 通话详情/);
   assert.match(phonePage, /AI 转写/);
+  assert.match(phonePage, /AI 时间线/);
+  assert.match(phonePage, /recordDetail\.events\.filter\(\(event\) => event\.type !== "transcript"\)/);
+  assert.match(phonePage, /aiEventText\(event\)/);
   assert.match(phonePage, /AI 摘要/);
 });
 
