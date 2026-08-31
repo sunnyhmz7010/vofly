@@ -115,7 +115,7 @@ export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolic
       {iccid ? (
         <div className="space-y-3">
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            <div className="ui-panel-muted flex min-w-0 items-center justify-between gap-3 p-3">
+            <div className={`ui-panel-muted flex min-w-0 items-center justify-between gap-3 p-3 ${esimDetected ? "lg:col-span-2" : ""}`}>
               <div className="min-w-0">
                 <div className="mb-0.5 text-xs font-bold uppercase tracking-wider text-gray-500">{t("当前卡 ICCID")}</div>
                 <div className="truncate font-mono text-sm text-gray-800 dark:text-gray-100" title={iccid}>{iccid}</div>
@@ -156,7 +156,7 @@ export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolic
 			<button type="button" onClick={onOpenEsim} className="ui-panel-muted flex w-full items-center justify-between gap-4 p-5 text-left transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/10">
 			  <div className="min-w-0">
 				<div className="text-sm font-bold text-gray-900 dark:text-white">{t("检测到 eSIM 配置")}</div>
-				<div className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t("VoWiFi、飞行模式和漫游数据请前往 eSIM 配置中按 Profile 管理")}</div>
+				<div className="mt-1 text-xs text-gray-500 dark:text-gray-400">{t("VoWiFi、飞行模式、漫游数据和自定义手机号请前往 eSIM 配置中按 Profile 管理")}</div>
 			  </div>
 			  <ArrowRightRegular className="h-5 w-5 flex-shrink-0 text-indigo-500" />
 			</button>

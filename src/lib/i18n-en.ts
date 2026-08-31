@@ -1063,7 +1063,7 @@ export const EN_DICT: Record<string, string> = {
   "漫游数据": "Roaming Data",
 	"VoWiFi / 飞行模式 / 漫游数据开关跟着 SIM 卡走，切换即时生效": "VoWiFi, airplane mode, and roaming data follow the selected SIM and apply immediately",
 	"检测到 eSIM 配置": "eSIM configuration detected",
-	"VoWiFi、飞行模式和漫游数据请前往 eSIM 配置中按 Profile 管理": "Manage VoWiFi, airplane mode, and roaming data per Profile in eSIM configuration",
+	"VoWiFi、飞行模式、漫游数据和自定义手机号请前往 eSIM 配置中按 Profile 管理": "Manage VoWiFi, airplane mode, roaming data, and custom phone number per Profile in eSIM configuration",
 	"公网 IP": "Public IP",
 	"检测": "Detect",
 	"国家/地区": "Country / Region",
