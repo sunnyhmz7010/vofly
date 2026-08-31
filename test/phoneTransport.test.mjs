@@ -199,6 +199,22 @@ test("phone page loads call playbooks and forwards task package context", async 
   assert.match(dict, /"热线情报": "Hotline playbook"/);
 });
 
+test("phone page manages profile task packages and max call seconds", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+  const dict = await source("src/lib/i18n-en.ts");
+
+  assert.match(phonePage, /maxCallSeconds\?: number/);
+  assert.match(phonePage, /taskPackageText\?: string/);
+  assert.match(phonePage, /function parseProfileTaskPackage\(\)/);
+  assert.match(phonePage, /task_package: parseProfileTaskPackage\(\)/);
+  assert.match(phonePage, /max_call_seconds: profileForm\.maxCallSeconds \|\| undefined/);
+  assert.match(phonePage, /max_call_seconds: selectedAIPreset\.maxCallSeconds/);
+  assert.match(phonePage, /setProfileForm\(\(current\) => \(\{ \.\.\.current, maxCallSeconds: Number\(event\.target\.value\) \|\| undefined \}\)\)/);
+  assert.match(phonePage, /任务包 JSON/);
+  assert.match(phonePage, /时长上限（秒）/);
+  assert.match(dict, /"任务包 JSON": "Task package JSON"/);
+});
+
 test("phone page manages local AI number profiles", async () => {
   const phonePage = await source("src/pages/PhonePage.tsx");
   const dict = await source("src/lib/i18n-en.ts");

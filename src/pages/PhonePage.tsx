@@ -86,6 +86,7 @@ interface AICallPreset {
   dtmfSpokenFollowup?: boolean;
   resultVerification?: "none" | "carrier_sms" | string;
   taskPackage?: Record<string, Record<string, string>>;
+  maxCallSeconds?: number;
 }
 
 interface AICallPlaybook {
@@ -108,6 +109,9 @@ interface ManagedNumberProfile {
   openingMode?: "say" | "wait" | string;
   dtmfSpokenFollowup?: boolean;
   resultVerification?: "none" | "carrier_sms" | string;
+  taskPackage?: Record<string, Record<string, string>>;
+  taskPackageText?: string;
+  maxCallSeconds?: number;
 }
 
 interface AIBatchQueueStatus {
@@ -704,6 +708,9 @@ export default function PhonePage() {
       openingMode: "say",
       dtmfSpokenFollowup: false,
       resultVerification: "none",
+      taskPackage: undefined,
+      taskPackageText: "",
+      maxCallSeconds: undefined,
     };
   }
 
@@ -733,6 +740,9 @@ export default function PhonePage() {
       openingMode: profileText(profile.openingMode) || "say",
       dtmfSpokenFollowup: profile.dtmfSpokenFollowup === true,
       resultVerification: profileText(profile.resultVerification) || "none",
+      taskPackage: profile.taskPackage,
+      taskPackageText: profile.taskPackage ? JSON.stringify(profile.taskPackage, null, 2) : "",
+      maxCallSeconds: typeof profile.maxCallSeconds === "number" ? profile.maxCallSeconds : undefined,
     };
   }
 
@@ -854,7 +864,15 @@ export default function PhonePage() {
       opening_mode: profileForm.openingMode || "say",
       dtmf_spoken_followup: profileForm.dtmfSpokenFollowup === true,
       result_verification: profileForm.resultVerification || "none",
+      task_package: parseProfileTaskPackage(),
+      max_call_seconds: profileForm.maxCallSeconds || undefined,
     };
+  }
+
+  function parseProfileTaskPackage() {
+    const text = profileForm.taskPackageText?.trim();
+    if (!text) return undefined;
+    return JSON.parse(text) as Record<string, Record<string, string>>;
   }
 
   async function saveManagedProfile() {
@@ -938,6 +956,7 @@ export default function PhonePage() {
       dtmf_spoken_followup: selectedAIPreset.dtmfSpokenFollowup,
       result_verification: selectedAIPreset.resultVerification,
       task_package: selectedAIPreset.taskPackage,
+      max_call_seconds: selectedAIPreset.maxCallSeconds,
     };
   }
 
@@ -1434,6 +1453,22 @@ export default function PhonePage() {
                   placeholder={t("接通后的第一句话")}
                   disabled={profileBusy}
                   rows={2}
+                />
+                <label className="mb-1 mt-2 block font-semibold text-gray-500 dark:text-gray-400">{t("时长上限（秒）")}</label>
+                <Input
+                  value={profileForm.maxCallSeconds ? String(profileForm.maxCallSeconds) : ""}
+                  onChange={(event) => setProfileForm((current) => ({ ...current, maxCallSeconds: Number(event.target.value) || undefined }))}
+                  placeholder="3600"
+                  disabled={profileBusy}
+                />
+                <label className="mb-1 mt-2 block font-semibold text-gray-500 dark:text-gray-400">{t("任务包 JSON")}</label>
+                <textarea
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/10 dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
+                  value={profileForm.taskPackageText || ""}
+                  onChange={(event) => setProfileForm((current) => ({ ...current, taskPackageText: event.target.value }))}
+                  placeholder={t("例如：{\"verification\":{\"account_pin\":\"1234\"}}")}
+                  disabled={profileBusy}
+                  rows={4}
                 />
                 <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
                   <Select
