@@ -1302,6 +1302,7 @@ export const EN_DICT: Record<string, string> = {
   "当前为基站直连（电路交换）通话，网页音频仅 VoWiFi IMS 通话可用":
     "Currently on the cellular (circuit-switched) call path; browser audio is only available for VoWiFi IMS calls",
   "VoWiFi IMS": "VoWiFi IMS",
+  "VoLTE IMS": "VoLTE IMS",
   "未注册 IMS": "IMS not registered",
   "拨号号码": "Dial number",
   "例如 +12025550123 或 *100#": "e.g. +12025550123 or *100#",

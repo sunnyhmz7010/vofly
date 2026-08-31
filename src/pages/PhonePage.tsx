@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { CallRegular, MicRegular, QrCode24Regular, Speaker0Regular } from "@fluentui/react-icons";
 import { ApiError, api, apiMessage, camelize } from "../api";
 import { QrSendModal, type QrSendPayload } from "../components/QrSendModal";
-import { Button, Input, PageHeader, Select, StatusDot, Tag } from "../components/ui";
+import { Button, Input, PageHeader, Select, StatusDot, type StatusTone, Tag } from "../components/ui";
 import { tf, useI18n } from "../lib/i18n";
 import { usePhoneControlLease } from "../lib/phoneLease";
 import { requestedPhoneDeviceId } from "../lib/phoneNavigation";
@@ -35,7 +35,7 @@ interface CallItem {
 
 interface CallsPayload {
   deviceId: string;
-  transport: "vowifi" | "cellular" | string;
+  transport: "vowifi" | "volte" | "cellular" | string;
   calls: CallItem[];
 }
 
@@ -55,6 +55,19 @@ interface CallRecord {
 }
 
 const SAMPLE_RATE = 8000;
+
+function callTransportPresentation(transport: CallsPayload["transport"]): { text: string; tone: StatusTone; webAudioReady: boolean } {
+  switch (transport) {
+    case "vowifi":
+      return { text: "VoWiFi IMS", tone: "success", webAudioReady: true };
+    case "volte":
+      return { text: "VoLTE IMS", tone: "success", webAudioReady: true };
+    case "cellular":
+      return { text: "蜂窝通话", tone: "warning", webAudioReady: false };
+    default:
+      return { text: "未注册 IMS", tone: "neutral", webAudioReady: false };
+  }
+}
 
 function isActiveCall(call: CallItem) {
   return call.state !== "ended" && call.state !== "failed";
@@ -389,7 +402,8 @@ export default function PhonePage() {
 
   const activeCall = callsPayload?.calls.find(isActiveCall) || null;
   const transport = callsPayload?.transport || "";
-  const vowifiReady = transport === "vowifi";
+  const transportPresentation = callTransportPresentation(transport);
+  const webAudioReady = transportPresentation.webAudioReady;
   const dtmfAvailable = transport === "vowifi" || transport === "volte";
 
   // 通话切换或结束后清空最近按键提示。
@@ -408,7 +422,7 @@ export default function PhonePage() {
 
   useEffect(() => {
     const wantMedia =
-      !!deviceId && vowifiReady && !!activeCall && activeCall.state === "active" && activeCall.mediaReady === true;
+      !!deviceId && webAudioReady && !!activeCall && activeCall.state === "active" && activeCall.mediaReady === true;
     const callId = activeCall?.id || "";
     if (wantMedia && !mediaConnected && mediaCallIdRef.current !== callId) {
       mediaCallIdRef.current = callId;
@@ -431,7 +445,7 @@ export default function PhonePage() {
       webrtcRef.current = null;
       mediaCallIdRef.current = "";
     }
-  }, [deviceId, vowifiReady, activeCall, mediaConnected]);
+  }, [deviceId, webAudioReady, activeCall, mediaConnected]);
 
   useEffect(
     () => () => {
@@ -570,8 +584,8 @@ export default function PhonePage() {
             <div className="mt-3 flex items-center justify-between">
               <label className="text-xs font-bold text-gray-500 dark:text-gray-400">{t("拨号号码")}</label>
               <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-                <StatusDot tone={vowifiReady ? "success" : "neutral"} />
-                {vowifiReady ? t("VoWiFi IMS") : t("未注册 IMS")}
+                <StatusDot tone={transportPresentation.tone} />
+                {t(transportPresentation.text)}
               </div>
             </div>
             <div className="mt-2 flex gap-2">
