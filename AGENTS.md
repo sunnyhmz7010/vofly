@@ -155,6 +155,23 @@ vofly/
 - 推送前先确认目标仓库和分支正确。
 - 如果需要同时推动前后端变更，分别提交到各自仓库，再分别推送。
 
+## 上游同步
+
+本仓库从 [MengMengCode/VoCat](https://github.com/MengMengCode/VoCat) web 代码 fork 而来（见首次提交 `e438c01`），需定期同步上游前端功能、UI 修复和安全补丁。
+
+### 同步方法
+
+1. 查看上游新提交：对比 VoCat main 分支与本仓库上次同步点之间的差异
+2. 筛选适用提交：根据模块路径和功能相关性选择性移植，适配模块路径和组件命名
+3. 逐个移植并验证：每个提交通过 `npm test` + `npm run build` 后提交
+4. 记录同步历史于下方表格
+
+### 同步记录
+
+| 日期 | VoCat 提交 | 说明 | 本仓库 commit |
+|------|-----------|------|--------------|
+| （暂无） | — | 前端仓首次同步尚未执行 | — |
+
 ## 临时待办：查询中心重构（剩余 Task 3–7，完成后删除本节）
 
 **进度（已核对两仓代码与提交）**：完整实施计划与设计规格在 vofly-backend 仓库：`docs/superpowers/plans/2026-08-30-query-center.md`（384 行，逐步 TDD 步骤以它为准）与 `docs/superpowers/specs/2026-08-30-query-center-design.md`。已完成：Task 1 数据模型（b32d85a）、Task 2 卡资料 API（aca82a0），并带 6 个后续修复（a67db86 补测试、e621201/332ade8/07de29a/c5b4f1b/9ef8c22 修复）；`go build ./...` 与 `go test ./internal/store ./internal/balance ./internal/cardresource -count=1`（90 例）当前全绿。**剩余：Task 3、4（vofly-backend），Task 5、6（本仓库），Task 7（双仓验收）。**
