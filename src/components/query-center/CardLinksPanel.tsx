@@ -162,7 +162,7 @@ export function CardLinksPanel({
   const renewHref = toHttpHref(form.renewUrl.trim());
 
   return (
-    <div className="min-h-[320px] space-y-4 p-4 sm:p-5">
+    <div className="space-y-4 p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <Tag type={customized ? "primary" : "info"}>{customized ? t("自定义配置") : t("系统默认")}</Tag>
         <div className="flex items-center gap-2">

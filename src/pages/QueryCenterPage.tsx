@@ -272,15 +272,21 @@ export default function QueryCenterPage() {
                       {t("返回")}
                     </Button>
                   ) : null}
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-bold text-gray-800 dark:text-gray-100">
-                      {selectedCard?.label || selectedIccid}
+                  {selectedCard ? (
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-bold text-gray-800 dark:text-gray-100">
+                        {selectedCard.label || selectedIccid}
+                      </div>
+                      <div className="truncate text-xs text-gray-400">
+                        {selectedIccid}
+                        {selectedCard.active ? ` · ${t("当前激活")}` : ""}
+                      </div>
                     </div>
-                    <div className="truncate text-xs text-gray-400">
-                      {selectedIccid}
-                      {selectedCard?.active ? ` · ${t("当前激活")}` : ""}
+                  ) : (
+                    <div className="min-w-0 text-sm text-gray-400">
+                      {t("未选择卡或Profile")}
                     </div>
-                  </div>
+                  )}
                 </div>
                 <Tabs
                   className="mt-3"
@@ -307,8 +313,8 @@ export default function QueryCenterPage() {
                     />
                   )
                 ) : (
-                  <div className="flex h-full min-h-[320px] items-center justify-center p-8 text-center text-sm text-gray-400">
-                    {t("未选择卡或Profile")}
+                  <div className="flex h-full items-center justify-center p-8 text-center text-sm text-gray-400">
+                    {t("请选择左侧的卡或 Profile 查看余额、卡资料与计划")}
                   </div>
                 )}
               </div>
