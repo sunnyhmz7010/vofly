@@ -73,6 +73,7 @@ interface AICallEvent {
   type: string;
   role?: string;
   text?: string;
+  payloadJson?: string;
   createdAt?: string;
 }
 
@@ -146,6 +147,28 @@ function aiSummaryText(summary?: AICallSummary) {
   } catch {
     return raw;
   }
+}
+
+function mergeAICallEvents(current: AICallEvent[], next: AICallEvent[]) {
+  const merged = new Map<string, AICallEvent>();
+  for (const event of [...current, ...next]) {
+    const key = event.id ? String(event.id) : `${event.createdAt || ""}:${event.type}:${event.role || ""}:${event.text || ""}`;
+    merged.set(key, event);
+  }
+  return [...merged.values()].sort((left, right) => (left.id || 0) - (right.id || 0));
+}
+
+function aiEventText(event: AICallEvent) {
+  if (event.type === "transcript") return event.text || "";
+  if (event.type === "tool_call") {
+    try {
+      const payload = JSON.parse(event.payloadJson || "{}") as { name?: string; result?: { code?: string } };
+      return [payload.name, payload.result?.code].filter(Boolean).join(" · ") || "tool_call";
+    } catch {
+      return "tool_call";
+    }
+  }
+  return event.text || event.type;
 }
 
 class CallAudioBridge {
@@ -397,6 +420,7 @@ export default function PhonePage() {
   const [aiTask, setAITask] = useState("");
   const [aiProvider, setAIProvider] = useState("fake");
   const [aiSessions, setAISessions] = useState<AICallSession[]>([]);
+  const [aiCallEvents, setAICallEvents] = useState<AICallEvent[]>([]);
   const [aiBusy, setAIBusy] = useState(false);
   const [mediaConnected, setMediaConnected] = useState(false);
   const [records, setRecords] = useState<CallRecord[]>([]);
@@ -409,6 +433,8 @@ export default function PhonePage() {
   const bridgeRef = useRef<CallAudioBridge | null>(null);
   const webrtcRef = useRef<CallWebRTCBridge | null>(null);
   const mediaCallIdRef = useRef("");
+  const aiEventCursorRef = useRef(0);
+  const aiEventCallIdRef = useRef("");
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   // 多标签页控制租约：同一活动通话仅允许一个标签页操作，其余只读观察（对齐 hideck）。
   const { controlsLocked, claim, release } = usePhoneControlLease();
@@ -473,6 +499,21 @@ export default function PhonePage() {
     }
   }, []);
 
+  const loadAICallEvents = useCallback(async (callId: string) => {
+    if (!callId) return;
+    try {
+      const res = await api<{ data: { events?: AICallEvent[]; nextAfterId?: number } }>(
+        `/call-records/${encodeURIComponent(callId)}/events?after_id=${aiEventCursorRef.current}&limit=50`,
+      );
+      const data = camelize<{ events?: AICallEvent[]; nextAfterId?: number }>(res.data || {});
+      const events = camelize<AICallEvent[]>(data.events || []);
+      if (typeof data.nextAfterId === "number") aiEventCursorRef.current = data.nextAfterId;
+      if (events.length > 0) setAICallEvents((current) => mergeAICallEvents(current, events));
+    } catch {
+      // 实时事件只增强通话观察能力，失败时保留当前会话控制。
+    }
+  }, []);
+
   useEffect(() => {
     void loadDevices();
   }, [loadDevices]);
@@ -497,6 +538,24 @@ export default function PhonePage() {
   const transportPresentation = callTransportPresentation(transport);
   const webAudioReady = transportPresentation.webAudioReady;
   const dtmfAvailable = transport === "vowifi" || transport === "volte";
+
+  useEffect(() => {
+    const callId = activeAISession?.callId || "";
+    if (!callId) {
+      aiEventCallIdRef.current = "";
+      aiEventCursorRef.current = 0;
+      setAICallEvents([]);
+      return;
+    }
+    if (aiEventCallIdRef.current !== callId) {
+      aiEventCallIdRef.current = callId;
+      aiEventCursorRef.current = 0;
+      setAICallEvents([]);
+    }
+    void loadAICallEvents(callId);
+    const aiEventsTimer = window.setInterval(() => void loadAICallEvents(callId), 2000);
+    return () => window.clearInterval(aiEventsTimer);
+  }, [activeAISession?.callId, loadAICallEvents]);
 
   // 通话切换或结束后清空最近按键提示。
   useEffect(() => {
@@ -836,6 +895,23 @@ export default function PhonePage() {
                 </div>
                 {activeAISession.task ? <p className="mt-2">{activeAISession.task}</p> : null}
                 {activeAISession.error ? <p className="mt-2 text-red-500">{activeAISession.error}</p> : null}
+                <div className="mt-3 border-t border-sky-200/70 pt-3 dark:border-sky-500/20">
+                  <div className="font-bold">{t("AI 实时事件")}</div>
+                  {aiCallEvents.length > 0 ? (
+                    <div className="mt-2 max-h-40 space-y-1 overflow-auto">
+                      {aiCallEvents.map((event, index) => (
+                        <p key={event.id ?? index} className="text-sky-700 dark:text-sky-200">
+                          <span className="font-semibold">
+                            {event.type === "transcript" ? event.role || "ai" : event.type === "tool_call" ? "tool_call" : event.type}：
+                          </span>
+                          {aiEventText(event)}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sky-500/80 dark:text-sky-300/80">{t("等待 AI 转写或状态事件")}</p>
+                  )}
+                </div>
               </div>
             ) : null}
           </div>

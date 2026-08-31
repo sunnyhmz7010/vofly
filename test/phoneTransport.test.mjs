@@ -59,3 +59,16 @@ test("phone page loads AI call record details for transcripts and summaries", as
   assert.match(phonePage, /AI 转写/);
   assert.match(phonePage, /AI 摘要/);
 });
+
+test("phone page polls and renders live AI call events while a session is active", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+
+  assert.match(phonePage, /const \[aiCallEvents, setAICallEvents\] = useState<AICallEvent\[\]>\(\[\]\);/);
+  assert.match(phonePage, /const aiEventCursorRef = useRef\(0\);/);
+  assert.match(phonePage, /function mergeAICallEvents\(current: AICallEvent\[\], next: AICallEvent\[\]\)/);
+  assert.match(phonePage, /\/call-records\/\$\{encodeURIComponent\(callId\)\}\/events\?after_id=\$\{aiEventCursorRef\.current\}&limit=50/);
+  assert.match(phonePage, /const aiEventsTimer = window\.setInterval\(\(\) => void loadAICallEvents\(callId\), 2000\);/);
+  assert.match(phonePage, /AI 实时事件/);
+  assert.match(phonePage, /event\.type === "transcript"/);
+  assert.match(phonePage, /event\.type === "tool_call"/);
+});
