@@ -81,6 +81,10 @@ interface AICallPreset {
   label: string;
   number: string;
   task: string;
+  opening?: string;
+  openingMode?: "say" | "wait" | string;
+  dtmfSpokenFollowup?: boolean;
+  resultVerification?: "none" | "carrier_sms" | string;
 }
 
 interface AIBatchQueueStatus {
@@ -609,6 +613,7 @@ export default function PhonePage() {
   const [aiProvider, setAIProvider] = useState("fake");
   const [aiProviders, setAIProviders] = useState<AICallProvider[]>([]);
   const [aiPresets, setAIPresets] = useState<AICallPreset[]>([]);
+  const [selectedAIPreset, setSelectedAIPreset] = useState<AICallPreset | null>(null);
   const [aiBatchQueue, setAIBatchQueue] = useState<AIBatchQueueStatus>({ pendingNumbers: [], active: false });
   const [aiSessions, setAISessions] = useState<AICallSession[]>([]);
   const [aiCallEvents, setAICallEvents] = useState<AICallEvent[]>([]);
@@ -760,8 +765,19 @@ export default function PhonePage() {
   function applyAIPreset(presetID: string) {
     const preset = aiPresets.find((item) => item.id === presetID);
     if (!preset) return;
+    setSelectedAIPreset(preset);
     setDialNumber(preset.number);
     setAITask(preset.task);
+  }
+
+  function aiPresetInstructionBody() {
+    if (!selectedAIPreset) return {};
+    return {
+      opening: selectedAIPreset.opening,
+      opening_mode: selectedAIPreset.openingMode,
+      dtmf_spoken_followup: selectedAIPreset.dtmfSpokenFollowup,
+      result_verification: selectedAIPreset.resultVerification,
+    };
   }
 
   useEffect(() => {
@@ -905,7 +921,7 @@ export default function PhonePage() {
     try {
       await api(`/devices/${encodeURIComponent(deviceId)}/ai-calls/dial`, {
         method: "POST",
-        body: { number, task: aiTask.trim(), provider: aiProvider },
+        body: { number, task: aiTask.trim(), provider: aiProvider, ...aiPresetInstructionBody() },
       });
       setDialNumber("");
       await refresh();
@@ -927,7 +943,7 @@ export default function PhonePage() {
     try {
       await api(`/devices/${encodeURIComponent(deviceId)}/ai-calls/batch`, {
         method: "POST",
-        body: { numbers, task: aiTask.trim(), provider: aiProvider },
+        body: { numbers, task: aiTask.trim(), provider: aiProvider, ...aiPresetInstructionBody() },
       });
       setAIBatchNumbers("");
       await refresh();
@@ -964,7 +980,7 @@ export default function PhonePage() {
     try {
       await api(`/devices/${encodeURIComponent(deviceId)}/ai-calls/${encodeURIComponent(activeCall.id)}/answer`, {
         method: "POST",
-        body: { task: aiTask.trim(), provider: aiProvider },
+        body: { task: aiTask.trim(), provider: aiProvider, ...aiPresetInstructionBody() },
       });
       await refresh();
       await loadAISessions();
@@ -1143,7 +1159,10 @@ export default function PhonePage() {
             <div className="mt-2 flex gap-2">
               <Input
                 value={dialNumber}
-                onChange={(event) => setDialNumber(event.target.value)}
+                onChange={(event) => {
+                  setDialNumber(event.target.value);
+                  setSelectedAIPreset(null);
+                }}
                 placeholder={t("例如 +12025550123 或 *100#")}
                 disabled={dialing || !deviceId || controlsLocked}
                 onKeyDown={(event) => {

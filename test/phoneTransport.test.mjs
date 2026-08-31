@@ -163,6 +163,23 @@ test("phone page loads AI call presets and applies number and task", async () =>
   assert.match(phonePage, /setAITask\(preset\.task\)/);
 });
 
+test("phone page forwards AI preset instruction fields to call requests", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+
+  assert.match(phonePage, /opening\?: string/);
+  assert.match(phonePage, /openingMode\?: "say" \| "wait" \| string/);
+  assert.match(phonePage, /dtmfSpokenFollowup\?: boolean/);
+  assert.match(phonePage, /resultVerification\?: "none" \| "carrier_sms" \| string/);
+  assert.match(phonePage, /const \[selectedAIPreset, setSelectedAIPreset\] = useState<AICallPreset \| null>\(null\);/);
+  assert.match(phonePage, /function aiPresetInstructionBody\(\)/);
+  assert.match(phonePage, /opening: selectedAIPreset\.opening/);
+  assert.match(phonePage, /opening_mode: selectedAIPreset\.openingMode/);
+  assert.match(phonePage, /dtmf_spoken_followup: selectedAIPreset\.dtmfSpokenFollowup/);
+  assert.match(phonePage, /result_verification: selectedAIPreset\.resultVerification/);
+  assert.match(phonePage, /body: \{ number, task: aiTask\.trim\(\), provider: aiProvider, \.\.\.aiPresetInstructionBody\(\) \}/);
+  assert.match(phonePage, /body: \{ numbers, task: aiTask\.trim\(\), provider: aiProvider, \.\.\.aiPresetInstructionBody\(\) \}/);
+});
+
 test("phone page exposes AI batch dial controls", async () => {
   const phonePage = await source("src/pages/PhonePage.tsx");
   const dict = await source("src/lib/i18n-en.ts");
@@ -171,7 +188,7 @@ test("phone page exposes AI batch dial controls", async () => {
   assert.match(phonePage, /function parseBatchNumbers\(value: string\)/);
   assert.match(phonePage, /async function startAIBatchCall\(\)/);
   assert.match(phonePage, /\/devices\/\$\{encodeURIComponent\(deviceId\)\}\/ai-calls\/batch/);
-  assert.match(phonePage, /body: \{ numbers, task: aiTask\.trim\(\), provider: aiProvider \}/);
+  assert.match(phonePage, /body: \{ numbers, task: aiTask\.trim\(\), provider: aiProvider, \.\.\.aiPresetInstructionBody\(\) \}/);
   assert.match(phonePage, /setAIBatchNumbers\(""\)/);
   assert.match(phonePage, /AI 批量外呼/);
   assert.match(dict, /"AI 批量外呼": "AI Batch Dial"/);
