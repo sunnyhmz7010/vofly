@@ -2,7 +2,7 @@
 # vofly 一键安装脚本。
 # 用法：
 #   curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh
-#   sudo sh install.sh [--force] [--with-pcsc] [--with-ffmpeg] [版本]
+#   sudo sh install.sh [--force] [--with-pcsc] [--with-ffmpeg] [--skip-vowifi-check] [版本]
 
 set -eu
 
@@ -22,6 +22,7 @@ LINK_PATH="/usr/local/bin/vofly"
 ENV_DIR="/etc/vofly"
 ENV_FILE="/etc/vofly/env"
 SYSTEMD_UNIT="/etc/systemd/system/vofly.service"
+OPENWRT_INIT_PATH="/etc/init.d/vofly"
 INSTALLED_PACKAGES_FILE="/etc/vofly/installed-packages"
 DEFAULT_ADDR="0.0.0.0:7575"
 DEFAULT_DATABASE="/opt/vofly/data/vofly.db"
@@ -29,6 +30,7 @@ DEFAULT_DATABASE="/opt/vofly/data/vofly.db"
 FORCE=0
 WITH_PCSC=0
 WITH_FFMPEG=0
+SKIP_VOWIFI_CHECK=0
 VERSION_ARG=""
 FIRST_INSTALL=0
 INITIAL_ADMIN_PASSWORD=""
@@ -38,12 +40,14 @@ DOWNLOAD_DIR=""
 print_usage() {
   cat <<'USAGE'
 用法:
-  sudo sh install.sh [--force] [--with-pcsc] [--with-ffmpeg] [版本]
+  sudo sh install.sh [--force] [--with-pcsc] [--with-ffmpeg] [--skip-vowifi-check] [版本]
 
 选项:
   --force           即使当前已是目标版本，也重新下载并安装
   --with-pcsc       安装并启用 pcscd 与 CCID 驱动（USB SIM 读卡器）
   --with-ffmpeg     安装 ffmpeg（通话录音 MP3 转码；缺失时录音保持 WAV）
+  --skip-vowifi-check
+                    跳过 VoWiFi XFRM/IPsec 内核检查（仅使用蜂窝短信/数据等功能时使用）
   -h|--help         显示帮助
 
 示例:
@@ -58,6 +62,7 @@ while [ "$#" -gt 0 ]; do
     --force) FORCE=1 ;;
     --with-pcsc) WITH_PCSC=1 ;;
     --with-ffmpeg) WITH_FFMPEG=1 ;;
+    --skip-vowifi-check) SKIP_VOWIFI_CHECK=1 ;;
     -h|--help)
       print_usage
       exit 0
@@ -371,6 +376,62 @@ print_admin_credentials() {
   printf '==========================================\n'
 }
 
+is_openwrt() {
+  [ -f /etc/openwrt_release ] || [ -x /sbin/procd ] || [ -x /sbin/ubusd ]
+}
+
+openwrt_service_available() {
+  [ -x "$OPENWRT_INIT_PATH" ] && { [ -x /sbin/procd ] || [ -x /sbin/ubusd ]; }
+}
+
+xfrm_works() {
+  command -v ip >/dev/null 2>&1 && ip xfrm state list >/dev/null 2>&1
+}
+
+install_openwrt_vowifi_packages() {
+  is_openwrt || return 0
+  command -v opkg >/dev/null 2>&1 || return 0
+  printf '检查 OpenWrt/Kwrt VoWiFi XFRM/IPsec 内核组件。\n'
+  run_root opkg update >/dev/null 2>&1 || printf '警告：opkg 软件源更新失败，将使用现有索引继续检查。\n' >&2
+
+  packages=""
+  for package in \
+    ip-full \
+    kmod-ipsec kmod-ipsec4 kmod-ipsec6 \
+    kmod-crypto-authenc kmod-crypto-cbc kmod-crypto-aes \
+    kmod-crypto-hmac kmod-crypto-sha1; do
+    if opkg_has_package "$package"; then
+      packages="$packages $package"
+    fi
+  done
+  if [ -n "$packages" ]; then
+    install_packages $packages || true
+  fi
+}
+
+check_vowifi_environment() {
+  if [ "$SKIP_VOWIFI_CHECK" = "1" ]; then
+    printf '已跳过 VoWiFi XFRM/IPsec 内核检查；IMS 通话和短信可能不可用。\n'
+    return 0
+  fi
+
+  if is_openwrt; then
+    install_openwrt_vowifi_packages
+  fi
+  if xfrm_works; then
+    printf 'VoWiFi XFRM/IPsec 环境验证通过。\n'
+    return 0
+  fi
+  if is_openwrt; then
+    printf '当前 OpenWrt/Kwrt 内核 %s 不支持 NETLINK_XFRM，或软件源没有匹配的 kmod-ipsec。\n' "$(uname -r)" >&2
+    printf '请使用包含 kmod-ipsec、kmod-ipsec4/6、kmod-crypto-authenc、CBC、AES 和 SHA1 组件的同版本固件；禁止强装其他内核版本的 kmod。\n' >&2
+    printf '仅使用非 VoWiFi 功能时可追加 --skip-vowifi-check。\n' >&2
+    return 1
+  fi
+  printf '当前 Linux 内核不支持 XFRM/IPsec，VoWiFi IMS 无法工作；仅使用非 VoWiFi 功能时可追加 --skip-vowifi-check。\n' >&2
+  return 1
+}
+
 write_systemd_unit() {
   tmp=$(mktemp "${TMPDIR:-/tmp}/vofly-service.XXXXXX")
   cat >"$tmp" <<'EOF'
@@ -420,6 +481,77 @@ EOF
   printf '已写入 systemd 服务：%s\n' "$SYSTEMD_UNIT"
 }
 
+write_openwrt_init() {
+  tmp=$(mktemp "${TMPDIR:-/tmp}/vofly-openwrt-init.XXXXXX")
+  cat >"$tmp" <<'EOF'
+#!/bin/sh /etc/rc.common
+START=95
+STOP=10
+USE_PROCD=1
+PROCD_TERM_TIMEOUT=40
+PROGRAM=/opt/vofly/bin/vofly
+ENV_FILE=/etc/vofly/env
+MODEM_RECOVERY_SCRIPT=/usr/bin/modem_network_recover_detection.sh
+MODEM_LOCK_DIR=/var/run/modem
+MODEM_LOCK_FILE=$MODEM_LOCK_DIR/auto_dial_lock
+MODEM_LOCK_OWNER=/var/run/vofly.modem_control_lock
+acquire_modem_control() {
+    [ -x "$MODEM_RECOVERY_SCRIPT" ] || return 0
+    mkdir -p "$MODEM_LOCK_DIR" || return 1
+    if [ ! -e "$MODEM_LOCK_FILE" ]; then
+        if ! printf '%s\n' lock > "$MODEM_LOCK_FILE"; then
+            rm -f "$MODEM_LOCK_FILE"
+            return 1
+        fi
+        if ! : > "$MODEM_LOCK_OWNER"; then
+            rm -f "$MODEM_LOCK_FILE"
+            return 1
+        fi
+    fi
+}
+release_modem_control() {
+    [ -e "$MODEM_LOCK_OWNER" ] || return 0
+    rm -f "$MODEM_LOCK_FILE" "$MODEM_LOCK_OWNER"
+}
+start_service() {
+    if ! acquire_modem_control; then
+        logger -t vofly "cannot acquire GL.iNet modem recovery lock"
+        exit 1
+    fi
+    procd_open_instance
+    procd_set_param command "$PROGRAM" serve
+    procd_set_param env VOFLY_DATABASE_PATH=/opt/vofly/data/vofly.db
+    if [ -r "$ENV_FILE" ]; then
+        while IFS='=' read -r name value; do
+            case "$name" in VOFLY_*) procd_append_param env "$name=$value" ;; esac
+        done < "$ENV_FILE"
+    fi
+    procd_set_param respawn 3600 5 5
+    procd_set_param stdout 1
+    procd_set_param stderr 1
+    procd_close_instance
+}
+service_stopped() { release_modem_control; }
+service_triggers() { procd_add_reload_trigger vofly; }
+EOF
+  run_root install -m 755 "$tmp" "$OPENWRT_INIT_PATH"
+  rm -f "$tmp"
+  printf '已写入 OpenWrt procd 服务：%s\n' "$OPENWRT_INIT_PATH"
+}
+
+write_service() {
+  if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then
+    write_systemd_unit
+    return 0
+  fi
+  if [ -x /sbin/procd ] || [ -x /sbin/ubusd ]; then
+    write_openwrt_init
+    return 0
+  fi
+  printf '未检测到 systemd 或 OpenWrt procd，无法安装托管服务。\n' >&2
+  return 1
+}
+
 env_port() {
   address=$(sed -n 's/^VOFLY_ADDR=//p' "$ENV_FILE" 2>/dev/null | tail -n 1)
   if [ -z "$address" ]; then
@@ -445,6 +577,33 @@ wait_for_service() {
 }
 
 restart_service() {
+  if openwrt_service_available; then
+    run_root "$OPENWRT_INIT_PATH" enable >/dev/null 2>&1 || true
+    run_root "$OPENWRT_INIT_PATH" stop >/dev/null 2>&1 || true
+    for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+      if ! run_root "$OPENWRT_INIT_PATH" running >/dev/null 2>&1; then
+        break
+      fi
+      sleep 1
+    done
+    if ! run_root "$OPENWRT_INIT_PATH" restart; then
+      return 1
+    fi
+    stable=0
+    for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do
+      sleep 1
+      if run_root "$OPENWRT_INIT_PATH" running >/dev/null 2>&1; then
+        stable=$((stable + 1))
+        if [ "$stable" -ge 3 ]; then
+          printf '服务已启动：%s\n' "$OPENWRT_INIT_PATH"
+          return 0
+        fi
+      else
+        stable=0
+      fi
+    done
+    return 1
+  fi
   if ! command -v systemctl >/dev/null 2>&1; then
     printf '未检测到 systemd。可手动运行：%s serve\n' "$BINARY_PATH"
     return 0
@@ -747,6 +906,7 @@ trap on_exit EXIT
 
 detect_package_manager
 install_runtime_dependencies
+check_vowifi_environment
 
 ARCH=$(detect_arch)
 VERSION=$(resolve_version)
@@ -763,7 +923,7 @@ write_default_env
 if [ "$FORCE" = "0" ] && is_target_installed; then
   ensure_cli_link
   bootstrap_admin "$BINARY_PATH"
-  write_systemd_unit
+  write_service
   printf '当前已经是目标版本，已刷新环境、服务和 CLI 链接。\n'
   finish_install
   exit 0
@@ -789,5 +949,5 @@ run_root install -m 755 "$DOWNLOAD_DIR/$ASSET_NAME" "$BINARY_PATH"
 ensure_cli_link
 printf '已安装二进制：%s\n' "$BINARY_PATH"
 
-write_systemd_unit
+write_service
 finish_install

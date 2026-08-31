@@ -16,6 +16,7 @@ BINARY_PATH="/opt/vofly/bin/vofly"
 BACKUP_PATH="/opt/vofly/bin/vofly.bak"
 LINK_PATH="/usr/local/bin/vofly"
 ENV_FILE="/etc/vofly/env"
+OPENWRT_INIT_PATH="/etc/init.d/vofly"
 DEFAULT_ADDR="0.0.0.0:7575"
 
 VERSION_ARG=""
@@ -254,7 +255,29 @@ wait_for_service() {
   return 1
 }
 
+openwrt_service_available() {
+  [ -x "$OPENWRT_INIT_PATH" ] && { [ -x /sbin/procd ] || [ -x /sbin/ubusd ]; }
+}
+
 restart_service() {
+  if openwrt_service_available; then
+    if ! run_root "$OPENWRT_INIT_PATH" restart; then
+      return 1
+    fi
+    stable=0
+    for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do
+      sleep 1
+      if run_root "$OPENWRT_INIT_PATH" running >/dev/null 2>&1; then
+        stable=$((stable + 1))
+        if [ "$stable" -ge 3 ]; then
+          return 0
+        fi
+      else
+        stable=0
+      fi
+    done
+    return 1
+  fi
   if ! command -v systemctl >/dev/null 2>&1; then
     printf '未检测到 systemd。请手动重启 vofly 进程。\n'
     return 0
