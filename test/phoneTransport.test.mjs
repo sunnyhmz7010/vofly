@@ -116,6 +116,22 @@ test("phone page renders triage and takeover AI timeline events", async () => {
   assert.match(dict, /"转接状态": "Takeover status"/);
 });
 
+test("phone page lets owner complete or fail a pending AI takeover", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+  const dict = await source("src/lib/i18n-en.ts");
+
+  assert.match(phonePage, /function hasPendingOwnerTakeover\(events: AICallEvent\[\]\)/);
+  assert.match(phonePage, /const pendingOwnerTakeover = useMemo\(\(\) => hasPendingOwnerTakeover\(aiCallEvents\), \[aiCallEvents\]\);/);
+  assert.match(phonePage, /async function updateOwnerTakeover\(state: "committed" \| "failed"\)/);
+  assert.match(phonePage, /\/ai-calls\/\$\{encodeURIComponent\(activeAISession\.id\)\}\/takeover/);
+  assert.match(phonePage, /body: \{ state, reason:/);
+  assert.match(phonePage, /pendingOwnerTakeover \? \(/);
+  assert.match(phonePage, /updateOwnerTakeover\("committed"\)/);
+  assert.match(phonePage, /updateOwnerTakeover\("failed"\)/);
+  assert.match(dict, /"本人已接管": "Owner took over"/);
+  assert.match(dict, /"转接失败": "Takeover failed"/);
+});
+
 test("phone page can update AI task instructions during an active session", async () => {
   const phonePage = await source("src/pages/PhonePage.tsx");
 

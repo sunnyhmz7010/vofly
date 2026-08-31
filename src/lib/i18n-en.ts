@@ -1361,6 +1361,7 @@ export const EN_DICT: Record<string, string> = {
   "AI 继续处理": "AI continued",
   "已拒绝": "Declined",
   "请求转接": "Transfer requested",
+  "本人已接管": "Owner took over",
   "正在请求转接": "Requesting takeover",
   "已由本人接听": "Answered by owner",
   "本人已挂断": "Owner ended call",

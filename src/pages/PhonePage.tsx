@@ -324,6 +324,25 @@ function aiEventText(event: AICallEvent) {
   return event.text || event.type;
 }
 
+function takeoverEventState(event: AICallEvent) {
+  if (event.type !== "takeover") return "";
+  try {
+    const payload = JSON.parse(event.payloadJson || "{}") as { state?: string };
+    return typeof payload.state === "string" ? payload.state.trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+function hasPendingOwnerTakeover(events: AICallEvent[]) {
+  let latestState = "";
+  for (const event of events) {
+    const state = takeoverEventState(event);
+    if (state) latestState = state;
+  }
+  return latestState === "requested";
+}
+
 class CallAudioBridge {
   private socket: WebSocket | null = null;
   private context: AudioContext | null = null;
@@ -731,6 +750,7 @@ export default function PhonePage() {
   const activeAISession =
     aiSessions.find((session) => session.deviceId === deviceId && session.state !== "ended" && session.state !== "failed") || null;
   const structuredSummaryFields = useMemo(() => aiStructuredSummaryFields(recordDetail?.summary), [recordDetail?.summary]);
+  const pendingOwnerTakeover = useMemo(() => hasPendingOwnerTakeover(aiCallEvents), [aiCallEvents]);
   const transport = callsPayload?.transport || "";
   const transportPresentation = callTransportPresentation(transport);
   const webAudioReady = transportPresentation.webAudioReady;
@@ -909,6 +929,24 @@ export default function PhonePage() {
       });
       await loadAISessions();
       await loadAICallEvents(activeAISession.callId);
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setAIBusy(false);
+    }
+  }
+
+  async function updateOwnerTakeover(state: "committed" | "failed") {
+    if (controlsLocked || !activeAISession || aiBusy) return;
+    setAIBusy(true);
+    try {
+      await api(`/ai-calls/${encodeURIComponent(activeAISession.id)}/takeover`, {
+        method: "POST",
+        body: { state, reason: state === "committed" ? "owner confirmed takeover" : "owner marked takeover failed" },
+      });
+      await loadAISessions();
+      await loadAICallEvents(activeAISession.callId);
+      await refresh();
     } catch (error) {
       window.alert(apiMessage(error));
     } finally {
@@ -1125,6 +1163,29 @@ export default function PhonePage() {
                 </div>
                 {activeAISession.task ? <p className="mt-2">{activeAISession.task}</p> : null}
                 {activeAISession.error ? <p className="mt-2 text-red-500">{activeAISession.error}</p> : null}
+                {pendingOwnerTakeover ? (
+                  <div className="mt-3 flex flex-wrap gap-2 rounded-md bg-white/70 p-2 dark:bg-white/10">
+                    <Button
+                      size="small"
+                      variant="primary"
+                      loading={aiBusy}
+                      disabled={controlsLocked}
+                      onClick={() => void updateOwnerTakeover("committed")}
+                    >
+                      {t("本人已接管")}
+                    </Button>
+                    <Button
+                      size="small"
+                      plain
+                      variant="danger"
+                      loading={aiBusy}
+                      disabled={controlsLocked}
+                      onClick={() => void updateOwnerTakeover("failed")}
+                    >
+                      {t("转接失败")}
+                    </Button>
+                  </div>
+                ) : null}
                 <div className="mt-3 border-t border-sky-200/70 pt-3 dark:border-sky-500/20">
                   <div className="font-bold">{t("AI 实时事件")}</div>
                   {aiCallEvents.length > 0 ? (
