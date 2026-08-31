@@ -343,6 +343,13 @@ function hasPendingOwnerTakeover(events: AICallEvent[]) {
   return latestState === "requested";
 }
 
+function parseBatchNumbers(value: string) {
+  return value
+    .split(/[\s,，;；]+/)
+    .map((number) => number.trim())
+    .filter(Boolean);
+}
+
 class CallAudioBridge {
   private socket: WebSocket | null = null;
   private context: AudioContext | null = null;
@@ -590,6 +597,7 @@ export default function PhonePage() {
   const [dialing, setDialing] = useState(false);
   const [acting, setActing] = useState(false);
   const [aiTask, setAITask] = useState("");
+  const [aiBatchNumbers, setAIBatchNumbers] = useState("");
   const [aiProvider, setAIProvider] = useState("fake");
   const [aiProviders, setAIProviders] = useState<AICallProvider[]>([]);
   const [aiPresets, setAIPresets] = useState<AICallPreset[]>([]);
@@ -884,6 +892,28 @@ export default function PhonePage() {
     }
   }
 
+  async function startAIBatchCall() {
+    const numbers = parseBatchNumbers(aiBatchNumbers);
+    if (controlsLocked || !deviceId || numbers.length === 0 || aiBusy) return;
+    setAIBusy(true);
+    claim();
+    try {
+      await api(`/devices/${encodeURIComponent(deviceId)}/ai-calls/batch`, {
+        method: "POST",
+        body: { numbers, task: aiTask.trim(), provider: aiProvider },
+      });
+      setAIBatchNumbers("");
+      await refresh();
+      await loadAISessions();
+      await loadRecords();
+    } catch (error) {
+      release();
+      window.alert(apiMessage(error));
+    } finally {
+      setAIBusy(false);
+    }
+  }
+
   async function answerWithAI() {
     if (controlsLocked || !deviceId || !activeCall || aiBusy) return;
     setAIBusy(true);
@@ -1113,6 +1143,15 @@ export default function PhonePage() {
               placeholder={t("例如：确认套餐余量并记录关键信息")}
               disabled={controlsLocked || aiBusy}
             />
+            <label className="mb-2 mt-3 block text-xs font-bold text-gray-500 dark:text-gray-400">{t("批量号码")}</label>
+            <textarea
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/10 dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
+              value={aiBatchNumbers}
+              onChange={(event) => setAIBatchNumbers(event.target.value)}
+              placeholder={t("每行一个号码，或用逗号分隔")}
+              disabled={controlsLocked || aiBusy}
+              rows={3}
+            />
             <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
               <Select value={aiProvider} onChange={setAIProvider} options={aiProviderOptions} />
               <Button
@@ -1122,6 +1161,15 @@ export default function PhonePage() {
                 onClick={() => void startAICall()}
               >
                 {t("AI 外呼")}
+              </Button>
+              <Button
+                variant="primary"
+                plain
+                loading={aiBusy}
+                disabled={controlsLocked || !deviceId || parseBatchNumbers(aiBatchNumbers).length === 0}
+                onClick={() => void startAIBatchCall()}
+              >
+                {t("AI 批量外呼")}
               </Button>
               {activeCall?.state === "ringing" ? (
                 <Button

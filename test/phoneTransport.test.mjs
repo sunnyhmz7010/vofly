@@ -162,3 +162,18 @@ test("phone page loads AI call presets and applies number and task", async () =>
   assert.match(phonePage, /setDialNumber\(preset\.number\)/);
   assert.match(phonePage, /setAITask\(preset\.task\)/);
 });
+
+test("phone page exposes AI batch dial controls", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+  const dict = await source("src/lib/i18n-en.ts");
+
+  assert.match(phonePage, /const \[aiBatchNumbers, setAIBatchNumbers\] = useState\(""\);/);
+  assert.match(phonePage, /function parseBatchNumbers\(value: string\)/);
+  assert.match(phonePage, /async function startAIBatchCall\(\)/);
+  assert.match(phonePage, /\/devices\/\$\{encodeURIComponent\(deviceId\)\}\/ai-calls\/batch/);
+  assert.match(phonePage, /body: \{ numbers, task: aiTask\.trim\(\), provider: aiProvider \}/);
+  assert.match(phonePage, /setAIBatchNumbers\(""\)/);
+  assert.match(phonePage, /AI 批量外呼/);
+  assert.match(dict, /"AI 批量外呼": "AI Batch Dial"/);
+  assert.match(dict, /"批量号码": "Batch numbers"/);
+});
