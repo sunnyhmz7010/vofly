@@ -87,6 +87,19 @@ interface AICallPreset {
   resultVerification?: "none" | "carrier_sms" | string;
 }
 
+interface ManagedNumberProfile {
+  id: string;
+  enabled?: boolean;
+  number: string;
+  label: string;
+  task: string;
+  scenario?: string;
+  opening?: string;
+  openingMode?: "say" | "wait" | string;
+  dtmfSpokenFollowup?: boolean;
+  resultVerification?: "none" | "carrier_sms" | string;
+}
+
 interface AIBatchQueueStatus {
   pendingNumbers: string[];
   currentNumber?: string;
@@ -614,6 +627,12 @@ export default function PhonePage() {
   const [aiProviders, setAIProviders] = useState<AICallProvider[]>([]);
   const [aiPresets, setAIPresets] = useState<AICallPreset[]>([]);
   const [selectedAIPreset, setSelectedAIPreset] = useState<AICallPreset | null>(null);
+  const [managedProfiles, setManagedProfiles] = useState<ManagedNumberProfile[]>([]);
+  const [profilesConfigured, setProfilesConfigured] = useState(true);
+  const [profileManagerOpen, setProfileManagerOpen] = useState(false);
+  const [profileForm, setProfileForm] = useState<ManagedNumberProfile>(emptyManagedProfile());
+  const [editingProfileID, setEditingProfileID] = useState("");
+  const [profileBusy, setProfileBusy] = useState(false);
   const [aiBatchQueue, setAIBatchQueue] = useState<AIBatchQueueStatus>({ pendingNumbers: [], active: false });
   const [aiSessions, setAISessions] = useState<AICallSession[]>([]);
   const [aiCallEvents, setAICallEvents] = useState<AICallEvent[]>([]);
@@ -656,6 +675,50 @@ export default function PhonePage() {
     ],
     [aiPresets, t],
   );
+
+  function emptyManagedProfile(): ManagedNumberProfile {
+    return {
+      id: "",
+      enabled: true,
+      number: "",
+      label: "",
+      task: "",
+      scenario: "",
+      opening: "",
+      openingMode: "say",
+      dtmfSpokenFollowup: false,
+      resultVerification: "none",
+    };
+  }
+
+  function profileText(value: unknown) {
+    if (typeof value === "string") return value;
+    if (value && typeof value === "object") {
+      const record = value as Record<string, unknown>;
+      for (const key of ["zh", "en"]) {
+        if (typeof record[key] === "string" && record[key].trim()) return record[key].trim();
+      }
+      for (const item of Object.values(record)) {
+        if (typeof item === "string" && item.trim()) return item.trim();
+      }
+    }
+    return "";
+  }
+
+  function normalizeManagedProfile(profile: Partial<ManagedNumberProfile>): ManagedNumberProfile {
+    return {
+      id: profileText(profile.id),
+      enabled: profile.enabled !== false,
+      number: profileText(profile.number),
+      label: profileText(profile.label),
+      task: profileText(profile.task),
+      scenario: profileText(profile.scenario),
+      opening: profileText(profile.opening),
+      openingMode: profileText(profile.openingMode) || "say",
+      dtmfSpokenFollowup: profile.dtmfSpokenFollowup === true,
+      resultVerification: profileText(profile.resultVerification) || "none",
+    };
+  }
 
   const loadDevices = useCallback(async () => {
     try {
@@ -740,6 +803,75 @@ export default function PhonePage() {
       setAIPresets([]);
     }
   }, []);
+
+  async function loadManagedProfiles() {
+    try {
+      const res = await api<{ profiles: ManagedNumberProfile[]; configured: boolean }>("/number_profiles/manage");
+      setManagedProfiles(camelize<ManagedNumberProfile[]>(res.profiles || []).map(normalizeManagedProfile));
+      setProfilesConfigured(res.configured !== false);
+    } catch {
+      setManagedProfiles([]);
+      setProfilesConfigured(false);
+    }
+  }
+
+  function managedProfileRequestBody() {
+    return {
+      id: profileForm.id.trim(),
+      enabled: profileForm.enabled !== false,
+      number: profileForm.number.trim(),
+      label: profileForm.label.trim(),
+      task: profileForm.task.trim(),
+      scenario: profileForm.scenario?.trim() || undefined,
+      opening: profileForm.opening?.trim() || undefined,
+      opening_mode: profileForm.openingMode || "say",
+      dtmf_spoken_followup: profileForm.dtmfSpokenFollowup === true,
+      result_verification: profileForm.resultVerification || "none",
+    };
+  }
+
+  async function saveManagedProfile() {
+    if (profileBusy || !profileForm.id.trim() || !profileForm.number.trim() || !profileForm.label.trim() || !profileForm.task.trim()) return;
+    setProfileBusy(true);
+    try {
+      await api(editingProfileID ? `/number_profiles/${encodeURIComponent(editingProfileID)}` : "/number_profiles", {
+        method: editingProfileID ? "PATCH" : "POST",
+        body: managedProfileRequestBody(),
+      });
+      setProfileForm(emptyManagedProfile());
+      setEditingProfileID("");
+      await loadManagedProfiles();
+      await loadAIPresets();
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
+  async function deleteManagedProfile(profileID: string) {
+    if (profileBusy || !profileID) return;
+    if (!window.confirm(t("确认删除这个预设？"))) return;
+    setProfileBusy(true);
+    try {
+      await api(`/number_profiles/${encodeURIComponent(profileID)}`, { method: "DELETE" });
+      if (editingProfileID === profileID) {
+        setEditingProfileID("");
+        setProfileForm(emptyManagedProfile());
+      }
+      await loadManagedProfiles();
+      await loadAIPresets();
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
+  function editManagedProfile(profile: ManagedNumberProfile) {
+    setEditingProfileID(profile.id);
+    setProfileForm(normalizeManagedProfile(profile));
+  }
 
   const loadAICallEvents = useCallback(async (callId: string) => {
     if (!callId) return;
@@ -1198,6 +1330,157 @@ export default function PhonePage() {
               <div className="mb-3">
                 <label className="mb-2 block text-xs font-bold text-gray-500 dark:text-gray-400">{t("预设任务")}</label>
                 <Select value="" onChange={applyAIPreset} options={aiPresetOptions} />
+              </div>
+            ) : null}
+            <div className="mb-3">
+              <Button
+                size="small"
+                plain
+                variant="primary"
+                loading={profileBusy}
+                onClick={() => {
+                  const next = !profileManagerOpen;
+                  setProfileManagerOpen(next);
+                  if (next) void loadManagedProfiles();
+                }}
+              >
+                {t("本地预设管理")}
+              </Button>
+            </div>
+            {profileManagerOpen ? (
+              <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50/70 p-3 text-xs dark:border-white/10 dark:bg-white/5">
+                {!profilesConfigured ? (
+                  <p className="mb-3 rounded-md bg-amber-50 px-2 py-1 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                    {t("未配置预设文件，需设置 VOFLY_AI_CALL_PRESETS_FILE 或 NUMBER_PROFILES_FILE 后才能保存")}
+                  </p>
+                ) : null}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <Input
+                    value={profileForm.id}
+                    onChange={(event) => setProfileForm((current) => ({ ...current, id: event.target.value }))}
+                    placeholder={t("预设 ID")}
+                    disabled={profileBusy || !!editingProfileID}
+                  />
+                  <Input
+                    value={profileForm.number}
+                    onChange={(event) => setProfileForm((current) => ({ ...current, number: event.target.value }))}
+                    placeholder={t("号码")}
+                    disabled={profileBusy}
+                  />
+                  <Input
+                    value={profileForm.label}
+                    onChange={(event) => setProfileForm((current) => ({ ...current, label: event.target.value }))}
+                    placeholder={t("显示名称")}
+                    disabled={profileBusy}
+                  />
+                  <Input
+                    value={profileForm.task}
+                    onChange={(event) => setProfileForm((current) => ({ ...current, task: event.target.value }))}
+                    placeholder={t("匹配任务")}
+                    disabled={profileBusy}
+                  />
+                </div>
+                <label className="mb-1 mt-2 block font-semibold text-gray-500 dark:text-gray-400">{t("场景策略")}</label>
+                <textarea
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/10 dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
+                  value={profileForm.scenario || ""}
+                  onChange={(event) => setProfileForm((current) => ({ ...current, scenario: event.target.value }))}
+                  placeholder={t("给 AI 的精调场景策略")}
+                  disabled={profileBusy}
+                  rows={2}
+                />
+                <label className="mb-1 mt-2 block font-semibold text-gray-500 dark:text-gray-400">{t("开场白")}</label>
+                <textarea
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/10 dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
+                  value={profileForm.opening || ""}
+                  onChange={(event) => setProfileForm((current) => ({ ...current, opening: event.target.value }))}
+                  placeholder={t("接通后的第一句话")}
+                  disabled={profileBusy}
+                  rows={2}
+                />
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <Select
+                    value={profileForm.openingMode || "say"}
+                    onChange={(value) => setProfileForm((current) => ({ ...current, openingMode: value }))}
+                    options={[
+                      { value: "say", label: t("直接开场") },
+                      { value: "wait", label: t("等待 IVR") },
+                    ]}
+                  />
+                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                    {t("结果校验")}
+                    <Select
+                      value={profileForm.resultVerification || "none"}
+                      onChange={(value) => setProfileForm((current) => ({ ...current, resultVerification: value }))}
+                      options={[
+                        { value: "none", label: t("仅通话记录") },
+                        { value: "carrier_sms", label: t("短信校验") },
+                      ]}
+                    />
+                  </label>
+                  <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 dark:border-white/10 dark:bg-white/10 dark:text-gray-200">
+                    <input
+                      type="checkbox"
+                      checked={profileForm.dtmfSpokenFollowup === true}
+                      onChange={(event) => setProfileForm((current) => ({ ...current, dtmfSpokenFollowup: event.target.checked }))}
+                      disabled={profileBusy}
+                    />
+                    {t("口述后补按键")}
+                  </label>
+                </div>
+                <label className="mt-2 flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={profileForm.enabled !== false}
+                    onChange={(event) => setProfileForm((current) => ({ ...current, enabled: event.target.checked }))}
+                    disabled={profileBusy}
+                  />
+                  {t("启用预设")}
+                </label>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    size="small"
+                    variant="primary"
+                    loading={profileBusy}
+                    disabled={!profilesConfigured || !profileForm.id.trim() || !profileForm.number.trim() || !profileForm.label.trim() || !profileForm.task.trim()}
+                    onClick={() => void saveManagedProfile()}
+                  >
+                    {editingProfileID ? t("保存预设") : t("新建预设")}
+                  </Button>
+                  <Button
+                    size="small"
+                    plain
+                    onClick={() => {
+                      setEditingProfileID("");
+                      setProfileForm(emptyManagedProfile());
+                    }}
+                  >
+                    {t("清空表单")}
+                  </Button>
+                </div>
+                {managedProfiles.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    {managedProfiles.map((profile) => (
+                      <div key={profile.id} className="rounded-md bg-white p-2 dark:bg-white/10">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-semibold">
+                            {profile.label} · {profile.number}
+                          </span>
+                          <span className="text-gray-400">{profile.enabled === false ? t("已禁用") : t("已启用")}</span>
+                        </div>
+                        <p className="mt-1 text-gray-500 dark:text-gray-400">{profile.scenario || profile.task}</p>
+                        <div className="mt-2 flex gap-2">
+                          <Button size="small" plain onClick={() => editManagedProfile(profile)}>
+                            {t("编辑")}
+                          </Button>
+                          <Button size="small" plain variant="danger" onClick={() => void deleteManagedProfile(profile.id)}>
+                            {t("删除")}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ) : null}
             <label className="mb-2 block text-xs font-bold text-gray-500 dark:text-gray-400">{t("任务目标")}</label>

@@ -180,6 +180,25 @@ test("phone page forwards AI preset instruction fields to call requests", async 
   assert.match(phonePage, /body: \{ numbers, task: aiTask\.trim\(\), provider: aiProvider, \.\.\.aiPresetInstructionBody\(\) \}/);
 });
 
+test("phone page manages local AI number profiles", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+  const dict = await source("src/lib/i18n-en.ts");
+
+  assert.match(phonePage, /interface ManagedNumberProfile/);
+  assert.match(phonePage, /const \[managedProfiles, setManagedProfiles\] = useState<ManagedNumberProfile\[\]>\(\[\]\);/);
+  assert.match(phonePage, /function emptyManagedProfile\(\)/);
+  assert.match(phonePage, /async function loadManagedProfiles\(\)/);
+  assert.match(phonePage, /api<\{ profiles: ManagedNumberProfile\[\]; configured: boolean \}>\("\/number_profiles\/manage"\)/);
+  assert.match(phonePage, /async function saveManagedProfile\(\)/);
+  assert.match(phonePage, /method: editingProfileID \? "PATCH" : "POST"/);
+  assert.match(phonePage, /async function deleteManagedProfile\(profileID: string\)/);
+  assert.match(phonePage, /\/number_profiles\/\$\{encodeURIComponent\(profileID\)\}/);
+  assert.match(phonePage, /本地预设管理/);
+  assert.match(phonePage, /结果校验/);
+  assert.match(phonePage, /短信校验/);
+  assert.match(dict, /"本地预设管理": "Local preset management"/);
+});
+
 test("phone page exposes AI batch dial controls", async () => {
   const phonePage = await source("src/pages/PhonePage.tsx");
   const dict = await source("src/lib/i18n-en.ts");
