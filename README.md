@@ -83,6 +83,29 @@ curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh 
 curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/update.sh | sudo sh
 ```
 
+更新支持国内镜像加速，在安装/更新脚本前设置环境变量即可：
+
+```bash
+export VOFLY_UPDATE_MIRROR=https://mirror.ghproxy.com
+curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/update.sh | sudo sh
+```
+
+也可通过 `vofly update --mirror https://mirror.ghproxy.com` 命令行指定。
+
+#### ⚙️ 环境变量
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `VOFLY_ADDR` | 监听地址 | `0.0.0.0:7575` |
+| `VOFLY_DATABASE_PATH` | SQLite 数据库路径 | `./data/vofly.db` |
+| `VOFLY_CONFIG` | 配置文件路径（JSON） | 无 |
+| `VOFLY_SESSION_TTL` | 会话有效期 | `24h` |
+| `VOFLY_SECURE_COOKIES` | 安全 Cookie | `false` |
+| `VOFLY_REPO` | 更新源仓库 | `sunnyhmz7010/vofly` |
+| `VOFLY_UPDATE_MIRROR` | 国内下载镜像地址 | 无（直连 GitHub） |
+| `GITHUB_TOKEN` | GitHub 令牌（私有仓库/防限流） | 无 |
+| `VOFLY_SYSTEMD_UNIT` | systemd 服务名 | `vofly.service` |
+
 #### 🗑️ 卸载
 
 ```bash
