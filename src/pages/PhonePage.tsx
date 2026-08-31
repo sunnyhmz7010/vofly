@@ -229,8 +229,90 @@ function mergeAICallEvents(current: AICallEvent[], next: AICallEvent[]) {
   return [...merged.values()].sort((left, right) => (left.id || 0) - (right.id || 0));
 }
 
+function triageCategoryText(value: string) {
+  switch (value) {
+    case "marketing":
+      return "营销来电";
+    case "personal":
+      return "个人来电";
+    case "needs_owner":
+      return "需要本人";
+    case "unknown":
+      return "类型未知";
+    default:
+      return value || "类型未知";
+  }
+}
+
+function triageActionText(value: string) {
+  switch (value) {
+    case "clarify":
+      return "继续确认";
+    case "continue_ai":
+      return "AI 继续处理";
+    case "reject":
+      return "已拒绝";
+    case "transfer":
+      return "请求转接";
+    default:
+      return value || "继续确认";
+  }
+}
+
+function takeoverStateText(value: string) {
+  switch (value) {
+    case "requested":
+      return "正在请求转接";
+    case "committed":
+      return "已由本人接听";
+    case "owner_hangup":
+      return "本人已挂断";
+    case "failed":
+      return "转接失败";
+    default:
+      return value || "转接状态未知";
+  }
+}
+
+function aiEventTypeLabel(event: AICallEvent) {
+  if (event.type === "triage") return "智能分诊";
+  if (event.type === "takeover") return "转接状态";
+  if (event.type === "transcript") return event.role || "ai";
+  if (event.type === "tool_call") return "tool_call";
+  return event.type;
+}
+
 function aiEventText(event: AICallEvent) {
   if (event.type === "transcript") return event.text || "";
+  if (event.type === "triage") {
+    try {
+      const payload = JSON.parse(event.payloadJson || "{}") as {
+        category?: string;
+        action?: string;
+        confidence?: number;
+        reason?: string;
+      };
+      const confidence = typeof payload.confidence === "number" ? `${Math.round(payload.confidence * 100)}%` : "";
+      return [
+        triageCategoryText(payload.category || ""),
+        triageActionText(payload.action || ""),
+        confidence,
+        payload.reason,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    } catch {
+      return event.text || "智能分诊";
+    }
+  }
+  if (event.type === "takeover") {
+    try {
+      const payload = JSON.parse(event.payloadJson || "{}") as { state?: string; reason?: string };
+      return [takeoverStateText(payload.state || ""), payload.reason].filter(Boolean).join(" · ");
+    } catch {
+      return event.text || "转接状态";
+    }
+  }
   if (event.type === "tool_call") {
     try {
       const payload = JSON.parse(event.payloadJson || "{}") as { name?: string; result?: { code?: string } };
@@ -1050,7 +1132,7 @@ export default function PhonePage() {
                       {aiCallEvents.map((event, index) => (
                         <p key={event.id ?? index} className="text-sky-700 dark:text-sky-200">
                           <span className="font-semibold">
-                            {event.type === "transcript" ? event.role || "ai" : event.type === "tool_call" ? "tool_call" : event.type}：
+                            {t(aiEventTypeLabel(event))}：
                           </span>
                           {aiEventText(event)}
                         </p>
@@ -1227,7 +1309,7 @@ export default function PhonePage() {
                             .map((event, index) => (
                               <p key={event.id ?? index} className="text-gray-500 dark:text-gray-400">
                                 <span className="font-semibold">
-                                  {event.type}
+                                  {t(aiEventTypeLabel(event))}
                                   {event.createdAt ? ` · ${formatClock(event.createdAt)}` : ""}：
                                 </span>
                                 {aiEventText(event)}

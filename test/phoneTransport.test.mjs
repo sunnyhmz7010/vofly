@@ -102,6 +102,20 @@ test("phone page polls and renders live AI call events while a session is active
   assert.match(phonePage, /event\.type === "tool_call"/);
 });
 
+test("phone page renders triage and takeover AI timeline events", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+  const dict = await source("src/lib/i18n-en.ts");
+
+  assert.match(phonePage, /function aiEventTypeLabel\(event: AICallEvent\)/);
+  assert.match(phonePage, /event\.type === "triage"/);
+  assert.match(phonePage, /event\.type === "takeover"/);
+  assert.match(phonePage, /triageCategoryText/);
+  assert.match(phonePage, /takeoverStateText/);
+  assert.match(phonePage, /aiEventTypeLabel\(event\)/);
+  assert.match(dict, /"智能分诊": "AI triage"/);
+  assert.match(dict, /"转接状态": "Takeover status"/);
+});
+
 test("phone page can update AI task instructions during an active session", async () => {
   const phonePage = await source("src/pages/PhonePage.tsx");
 
