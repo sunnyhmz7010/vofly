@@ -544,7 +544,6 @@ export const EN_DICT: Record<string, string> = {
   "连接中断，正在尝试重连…": "Connection lost, reconnecting…",
   已导出日志: "Logs exported",
   "查看系统运行日志，支持过滤和搜索": "View system runtime logs with filtering and search",
-  设备与业务日志: "Device & Service Logs",
   业务分类: "Category",
   全部业务: "All Services",
   硬件与模块: "Hardware & Modem",
