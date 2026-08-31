@@ -23,6 +23,7 @@ const {
   cardBalancePlansPath,
   balancePlanPath,
   balancePlanRunPath,
+  buildCardContexts,
 } = await import(moduleURL);
 
 test("query-center card keys distinguish physical SIM from eSIM AIDs", () => {
@@ -91,4 +92,42 @@ test("query-center URL builders centralize card query strings", () => {
   );
   assert.equal(balancePlanPath(7), "/query-center/balance-plans/7");
   assert.equal(balancePlanRunPath(7), "/query-center/balance-plans/7/run");
+});
+
+test("query-center builds card contexts from eSIM inventory with physical fallback", () => {
+  const groups = [
+    {
+      eid: "89040000000000000000000000000001",
+      aidHex: "isdr-1",
+      profiles: [
+        { iccid: "89860123456789012345", name: "日常卡", state: 1 },
+        { iccid: "89860987654321098765", serviceProviderName: "Red Pocket", state: 0 },
+      ],
+    },
+  ];
+  const contexts = buildCardContexts("dev1", "89860123456789012345", groups);
+
+  // 两个 Profile 两个上下文，激活卡已出现则不补实体卡
+  assert.equal(contexts.length, 2);
+  assert.deepEqual(
+    contexts.map((c) => [c.iccid, c.profileAid, c.active]),
+    [
+      ["89860123456789012345", "isdr-1", true],
+      ["89860987654321098765", "isdr-1", false],
+    ],
+  );
+  assert.equal(contexts[0].label, "日常卡");
+  assert.equal(contexts[1].label, "Red Pocket");
+  assert.equal(contexts[0].eid, "89040000000000000000000000000001");
+
+  // 清单读取失败（groups 为空）时以当前激活卡兜底一个实体卡上下文
+  const fallback = buildCardContexts("dev1", "89860123456789012345", []);
+  assert.deepEqual(
+    fallback.map((c) => [c.iccid, c.profileAid, c.label, c.active]),
+    [["89860123456789012345", "", "实体卡", true]],
+  );
+
+  // 实体 SIM 设备同样得到实体卡上下文
+  const physical = buildCardContexts("dev1", "89860123456789012345", []);
+  assert.equal(physical[0].profileAid, "");
 });

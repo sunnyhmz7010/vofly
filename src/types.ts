@@ -399,49 +399,6 @@ export interface LogEntry {
   fields?: string | Record<string, unknown>;
 }
 
-export interface CommandDefinition {
-  name: string;
-  usage: string;
-  summary: string;
-  dangerous: boolean;
-  async: boolean;
-  deviceArgument: boolean;
-}
-
-export interface CommandExecution {
-  id: string;
-  input: string;
-  command: string;
-  source: string;
-  arguments?: string[];
-  state: "running" | "completed" | "failed" | string;
-  error?: string;
-  startedAt?: string;
-  completedAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface CommandAttachment {
-  type: "audio" | string;
-  recording?: string;
-  contentType?: string;
-  codec?: string;
-  size?: number;
-  // 音频附件关联的通话 ID（可选下发），用于在线回放 /api/call-recordings/{call_id}。
-  callId?: string;
-}
-
-export interface CommandEvent {
-  id: number;
-  executionId: string;
-  kind: "accepted" | "progress" | "result" | "error" | string;
-  text: string;
-  attachments?: CommandAttachment[];
-  execution?: CommandExecution;
-  createdAt: string;
-}
-
 export interface BalanceQuery {
   id: string;
   deviceId: string;

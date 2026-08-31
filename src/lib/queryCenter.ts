@@ -106,3 +106,60 @@ export function balancePlanPath(id: number): string {
 export function balancePlanRunPath(id: number): string {
   return `${balancePlanPath(id)}/run`;
 }
+
+// QueryCardContext 是查询中心选中的卡上下文：实体 SIM 一个上下文，eSIM
+// Profile 按 eUICC 分组后每个 Profile 一个上下文；profileAid 是 eUICC 的
+// ISD-R AID（与自动任务记录一致），实体卡为空串。
+export interface QueryCardContext {
+  deviceId: string;
+  iccid: string;
+  profileAid: string;
+  label: string;
+  eid?: string;
+  active: boolean;
+}
+
+export interface EsimInventoryGroup {
+  eid?: string;
+  aidHex?: string;
+  profiles?: Array<{
+    iccid: string;
+    name?: string;
+    serviceProviderName?: string;
+    state?: number;
+  }>;
+}
+
+// buildCardContexts 从设备当前 ICCID 与 eSIM 清单构建卡上下文列表：
+// eSIM Profile 逐个成上下文；设备当前激活卡未出现在清单中时补一个实体卡
+// 上下文兜底（eSIM 清单读取失败或实体 SIM 设备都落入该分支）。
+export function buildCardContexts(
+  deviceId: string,
+  currentIccid: string,
+  groups: EsimInventoryGroup[],
+): QueryCardContext[] {
+  const contexts: QueryCardContext[] = [];
+  for (const group of Array.isArray(groups) ? groups : []) {
+    const profileAid = trim(group.aidHex);
+    const eid = trim(group.eid);
+    for (const profile of Array.isArray(group.profiles) ? group.profiles : []) {
+      const iccid = trim(profile.iccid);
+      if (!iccid) continue;
+      contexts.push({
+        deviceId,
+        iccid,
+        profileAid,
+        label: trim(profile.name) || trim(profile.serviceProviderName),
+        eid: eid || undefined,
+        active: profile.state === 1,
+      });
+    }
+  }
+  const current = trim(currentIccid);
+  const represented = current !== "" &&
+    contexts.some((context) => context.iccid.toLowerCase() === current.toLowerCase());
+  if (current && !represented) {
+    contexts.unshift({ deviceId, iccid: current, profileAid: "", label: "实体卡", active: true });
+  }
+  return contexts;
+}
