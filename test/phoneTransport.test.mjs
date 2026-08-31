@@ -50,3 +50,12 @@ test("phone page exposes AI call controls through the backend AI call API", asyn
   assert.match(phonePage, /AI 接管/);
   assert.match(phonePage, /任务目标/);
 });
+
+test("phone page loads AI call record details for transcripts and summaries", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+
+  assert.match(phonePage, /\/call-records\/\$\{encodeURIComponent\(record\.callId\)\}/);
+  assert.match(phonePage, /AI 通话详情/);
+  assert.match(phonePage, /AI 转写/);
+  assert.match(phonePage, /AI 摘要/);
+});

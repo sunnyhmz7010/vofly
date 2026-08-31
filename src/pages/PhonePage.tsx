@@ -68,6 +68,26 @@ interface AICallSession {
   error?: string;
 }
 
+interface AICallEvent {
+  id?: number;
+  type: string;
+  role?: string;
+  text?: string;
+  createdAt?: string;
+}
+
+interface AICallSummary {
+  state?: string;
+  summaryJson?: string;
+  error?: string;
+}
+
+interface CallRecordDetail {
+  record: CallRecord;
+  events: AICallEvent[];
+  summary?: AICallSummary;
+}
+
 const SAMPLE_RATE = 8000;
 
 function callTransportPresentation(transport: CallsPayload["transport"]): { text: string; tone: StatusTone; webAudioReady: boolean } {
@@ -113,6 +133,19 @@ function formatDuration(startedAt: string | undefined, endedAt?: string) {
   const end = endedAt ? new Date(endedAt).getTime() : Date.now();
   const seconds = Math.max(0, Math.round((end - start) / 1000));
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function aiSummaryText(summary?: AICallSummary) {
+  const raw = summary?.summaryJson?.trim();
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const title = typeof parsed.title === "string" ? parsed.title : "";
+    const text = typeof parsed.summary === "string" ? parsed.summary : "";
+    return [title, text].filter(Boolean).join(" · ") || raw;
+  } catch {
+    return raw;
+  }
 }
 
 class CallAudioBridge {
@@ -367,6 +400,8 @@ export default function PhonePage() {
   const [aiBusy, setAIBusy] = useState(false);
   const [mediaConnected, setMediaConnected] = useState(false);
   const [records, setRecords] = useState<CallRecord[]>([]);
+  const [recordDetail, setRecordDetail] = useState<CallRecordDetail | null>(null);
+  const [detailLoadingId, setDetailLoadingId] = useState("");
   const [dtmfSending, setDtmfSending] = useState(false);
   const [lastDTMF, setLastDTMF] = useState("");
   const [qrPayload, setQrPayload] = useState<QrSendPayload | null>(null);
@@ -605,6 +640,23 @@ export default function PhonePage() {
       window.alert(apiMessage(error));
     } finally {
       setAIBusy(false);
+    }
+  }
+
+  async function loadRecordDetail(record: CallRecord) {
+    if (recordDetail?.record?.callId === record.callId) {
+      setRecordDetail(null);
+      return;
+    }
+    setDetailLoadingId(record.callId);
+    try {
+      const res = await api<{ data: CallRecordDetail } | CallRecordDetail>(`/call-records/${encodeURIComponent(record.callId)}`);
+      const raw = "data" in res ? res.data : res;
+      setRecordDetail(camelize<CallRecordDetail>(raw));
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setDetailLoadingId("");
     }
   }
 
@@ -912,6 +964,43 @@ export default function PhonePage() {
                       >
                         {t("二维码发送")}
                       </Button>
+                    </div>
+                  ) : null}
+                  <div className="mt-2">
+                    <Button
+                      size="small"
+                      plain
+                      variant="primary"
+                      loading={detailLoadingId === record.callId}
+                      disabled={!!detailLoadingId && detailLoadingId !== record.callId}
+                      onClick={() => void loadRecordDetail(record)}
+                    >
+                      {t("AI 通话详情")}
+                    </Button>
+                  </div>
+                  {recordDetail?.record?.callId === record.callId ? (
+                    <div className="mt-3 rounded-lg border border-gray-100 bg-gray-50/80 p-3 text-xs dark:border-white/10 dark:bg-white/5">
+                      <div className="font-bold text-gray-600 dark:text-gray-300">{t("AI 转写")}</div>
+                      {recordDetail.events.filter((event) => event.type === "transcript" && event.text).length > 0 ? (
+                        <div className="mt-2 space-y-1">
+                          {recordDetail.events
+                            .filter((event) => event.type === "transcript" && event.text)
+                            .map((event, index) => (
+                              <p key={event.id ?? index} className="text-gray-500 dark:text-gray-400">
+                                <span className="font-semibold">{event.role || "ai"}：</span>
+                                {event.text}
+                              </p>
+                            ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-gray-400">{t("暂无 AI 转写")}</p>
+                      )}
+                      <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("AI 摘要")}</div>
+                      {aiSummaryText(recordDetail.summary) ? (
+                        <p className="mt-2 text-gray-500 dark:text-gray-400">{aiSummaryText(recordDetail.summary)}</p>
+                      ) : (
+                        <p className="mt-2 text-gray-400">{t("暂无 AI 摘要")}</p>
+                      )}
                     </div>
                   ) : null}
                 </div>
