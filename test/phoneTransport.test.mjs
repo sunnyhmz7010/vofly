@@ -61,6 +61,8 @@ test("phone page loads AI call record details for transcripts and summaries", as
   assert.match(phonePage, /recordDetail\.events\.filter\(\(event\) => event\.type !== "transcript"\)/);
   assert.match(phonePage, /aiEventText\(event\)/);
   assert.match(phonePage, /AI 摘要/);
+  assert.match(phonePage, /任务判定/);
+  assert.match(phonePage, /aiVerdictText\(recordDetail\.summary\)/);
 });
 
 test("phone page polls and renders live AI call events while a session is active", async () => {

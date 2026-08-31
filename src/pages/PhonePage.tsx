@@ -157,6 +157,22 @@ function aiSummaryText(summary?: AICallSummary) {
   }
 }
 
+function aiVerdictText(summary?: AICallSummary) {
+  const raw = summary?.summaryJson?.trim();
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw) as { verdict?: Record<string, unknown> };
+    const verdict = parsed.verdict;
+    if (!verdict) return "";
+    const conclusion = typeof verdict.conclusion === "string" ? verdict.conclusion : "";
+    const review = verdict.needs_review === true ? "需复核" : "无需复核";
+    const reason = typeof verdict.reasons === "string" ? verdict.reasons : "";
+    return [conclusion, review, reason ? `原因：${reason}` : ""].filter(Boolean).join(" · ");
+  } catch {
+    return "";
+  }
+}
+
 function mergeAICallEvents(current: AICallEvent[], next: AICallEvent[]) {
   const merged = new Map<string, AICallEvent>();
   for (const event of [...current, ...next]) {
@@ -1147,6 +1163,12 @@ export default function PhonePage() {
                         <p className="mt-2 text-gray-500 dark:text-gray-400">{aiSummaryText(recordDetail.summary)}</p>
                       ) : (
                         <p className="mt-2 text-gray-400">{t("暂无 AI 摘要")}</p>
+                      )}
+                      <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("任务判定")}</div>
+                      {aiVerdictText(recordDetail.summary) ? (
+                        <p className="mt-2 text-gray-500 dark:text-gray-400">{aiVerdictText(recordDetail.summary)}</p>
+                      ) : (
+                        <p className="mt-2 text-gray-400">{t("暂无任务判定")}</p>
                       )}
                     </div>
                   ) : null}

@@ -1342,6 +1342,8 @@ export const EN_DICT: Record<string, string> = {
   "暂无 AI 转写": "No AI transcript yet",
   "暂无 AI 时间线事件": "No AI timeline events yet",
   "暂无 AI 摘要": "No AI summary yet",
+  "任务判定": "Task Verdict",
+  "暂无任务判定": "No task verdict yet",
   "通话记录与录音": "Call history & recordings",
   "暂无通话记录": "No call records",
   "共 {count} 条记录": "{count} records in total",
