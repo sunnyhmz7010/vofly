@@ -259,7 +259,7 @@ export function BalancePlansPanel({ deviceId, card }: { deviceId: string; card: 
   }
 
   return (
-    <div className="space-y-5 p-4 sm:p-5">
+    <div className="min-h-[320px] space-y-5 p-4 sm:p-5">
       <div className="space-y-3">
         <div className="text-xs font-bold uppercase tracking-wider text-gray-400">{t("已有计划")}</div>
         {loading ? (

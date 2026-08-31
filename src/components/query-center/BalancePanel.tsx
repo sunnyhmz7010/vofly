@@ -98,7 +98,7 @@ export function BalancePanel({
   }
 
   return (
-    <div className="space-y-4 p-4 sm:p-5">
+    <div className="min-h-[320px] space-y-4 p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-xs font-bold uppercase tracking-wider text-gray-400">{t("当前余额")}</div>

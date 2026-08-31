@@ -1371,6 +1371,7 @@ export const EN_DICT: Record<string, string> = {
   "eSIM 清单读取失败，已按当前激活卡展示": "Failed to read the eSIM inventory; showing the currently active card only",
   "当前激活": "Active",
   "请选择左侧的卡或 Profile 查看余额、卡资料与计划": "Select a card or Profile on the left to view balance, resources, and plans",
+  "未选择卡或Profile": "No card or Profile selected",
   "未发现可用卡": "No usable card found",
   "当前余额": "Current balance",
   "暂无解析结果": "No parsed result yet",

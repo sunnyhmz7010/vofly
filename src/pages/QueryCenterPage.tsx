@@ -307,8 +307,8 @@ export default function QueryCenterPage() {
                     />
                   )
                 ) : (
-                  <div className="flex h-full items-center justify-center p-8 text-center text-sm text-gray-400">
-                    {t("请选择左侧的卡或 Profile 查看余额、卡资料与计划")}
+                  <div className="flex h-full min-h-[320px] items-center justify-center p-8 text-center text-sm text-gray-400">
+                    {t("未选择卡或Profile")}
                   </div>
                 )}
               </div>
