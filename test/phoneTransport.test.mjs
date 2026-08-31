@@ -40,3 +40,13 @@ test("phone page maps VoLTE inbound and outbound directions to the existing call
   assert.doesNotMatch(phonePage, /activeCall\.direction === "outgoing" \? t\("呼出"\) : t\("呼入"\)/);
   assert.doesNotMatch(phonePage, /record\.direction === "outgoing" \? t\("呼出"\) : t\("呼入"\)/);
 });
+
+test("phone page exposes AI call controls through the backend AI call API", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+
+  assert.match(phonePage, /ai-calls\/dial/);
+  assert.match(phonePage, /ai-calls\/\$\{encodeURIComponent\(activeCall\.id\)\}\/answer/);
+  assert.match(phonePage, /api<\{ data: AICallSession\[\] \}>\("\/ai-calls"\)/);
+  assert.match(phonePage, /AI 接管/);
+  assert.match(phonePage, /任务目标/);
+});

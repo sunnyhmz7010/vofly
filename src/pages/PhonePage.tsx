@@ -54,6 +54,20 @@ interface CallRecord {
   recordingSeconds?: number;
 }
 
+interface AICallSession {
+  id: string;
+  callId: string;
+  deviceId: string;
+  number?: string;
+  direction: string;
+  state: string;
+  provider: string;
+  task?: string;
+  startedAt?: string;
+  endedAt?: string;
+  error?: string;
+}
+
 const SAMPLE_RATE = 8000;
 
 function callTransportPresentation(transport: CallsPayload["transport"]): { text: string; tone: StatusTone; webAudioReady: boolean } {
@@ -347,6 +361,10 @@ export default function PhonePage() {
   const [dialNumber, setDialNumber] = useState("");
   const [dialing, setDialing] = useState(false);
   const [acting, setActing] = useState(false);
+  const [aiTask, setAITask] = useState("");
+  const [aiProvider, setAIProvider] = useState("fake");
+  const [aiSessions, setAISessions] = useState<AICallSession[]>([]);
+  const [aiBusy, setAIBusy] = useState(false);
   const [mediaConnected, setMediaConnected] = useState(false);
   const [records, setRecords] = useState<CallRecord[]>([]);
   const [dtmfSending, setDtmfSending] = useState(false);
@@ -363,6 +381,15 @@ export default function PhonePage() {
   const deviceOptions = useMemo(
     () => devices.map((device) => ({ value: device.id, label: device.name || device.id })),
     [devices],
+  );
+  const aiProviderOptions = useMemo(
+    () => [
+      { value: "fake", label: "fake" },
+      { value: "openai", label: "OpenAI" },
+      { value: "qwen", label: "Qwen" },
+      { value: "doubao", label: "Doubao" },
+    ],
+    [],
   );
 
   const loadDevices = useCallback(async () => {
@@ -401,6 +428,16 @@ export default function PhonePage() {
     }
   }, []);
 
+  const loadAISessions = useCallback(async () => {
+    try {
+      const res = await api<{ data: AICallSession[] }>("/ai-calls");
+      const raw = Array.isArray(res) ? res : res.data || [];
+      setAISessions(camelize<AICallSession[]>(raw));
+    } catch {
+      // AI 会话列表加载失败不影响人工通话控制。
+    }
+  }, []);
+
   useEffect(() => {
     void loadDevices();
   }, [loadDevices]);
@@ -409,11 +446,18 @@ export default function PhonePage() {
     if (!deviceId) return;
     void refresh();
     void loadRecords();
+    void loadAISessions();
     const timer = window.setInterval(() => void refresh(), 3000);
-    return () => window.clearInterval(timer);
-  }, [deviceId, refresh, loadRecords]);
+    const aiTimer = window.setInterval(() => void loadAISessions(), 3000);
+    return () => {
+      window.clearInterval(timer);
+      window.clearInterval(aiTimer);
+    };
+  }, [deviceId, refresh, loadRecords, loadAISessions]);
 
   const activeCall = callsPayload?.calls.find(isActiveCall) || null;
+  const activeAISession =
+    aiSessions.find((session) => session.deviceId === deviceId && session.state !== "ended" && session.state !== "failed") || null;
   const transport = callsPayload?.transport || "";
   const transportPresentation = callTransportPresentation(transport);
   const webAudioReady = transportPresentation.webAudioReady;
@@ -504,6 +548,63 @@ export default function PhonePage() {
       window.alert(apiMessage(error));
     } finally {
       setActing(false);
+    }
+  }
+
+  async function startAICall() {
+    const number = dialNumber.trim();
+    if (controlsLocked || !deviceId || !number || !validDialNumber(number) || aiBusy) return;
+    setAIBusy(true);
+    claim();
+    try {
+      await api(`/devices/${encodeURIComponent(deviceId)}/ai-calls/dial`, {
+        method: "POST",
+        body: { number, task: aiTask.trim(), provider: aiProvider },
+      });
+      setDialNumber("");
+      await refresh();
+      await loadAISessions();
+      await loadRecords();
+    } catch (error) {
+      release();
+      window.alert(apiMessage(error));
+    } finally {
+      setAIBusy(false);
+    }
+  }
+
+  async function answerWithAI() {
+    if (controlsLocked || !deviceId || !activeCall || aiBusy) return;
+    setAIBusy(true);
+    claim();
+    try {
+      await api(`/devices/${encodeURIComponent(deviceId)}/ai-calls/${encodeURIComponent(activeCall.id)}/answer`, {
+        method: "POST",
+        body: { task: aiTask.trim(), provider: aiProvider },
+      });
+      await refresh();
+      await loadAISessions();
+    } catch (error) {
+      release();
+      window.alert(apiMessage(error));
+    } finally {
+      setAIBusy(false);
+    }
+  }
+
+  async function hangupAICall(sessionId: string) {
+    if (controlsLocked || !sessionId || aiBusy) return;
+    setAIBusy(true);
+    try {
+      await api(`/ai-calls/${encodeURIComponent(sessionId)}/hangup`, { method: "POST", body: {} });
+      release();
+      await refresh();
+      await loadAISessions();
+      await loadRecords();
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setAIBusy(false);
     }
   }
 
@@ -622,6 +723,69 @@ export default function PhonePage() {
               </Button>
             </div>
             <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">{t("支持 +、数字、*、#；拨号请求不会自动挂断。")}</p>
+          </div>
+
+          <div className="ui-card p-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">{t("AI 通话")}</h3>
+                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                  {t("让 AI 接管当前来电，或按上方号码发起 AI 外呼。")}
+                </p>
+              </div>
+              <Tag type={activeAISession ? "success" : "info"}>
+                {activeAISession ? t("AI 接管中") : t("待命")}
+              </Tag>
+            </div>
+            <label className="mb-2 block text-xs font-bold text-gray-500 dark:text-gray-400">{t("任务目标")}</label>
+            <Input
+              value={aiTask}
+              onChange={(event) => setAITask(event.target.value)}
+              placeholder={t("例如：确认套餐余量并记录关键信息")}
+              disabled={controlsLocked || aiBusy}
+            />
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+              <Select value={aiProvider} onChange={setAIProvider} options={aiProviderOptions} />
+              <Button
+                variant="primary"
+                loading={aiBusy}
+                disabled={controlsLocked || !deviceId || !validDialNumber(dialNumber)}
+                onClick={() => void startAICall()}
+              >
+                {t("AI 外呼")}
+              </Button>
+              {activeCall?.state === "ringing" ? (
+                <Button
+                  variant="primary"
+                  loading={aiBusy}
+                  disabled={controlsLocked || !deviceId}
+                  onClick={() => void answerWithAI()}
+                >
+                  {t("AI 接管")}
+                </Button>
+              ) : null}
+            </div>
+            {activeAISession ? (
+              <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/70 p-3 text-xs text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    {activeAISession.provider || "fake"} · {activeAISession.state} ·{" "}
+                    {activeAISession.number || activeAISession.callId}
+                  </span>
+                  <Button
+                    size="small"
+                    variant="danger"
+                    loading={aiBusy}
+                    disabled={controlsLocked}
+                    onClick={() => void hangupAICall(activeAISession.id)}
+                  >
+                    {t("结束 AI 通话")}
+                  </Button>
+                </div>
+                {activeAISession.task ? <p className="mt-2">{activeAISession.task}</p> : null}
+                {activeAISession.error ? <p className="mt-2 text-red-500">{activeAISession.error}</p> : null}
+              </div>
+            ) : null}
           </div>
 
           {loadError ? <p className="text-sm text-red-500">{loadError}</p> : null}
