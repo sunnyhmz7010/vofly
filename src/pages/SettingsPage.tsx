@@ -3,7 +3,7 @@ import { AlertRegular, CheckmarkRegular } from "@fluentui/react-icons";
 import { api, apiMessage, getSecuritySettings, updateSecuritySettings } from "../api";
 import type { DeveloperSettings, HTTPSSettings, NotificationSettings, SecuritySettings, SystemInfo } from "../types";
 import { Button, PageHeader, confirmDialog, message } from "../components/ui";
-import { CardDecor, CardIcon, CardTitle, SecurityCard, SystemInfoCard } from "../components/settings/Cards";
+import { CardDecor, CardIcon, CardTitle, SecurityCard, SystemInfoCard, UpdateMirrorCard } from "../components/settings/Cards";
 import type { PasswordForm, UpdateInfo } from "../components/settings/Cards";
 import { NetworkAccessCard } from "../components/settings/NetworkAccessCard";
 import type { NetworkAccessForm } from "../components/settings/NetworkAccessCard";
@@ -453,6 +453,10 @@ export default function SettingsPage() {
           onCheckUpdate={onCheckUpdate}
           onApplyUpdate={onApplyUpdate}
           onRestartService={onRestartService}
+        />
+        <UpdateMirrorCard
+          currentMirror={systemInfo.updateMirror || ""}
+          onSaved={fetchSystemInfo}
         />
 
         <NetworkAccessCard

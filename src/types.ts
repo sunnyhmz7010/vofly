@@ -543,6 +543,7 @@ export interface SystemInfo {
   os?: string;
   architecture?: string;
   uptime?: string;
+  updateMirror?: string;
 }
 
 export interface HTTPSSettings {

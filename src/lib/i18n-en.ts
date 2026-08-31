@@ -1451,4 +1451,10 @@ export const EN_DICT: Record<string, string> = {
   "知识库": "Knowledge base",
   "计划": "Plans",
   "eUICC": "eUICC",
+  "更新镜像": "Update Mirror",
+  "清除": "Clear",
+  "未设置": "Not set",
+  "镜像地址已保存，重启后生效": "Mirror saved; restart to apply",
+  "镜像已清除，重启后生效": "Mirror cleared; restart to apply",
+  "清除失败": "Clear failed",
 };
