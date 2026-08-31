@@ -28,3 +28,15 @@ test('phone page presents "volte" as a registered cellular call transport with b
 
   assert.match(dict, /"VoLTE IMS": "VoLTE IMS"/);
 });
+
+test("phone page maps VoLTE inbound and outbound directions to the existing call labels", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+
+  assert.match(phonePage, /function callDirectionLabel\(direction: string\)/);
+  assert.match(phonePage, /case "outgoing":\s*case "outbound":\s*return "呼出";/);
+  assert.match(phonePage, /case "incoming":\s*case "inbound":\s*return "呼入";/);
+  assert.match(phonePage, /\{t\(callDirectionLabel\(activeCall\.direction\)\)\} · \{formatClock\(activeCall\.startedAt\)\}/);
+  assert.match(phonePage, /\{t\(callDirectionLabel\(record\.direction\)\)\} · \{record\.number \|\| t\("未知号码"\)\}/);
+  assert.doesNotMatch(phonePage, /activeCall\.direction === "outgoing" \? t\("呼出"\) : t\("呼入"\)/);
+  assert.doesNotMatch(phonePage, /record\.direction === "outgoing" \? t\("呼出"\) : t\("呼入"\)/);
+});

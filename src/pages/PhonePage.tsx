@@ -69,6 +69,19 @@ function callTransportPresentation(transport: CallsPayload["transport"]): { text
   }
 }
 
+function callDirectionLabel(direction: string) {
+  switch (direction) {
+    case "outgoing":
+    case "outbound":
+      return "呼出";
+    case "incoming":
+    case "inbound":
+      return "呼入";
+    default:
+      return "未知";
+  }
+}
+
 function isActiveCall(call: CallItem) {
   return call.state !== "ended" && call.state !== "failed";
 }
@@ -628,7 +641,7 @@ export default function PhonePage() {
                       {activeCall.number || t("未知号码")}
                     </div>
                     <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      {activeCall.direction === "outgoing" ? t("呼出") : t("呼入")} · {formatClock(activeCall.startedAt)}
+                      {t(callDirectionLabel(activeCall.direction))} · {formatClock(activeCall.startedAt)}
                       {activeCall.state === "active" ? ` · ${formatDuration(activeCall.startedAt)}` : ""}
                     </div>
                     {activeCall.reason ? (
@@ -706,7 +719,7 @@ export default function PhonePage() {
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold text-gray-800 dark:text-gray-200">
-                        {record.direction === "outgoing" ? t("呼出") : t("呼入")} · {record.number || t("未知号码")}
+                        {t(callDirectionLabel(record.direction))} · {record.number || t("未知号码")}
                       </div>
                       <div className="text-xs text-gray-400">
                         {formatClock(record.startedAt)}
