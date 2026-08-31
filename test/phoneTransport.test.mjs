@@ -97,3 +97,14 @@ test("phone page loads AI provider options from backend availability", async () 
   assert.match(phonePage, /provider\.supported && provider\.configured/);
   assert.doesNotMatch(phonePage, /value: "doubao", label: "Doubao"/);
 });
+
+test("phone page loads AI call presets and applies number and task", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+
+  assert.match(phonePage, /interface AICallPreset/);
+  assert.match(phonePage, /const \[aiPresets, setAIPresets\] = useState<AICallPreset\[\]>\(\[\]\);/);
+  assert.match(phonePage, /api<\{ data: AICallPreset\[\] \}>\("\/ai-call-presets"\)/);
+  assert.match(phonePage, /预设任务/);
+  assert.match(phonePage, /setDialNumber\(preset\.number\)/);
+  assert.match(phonePage, /setAITask\(preset\.task\)/);
+});

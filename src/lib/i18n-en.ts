@@ -1327,6 +1327,8 @@ export const EN_DICT: Record<string, string> = {
   "让 AI 接管当前来电，或按上方号码发起 AI 外呼。": "Let AI take over an incoming call, or place an AI outbound call using the number above.",
   "AI 接管中": "AI Active",
   待命: "Idle",
+  "预设任务": "Preset Task",
+  "不使用预设": "No preset",
   "任务目标": "Task Goal",
   "例如：确认套餐余量并记录关键信息": "For example: confirm plan balance and record key details",
   "AI 外呼": "AI Dial",

@@ -76,6 +76,13 @@ interface AICallProvider {
   experimental?: boolean;
 }
 
+interface AICallPreset {
+  id: string;
+  label: string;
+  number: string;
+  task: string;
+}
+
 interface AICallEvent {
   id?: number;
   type: string;
@@ -444,6 +451,7 @@ export default function PhonePage() {
   const [aiTask, setAITask] = useState("");
   const [aiProvider, setAIProvider] = useState("fake");
   const [aiProviders, setAIProviders] = useState<AICallProvider[]>([]);
+  const [aiPresets, setAIPresets] = useState<AICallPreset[]>([]);
   const [aiSessions, setAISessions] = useState<AICallSession[]>([]);
   const [aiCallEvents, setAICallEvents] = useState<AICallEvent[]>([]);
   const [aiBusy, setAIBusy] = useState(false);
@@ -477,6 +485,13 @@ export default function PhonePage() {
           label: provider.experimental ? `${provider.label}（实验）` : provider.label,
         })),
     [aiProviders],
+  );
+  const aiPresetOptions = useMemo(
+    () => [
+      { value: "", label: t("不使用预设") },
+      ...aiPresets.map((preset) => ({ value: preset.id, label: preset.label })),
+    ],
+    [aiPresets, t],
   );
 
   const loadDevices = useCallback(async () => {
@@ -540,6 +555,15 @@ export default function PhonePage() {
     }
   }, []);
 
+  const loadAIPresets = useCallback(async () => {
+    try {
+      const res = await api<{ data: AICallPreset[] }>("/ai-call-presets");
+      setAIPresets(camelize<AICallPreset[]>(res.data || []));
+    } catch {
+      setAIPresets([]);
+    }
+  }, []);
+
   const loadAICallEvents = useCallback(async (callId: string) => {
     if (!callId) return;
     try {
@@ -558,7 +582,15 @@ export default function PhonePage() {
   useEffect(() => {
     void loadDevices();
     void loadAIProviders();
-  }, [loadDevices, loadAIProviders]);
+    void loadAIPresets();
+  }, [loadDevices, loadAIProviders, loadAIPresets]);
+
+  function applyAIPreset(presetID: string) {
+    const preset = aiPresets.find((item) => item.id === presetID);
+    if (!preset) return;
+    setDialNumber(preset.number);
+    setAITask(preset.task);
+  }
 
   useEffect(() => {
     if (!deviceId) return;
@@ -907,6 +939,12 @@ export default function PhonePage() {
                 {activeAISession ? t("AI 接管中") : t("待命")}
               </Tag>
             </div>
+            {aiPresets.length > 0 ? (
+              <div className="mb-3">
+                <label className="mb-2 block text-xs font-bold text-gray-500 dark:text-gray-400">{t("预设任务")}</label>
+                <Select value="" onChange={applyAIPreset} options={aiPresetOptions} />
+              </div>
+            ) : null}
             <label className="mb-2 block text-xs font-bold text-gray-500 dark:text-gray-400">{t("任务目标")}</label>
             <Input
               value={aiTask}
