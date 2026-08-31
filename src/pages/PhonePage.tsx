@@ -195,6 +195,31 @@ function aiVerificationText(summary?: AICallSummary) {
   }
 }
 
+function aiStructuredSummaryFields(summary?: AICallSummary) {
+  const raw = summary?.summaryJson?.trim();
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const fields: { label: string; value: string }[] = [];
+    const addText = (key: string, label: string) => {
+      const value = parsed[key];
+      if (typeof value === "string" && value.trim()) fields.push({ label, value: value.trim() });
+    };
+    addText("caller_identity", "来电人");
+    addText("intent", "来意");
+    const urgency = typeof parsed.urgency === "string" ? parsed.urgency.trim().toLowerCase() : "";
+    if (urgency) {
+      fields.push({ label: "紧急程度", value: urgency === "high" ? "高" : urgency === "low" ? "低" : urgency === "medium" ? "中" : urgency });
+    }
+    if (typeof parsed.callback_needed === "boolean") {
+      fields.push({ label: "是否回电", value: parsed.callback_needed ? "是" : "否" });
+    }
+    return fields;
+  } catch {
+    return [];
+  }
+}
+
 function mergeAICallEvents(current: AICallEvent[], next: AICallEvent[]) {
   const merged = new Map<string, AICallEvent>();
   for (const event of [...current, ...next]) {
@@ -623,6 +648,7 @@ export default function PhonePage() {
   const activeCall = callsPayload?.calls.find(isActiveCall) || null;
   const activeAISession =
     aiSessions.find((session) => session.deviceId === deviceId && session.state !== "ended" && session.state !== "failed") || null;
+  const structuredSummaryFields = useMemo(() => aiStructuredSummaryFields(recordDetail?.summary), [recordDetail?.summary]);
   const transport = callsPayload?.transport || "";
   const transportPresentation = callTransportPresentation(transport);
   const webAudioReady = transportPresentation.webAudioReady;
@@ -1217,6 +1243,16 @@ export default function PhonePage() {
                       ) : (
                         <p className="mt-2 text-gray-400">{t("暂无 AI 摘要")}</p>
                       )}
+                      {structuredSummaryFields.length > 0 ? (
+                        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {structuredSummaryFields.map((field) => (
+                            <div key={field.label} className="rounded-lg border border-gray-100 bg-white/70 px-3 py-2 dark:border-white/10 dark:bg-white/5">
+                              <div className="text-[11px] font-bold text-gray-400">{t(field.label)}</div>
+                              <div className="mt-1 text-gray-600 dark:text-gray-300">{t(field.value)}</div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                       <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("结果核实")}</div>
                       {aiVerificationText(recordDetail.summary) ? (
                         <p className="mt-2 text-gray-500 dark:text-gray-400">{aiVerificationText(recordDetail.summary)}</p>

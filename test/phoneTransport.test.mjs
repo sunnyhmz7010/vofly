@@ -76,6 +76,19 @@ test("phone page displays AI result verification from carrier SMS summaries", as
   assert.match(phonePage, /aiVerificationText\(recordDetail\.summary\)/);
 });
 
+test("phone page displays structured AI summary fields", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+  const dict = await source("src/lib/i18n-en.ts");
+
+  assert.match(phonePage, /function aiStructuredSummaryFields\(summary\?: AICallSummary\)/);
+  assert.match(phonePage, /caller_identity/);
+  assert.match(phonePage, /callback_needed/);
+  assert.match(phonePage, /const structuredSummaryFields = useMemo\(\(\) => aiStructuredSummaryFields\(recordDetail\?\.summary\), \[recordDetail\?\.summary\]\);/);
+  assert.match(phonePage, /structuredSummaryFields\.map\(\(field\) =>/);
+  assert.match(dict, /"来电人": "Caller"/);
+  assert.match(dict, /"是否回电": "Callback needed"/);
+});
+
 test("phone page polls and renders live AI call events while a session is active", async () => {
   const phonePage = await source("src/pages/PhonePage.tsx");
 
