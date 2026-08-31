@@ -157,20 +157,7 @@ vofly/
 
 ## 上游同步
 
-本仓库从 [MengMengCode/VoCat](https://github.com/MengMengCode/VoCat) web 代码 fork 而来（见首次提交 `e438c01`），需定期同步上游前端功能、UI 修复和安全补丁。
-
-### 同步方法
-
-1. 查看上游新提交：对比 VoCat main 分支与本仓库上次同步点之间的差异
-2. 筛选适用提交：根据模块路径和功能相关性选择性移植，适配模块路径和组件命名
-3. 逐个移植并验证：每个提交通过 `npm test` + `npm run build` 后提交
-4. 记录同步历史于下方表格
-
-### 同步记录
-
-| 日期 | VoCat 提交 | 说明 | 本仓库 commit |
-|------|-----------|------|--------------|
-| （暂无） | — | 前端仓首次同步尚未执行 | — |
+本仓库从 [MengMengCode/VoCat](https://github.com/MengMengCode/VoCat) web 代码 fork 而来，需定期同步上游前端功能、UI 修复和安全补丁。
 
 ## 临时待办：查询中心重构（剩余 Task 3–7，完成后删除本节）
 
