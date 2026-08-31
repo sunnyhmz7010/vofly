@@ -121,7 +121,7 @@ export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolic
                 <div className="truncate font-mono text-sm text-gray-800 dark:text-gray-100" title={iccid}>{iccid}</div>
               </div>
             </div>
-            <div className="ui-panel-muted p-3">
+            {!esimDetected ? <div className="ui-panel-muted p-3">
               <div className="mb-1.5 text-xs font-bold uppercase tracking-wider text-gray-500">{t("自定义手机号")}</div>
               <div className="flex items-center gap-2">
                 <Input
@@ -150,7 +150,7 @@ export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolic
               <div className="mt-1.5 text-[11px] leading-4 text-gray-500 dark:text-gray-400">
                 {t("支持开头的 + 和 3-20 位数字；留空时显示系统从 SIM/网络读取的号码")}
               </div>
-            </div>
+            </div> : null}
           </div>
 		  {esimDetected ? (
 			<button type="button" onClick={onOpenEsim} className="ui-panel-muted flex w-full items-center justify-between gap-4 p-5 text-left transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/10">

@@ -350,6 +350,11 @@ export const EN_DICT: Record<string, string> = {
   知道了: "Got It",
   环境警告: "Environment Warning",
   系统信息读取失败: "Failed to read system information",
+  "重启 vofly 服务": "Restart vofly Service",
+  "确定要重启 vofly 服务吗？重启期间页面会短暂断开，通常几秒后自动恢复。": "Restart the vofly service now? The page will disconnect briefly and usually recovers in a few seconds.",
+  "仅重启 vofly 后端服务，不会重启模组或修改 Profile。重启期间页面会短暂断开。": "Only restarts the vofly backend service. It will not reboot the modem or modify Profiles. The page will disconnect briefly.",
+  "vofly 服务正在重启，页面稍后会自动刷新。": "vofly is restarting; the page will refresh shortly.",
+  "重启 vofly 服务失败": "Failed to restart vofly service",
 
   // ---- 设置页：网络访问卡 ----
   网络访问: "Network Access",
@@ -772,6 +777,10 @@ export const EN_DICT: Record<string, string> = {
   "WiFi-Calling · 全部就绪": "WiFi Calling · All Ready",
   "[空响应]": "[Empty response]",
   "eUICC 安装 profile 时空间不足，请删除未使用的 profile 后重试。": "Insufficient space on the eUICC for this profile; delete unused profiles and retry.",
+  "读取 eSIM 超时": "Reading eSIM timed out",
+  "eSIM 信息读取失败": "Failed to read eSIM information",
+  "请先尝试重新检测；如果仍失败，可以尝试重启模组。重启模组无效时，请到系统设置中重启 vofly 服务。":
+    "Try detecting again first. If it still fails, reboot the modem. If rebooting the modem does not help, restart the vofly service from System Settings.",
   "⚠️ 删除 Profile": "⚠️ Delete Profile",
   "下载失败": "Download failed",
   "下载新 Profile": "Download New Profile",

@@ -66,6 +66,7 @@ export default function SettingsPage() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [applyingUpdate, setApplyingUpdate] = useState(false);
+  const [restartingService, setRestartingService] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [security, setSecurity] = useState<NetworkAccessForm>(EMPTY_SECURITY);
   const [clientIp, setClientIp] = useState("");
@@ -413,6 +414,26 @@ export default function SettingsPage() {
     }
   }, [updateInfo]);
 
+  const onRestartService = useCallback(async () => {
+    const confirmed = await confirmDialog(
+      lang === "zh"
+        ? "确定要重启 vofly 服务吗？重启期间页面会短暂断开，通常几秒后自动恢复。"
+        : "Restart the vofly service now? The page will disconnect briefly and usually recovers in a few seconds.",
+      t("重启 vofly 服务"),
+      { confirmText: t("立即重启"), cancelText: t("取消"), type: "warning" },
+    );
+    if (!confirmed) return;
+    setRestartingService(true);
+    try {
+      const data = await api<{ message?: string }>("/system/restart", { method: "POST", body: {} });
+      message.success(data?.message || t("vofly 服务正在重启，页面稍后会自动刷新。"));
+      window.setTimeout(() => window.location.reload(), 5000);
+    } catch (error) {
+      message.error(apiMessage(error) || t("重启 vofly 服务失败"));
+      setRestartingService(false);
+    }
+  }, [lang]);
+
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader title={t("系统设置")} />
@@ -428,8 +449,10 @@ export default function SettingsPage() {
           updateInfo={updateInfo}
           checkingUpdate={checkingUpdate}
           applyingUpdate={applyingUpdate}
+          restartingService={restartingService}
           onCheckUpdate={onCheckUpdate}
           onApplyUpdate={onApplyUpdate}
+          onRestartService={onRestartService}
         />
 
         <NetworkAccessCard

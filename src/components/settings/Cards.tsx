@@ -120,15 +120,19 @@ export function SystemInfoCard({
   updateInfo,
   checkingUpdate,
   applyingUpdate,
+  restartingService,
   onCheckUpdate,
   onApplyUpdate,
+  onRestartService,
 }: {
   info: SystemInfo;
   updateInfo: UpdateInfo | null;
   checkingUpdate: boolean;
   applyingUpdate: boolean;
+  restartingService: boolean;
   onCheckUpdate: () => void;
   onApplyUpdate: () => void;
+  onRestartService: () => void;
 }) {
   const { t } = useI18n();
   return (
@@ -164,6 +168,15 @@ export function SystemInfoCard({
             </Button>
           </div>
         ) : null}
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/20 dark:bg-amber-500/10">
+          <div className="mb-3 text-[13px] font-bold text-amber-800 dark:text-amber-200">{t("重启 vofly 服务")}</div>
+          <div className="mb-4 text-xs leading-5 text-amber-700 dark:text-amber-300/80">
+            {t("仅重启 vofly 后端服务，不会重启模组或修改 Profile。重启期间页面会短暂断开。")}
+          </div>
+          <Button variant="warning" loading={restartingService} onClick={onRestartService} className="w-full !border-0">
+            {t("重启 vofly 服务")}
+          </Button>
+        </div>
         <div className="rounded-lg bg-gray-50 p-3 dark:bg-white/5">
           <FieldRow label={t("构建时间")} value={info.buildTime} monospace />
         </div>
