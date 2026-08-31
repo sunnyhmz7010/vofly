@@ -12,13 +12,23 @@ interface ResourceForm {
   knowledgeLinks: KnowledgeLink[];
 }
 
-function isHttpUrl(value: string): boolean {
+// toHttpHref 仅在输入可解析且协议为 HTTP/HTTPS 时返回规范化 URL，
+// 其余输入（含 javascript: 等危险 scheme）一律返回 null，从源头阻止危险 href。
+function toHttpHref(value: string): string | null {
+  let parsed: URL;
   try {
-    const parsed = new URL(value);
-    return (parsed.protocol === "https:" || parsed.protocol === "http:") && !!parsed.host;
+    parsed = new URL(value);
   } catch {
-    return false;
+    return null;
   }
+  if ((parsed.protocol !== "https:" && parsed.protocol !== "http:") || !parsed.host) {
+    return null;
+  }
+  return parsed.href;
+}
+
+function isHttpUrl(value: string): boolean {
+  return toHttpHref(value) !== null;
 }
 
 function fromResource(resource: QueryCenterCardResource): ResourceForm {
@@ -148,6 +158,9 @@ export function CardLinksPanel({
     );
   }
 
+  const rechargeHref = toHttpHref(form.rechargeUrl.trim());
+  const renewHref = toHttpHref(form.renewUrl.trim());
+
   return (
     <div className="space-y-4 p-4 sm:p-5">
       <div className="flex items-center justify-between">
@@ -180,9 +193,10 @@ export function CardLinksPanel({
                 placeholder="https://"
                 onChange={(event) => setForm({ ...form, rechargeUrl: event.target.value })}
               />
-              {form.rechargeUrl.trim() && isHttpUrl(form.rechargeUrl.trim()) ? (
+              {rechargeHref ? (
                 <a
-                  href={form.rechargeUrl.trim()}
+                  // codeql[js/xss-through-dom]: rechargeHref 经 toHttpHref 协议白名单校验，仅 HTTP/HTTPS 可达
+                  href={rechargeHref}
                   target="_blank"
                   rel="noopener noreferrer nofollow"
                   aria-label={t("打开充值链接")}
@@ -202,9 +216,10 @@ export function CardLinksPanel({
                 placeholder="https://"
                 onChange={(event) => setForm({ ...form, renewUrl: event.target.value })}
               />
-              {form.renewUrl.trim() && isHttpUrl(form.renewUrl.trim()) ? (
+              {renewHref ? (
                 <a
-                  href={form.renewUrl.trim()}
+                  // codeql[js/xss-through-dom]: renewHref 经 toHttpHref 协议白名单校验，仅 HTTP/HTTPS 可达
+                  href={renewHref}
                   target="_blank"
                   rel="noopener noreferrer nofollow"
                   aria-label={t("打开续费链接")}
@@ -224,7 +239,9 @@ export function CardLinksPanel({
               {t("暂无知识库链接，点击下方按钮新增")}
             </div>
           ) : (
-            form.knowledgeLinks.map((link, index) => (
+            form.knowledgeLinks.map((link, index) => {
+              const linkHref = toHttpHref(link.url.trim());
+              return (
               <div key={index} className="space-y-2 rounded-xl border border-gray-200 p-3 dark:border-white/10">
                 <div className="flex items-center gap-2">
                   <Input
@@ -280,9 +297,10 @@ export function CardLinksPanel({
                       setForm({ ...form, knowledgeLinks: next });
                     }}
                   />
-                  {link.url.trim() && isHttpUrl(link.url.trim()) ? (
+                  {linkHref ? (
                     <a
-                      href={link.url.trim()}
+                      // codeql[js/xss-through-dom]: linkHref 经 toHttpHref 协议白名单校验，仅 HTTP/HTTPS 可达
+                      href={linkHref}
                       target="_blank"
                       rel="noopener noreferrer nofollow"
                       aria-label={t("打开链接")}
@@ -294,7 +312,8 @@ export function CardLinksPanel({
                   ) : null}
                 </div>
               </div>
-            ))
+              );
+            })
           )}
           <Button
             size="small"
