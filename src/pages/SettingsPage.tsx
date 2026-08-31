@@ -45,7 +45,7 @@ const NOTIFY_TABS = [
   { key: "meow", label: "MeoW" },
 ];
 
-const EMPTY_SYSTEM_INFO: SystemInfo = { version: "", buildTime: "", config: "" };
+const EMPTY_SYSTEM_INFO: SystemInfo = { version: "", buildTime: "" };
 
 const EMPTY_SECURITY: NetworkAccessForm = { mode: "internal", allowedCidrs: [], trustProxyHeaders: false };
 export default function SettingsPage() {
@@ -417,9 +417,9 @@ export default function SettingsPage() {
   const onRestartService = useCallback(async () => {
     const confirmed = await confirmDialog(
       lang === "zh"
-        ? "确定要重启 vofly 服务吗？重启期间页面会短暂断开，通常几秒后自动恢复。"
-        : "Restart the vofly service now? The page will disconnect briefly and usually recovers in a few seconds.",
-      t("重启 vofly 服务"),
+        ? "仅重启 vofly 后端服务，不会重启模组或修改 Profile。重启期间页面会短暂断开，通常几秒后自动恢复。确定要重启吗？"
+        : "Only restarts the vofly backend service. It will not reboot the modem or modify Profiles. The page will disconnect briefly and usually recovers in a few seconds. Restart now?",
+      t("重启 vofly 后端服务"),
       { confirmText: t("立即重启"), cancelText: t("取消"), type: "warning" },
     );
     if (!confirmed) return;
@@ -429,7 +429,7 @@ export default function SettingsPage() {
       message.success(data?.message || t("vofly 服务正在重启，页面稍后会自动刷新。"));
       window.setTimeout(() => window.location.reload(), 5000);
     } catch (error) {
-      message.error(apiMessage(error) || t("重启 vofly 服务失败"));
+      message.error(apiMessage(error) || t("重启 vofly 后端服务失败"));
       setRestartingService(false);
     }
   }, [lang]);

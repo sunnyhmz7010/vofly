@@ -540,7 +540,6 @@ export interface LoggingSettings {
 export interface SystemInfo {
   version: string;
   buildTime: string;
-  config: string;
   os?: string;
   architecture?: string;
   uptime?: string;

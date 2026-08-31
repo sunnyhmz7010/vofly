@@ -148,6 +148,9 @@ export function SystemInfoCard({
         <div className="rounded-lg bg-gray-50 p-3 dark:bg-white/5">
           <FieldRow label={t("版本")} value={info.version} monospace>
             <div className="flex items-center justify-end gap-3">
+              <Button size="small" variant="primary" className="!border-0" loading={restartingService} onClick={onRestartService}>
+                {t("重启 vofly 后端服务")}
+              </Button>
               <Button size="small" variant="primary" className="!border-0" loading={checkingUpdate} onClick={onCheckUpdate}>
                 {t("检查更新")}
               </Button>
@@ -168,20 +171,8 @@ export function SystemInfoCard({
             </Button>
           </div>
         ) : null}
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/20 dark:bg-amber-500/10">
-          <div className="mb-3 text-[13px] font-bold text-amber-800 dark:text-amber-200">{t("重启 vofly 服务")}</div>
-          <div className="mb-4 text-xs leading-5 text-amber-700 dark:text-amber-300/80">
-            {t("仅重启 vofly 后端服务，不会重启模组或修改 Profile。重启期间页面会短暂断开。")}
-          </div>
-          <Button variant="warning" loading={restartingService} onClick={onRestartService} className="w-full !border-0">
-            {t("重启 vofly 服务")}
-          </Button>
-        </div>
         <div className="rounded-lg bg-gray-50 p-3 dark:bg-white/5">
           <FieldRow label={t("构建时间")} value={info.buildTime} monospace />
-        </div>
-        <div className="rounded-lg bg-gray-50 p-3 dark:bg-white/5">
-          <FieldRow label={t("配置路径")} value={info.config} monospace copyable />
         </div>
         <div className="rounded-lg bg-gray-50 p-3 dark:bg-white/5">
           <FieldRow label={t("运行时长")} value={info.uptime} monospace />

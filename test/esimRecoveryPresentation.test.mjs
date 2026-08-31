@@ -13,7 +13,7 @@ test("eSIM loading timeout points users to modem restart or settings service res
   assert.doesNotMatch(esimTabSource, /\/system\/restart/);
 });
 
-test("system settings exposes the vofly service restart action", () => {
+test("system settings exposes the vofly backend service restart action", () => {
   assert.match(settingsPageSource, /\/system\/restart/);
-  assert.match(settingsPageSource, /重启 vofly 服务/);
+  assert.match(settingsPageSource, /重启 vofly 后端服务/);
 });
