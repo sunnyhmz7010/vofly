@@ -770,6 +770,7 @@ export default function DevicesPage() {
                       rebooting={rebooting}
                       onRebootModem={handleRebootModem}
                       onProfileChanged={handleProfileChanged}
+					  onCardPolicyChanged={handlePolicyChanged}
 					  onToggleRoamingData={handleToggleRoamingData}
                     />
                   ) : null}

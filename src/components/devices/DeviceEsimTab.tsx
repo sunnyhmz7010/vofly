@@ -21,6 +21,7 @@ export interface DeviceEsimTabProps {
   rebooting?: boolean;
   onRebootModem?: () => Promise<boolean>;
   onProfileChanged?: () => void;
+  onCardPolicyChanged?: () => void;
 	onToggleRoamingData?: (enabled: boolean) => Promise<boolean>;
 }
 
@@ -74,7 +75,7 @@ function applyDisableLocal(groups: EsimProfileGroup[], iccid: string, aidHex?: s
   }));
 }
 
-export function DeviceEsimTab({ deviceId, deviceImei, isActive, deviceOnline, rebooting, onRebootModem, onProfileChanged, onToggleRoamingData }: DeviceEsimTabProps) {
+export function DeviceEsimTab({ deviceId, deviceImei, isActive, deviceOnline, rebooting, onRebootModem, onProfileChanged, onCardPolicyChanged, onToggleRoamingData }: DeviceEsimTabProps) {
   const { t } = useI18n();
   const [initialLoading, setInitialLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -548,7 +549,10 @@ export function DeviceEsimTab({ deviceId, deviceImei, isActive, deviceOnline, re
           onCancelRename={cancelRename}
           onTogglePolicy={(iccid) => setPolicyIccid((prev) => (prev === iccid ? null : iccid))}
           onDelete={openDelete}
-          onPolicyChanged={() => loadOverview(true)}
+          onPolicyChanged={() => {
+            loadOverview(true);
+            onCardPolicyChanged?.();
+          }}
 		  onToggleRoamingData={onToggleRoamingData}
         />
       ))}
