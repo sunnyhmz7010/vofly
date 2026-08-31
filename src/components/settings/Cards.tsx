@@ -1,17 +1,13 @@
 import type { ReactNode } from "react";
-import { useCallback, useState } from "react";
 import {
   AlertRegular,
-  ArrowClockwiseRegular,
   CheckmarkRegular,
-  DeleteRegular,
   InfoRegular,
   KeyRegular,
 } from "@fluentui/react-icons";
 import type { SystemInfo } from "../../types";
-import { api, apiMessage } from "../../api";
 import { useI18n } from "../../lib/i18n";
-import { Button, Input, message } from "../ui";
+import { Button } from "../ui/Button";
 import { FieldRow, PasswordInput } from "./controls";
 
 export interface PasswordForm {
@@ -187,95 +183,6 @@ export function SystemInfoCard({
         <div className="rounded-lg bg-gray-50 p-3 dark:bg-white/5">
           <FieldRow label={t("架构")} value={info.architecture} monospace />
         </div>
-        <div className="rounded-lg bg-gray-50 p-3 dark:bg-white/5">
-          <FieldRow label={t("更新镜像")} value={info.updateMirror || t("未设置")} monospace />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function UpdateMirrorCard({
-  currentMirror,
-  onSaved,
-}: {
-  currentMirror: string;
-  onSaved: () => void;
-}) {
-  const { t, lang } = useI18n();
-  const [mirror, setMirror] = useState(currentMirror);
-  const [saving, setSaving] = useState(false);
-  const [clearing, setClearing] = useState(false);
-
-  const onSave = useCallback(async () => {
-    setSaving(true);
-    try {
-      await api("/system/update-mirror", {
-        method: "PUT",
-        body: { mirror: mirror.trim() },
-      });
-      message.success(lang === "zh" ? "镜像地址已保存，重启后生效" : "Mirror saved; restart to apply");
-      onSaved();
-    } catch (error) {
-      message.error(apiMessage(error) || (lang === "zh" ? "保存失败" : "Save failed"));
-    } finally {
-      setSaving(false);
-    }
-  }, [mirror, lang, onSaved]);
-
-  const onClear = useCallback(async () => {
-    setClearing(true);
-    try {
-      await api("/system/update-mirror", { method: "DELETE" });
-      setMirror("");
-      message.success(lang === "zh" ? "镜像已清除，重启后生效" : "Mirror cleared; restart to apply");
-      onSaved();
-    } catch (error) {
-      message.error(apiMessage(error) || (lang === "zh" ? "清除失败" : "Clear failed"));
-    } finally {
-      setClearing(false);
-    }
-  }, [lang, onSaved]);
-
-  return (
-    <div className="ui-card group relative overflow-hidden p-8">
-      <CardDecor />
-      <div className="relative z-10 mb-6 flex items-center gap-3">
-        <CardIcon>
-          <ArrowClockwiseRegular className="text-[24px]" />
-        </CardIcon>
-        <CardTitle title={t("更新镜像")} />
-      </div>
-      <div className="relative z-10 space-y-4">
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          {lang === "zh"
-            ? "设置国内镜像加速 GitHub 下载。镜像地址格式如 https://mirror.ghproxy.com，留空则直连 GitHub。修改后需重启 vofly 服务生效。"
-            : "Set a mirror URL to accelerate GitHub downloads (e.g. https://mirror.ghproxy.com). Leave empty to download directly from GitHub. Restart required after change."}
-        </p>
-        <div className="flex items-center gap-2">
-          <Input
-            value={mirror}
-            placeholder="https://mirror.ghproxy.com"
-            onChange={(e) => setMirror(e.target.value)}
-          />
-          <Button size="small" variant="primary" className="!border-0" loading={saving} disabled={saving || mirror.trim() === currentMirror} onClick={onSave}>
-            {t("保存")}
-          </Button>
-          {currentMirror ? (
-            <Button size="small" variant="text" loading={clearing} disabled={clearing} onClick={onClear} icon={<DeleteRegular />}>
-              {t("清除")}
-            </Button>
-          ) : null}
-        </div>
-        {currentMirror ? (
-          <div className="rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700 dark:bg-green-500/10 dark:text-green-400">
-            {lang === "zh" ? `当前生效：${currentMirror}` : `Active: ${currentMirror}`}
-          </div>
-        ) : (
-          <div className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500 dark:bg-white/5 dark:text-gray-400">
-            {lang === "zh" ? "未设置镜像，将直连 GitHub 下载" : "No mirror set; downloading from GitHub directly"}
-          </div>
-        )}
       </div>
     </div>
   );
