@@ -68,6 +68,14 @@ interface AICallSession {
   error?: string;
 }
 
+interface AICallProvider {
+  name: string;
+  label: string;
+  configured: boolean;
+  supported: boolean;
+  experimental?: boolean;
+}
+
 interface AICallEvent {
   id?: number;
   type: string;
@@ -419,6 +427,7 @@ export default function PhonePage() {
   const [acting, setActing] = useState(false);
   const [aiTask, setAITask] = useState("");
   const [aiProvider, setAIProvider] = useState("fake");
+  const [aiProviders, setAIProviders] = useState<AICallProvider[]>([]);
   const [aiSessions, setAISessions] = useState<AICallSession[]>([]);
   const [aiCallEvents, setAICallEvents] = useState<AICallEvent[]>([]);
   const [aiBusy, setAIBusy] = useState(false);
@@ -444,13 +453,14 @@ export default function PhonePage() {
     [devices],
   );
   const aiProviderOptions = useMemo(
-    () => [
-      { value: "fake", label: "fake" },
-      { value: "openai", label: "OpenAI" },
-      { value: "qwen", label: "Qwen" },
-      { value: "doubao", label: "Doubao" },
-    ],
-    [],
+    () =>
+      (aiProviders.length > 0 ? aiProviders : [{ name: "fake", label: "fake", configured: true, supported: true }])
+        .filter((provider) => provider.supported && provider.configured)
+        .map((provider) => ({
+          value: provider.name,
+          label: provider.experimental ? `${provider.label}（实验）` : provider.label,
+        })),
+    [aiProviders],
   );
 
   const loadDevices = useCallback(async () => {
@@ -499,6 +509,21 @@ export default function PhonePage() {
     }
   }, []);
 
+  const loadAIProviders = useCallback(async () => {
+    try {
+      const res = await api<{ data: AICallProvider[] }>("/ai-call-providers");
+      const providers = camelize<AICallProvider[]>(res.data || []);
+      setAIProviders(providers);
+      setAIProvider((current) => {
+        if (providers.some((provider) => provider.name === current && provider.supported && provider.configured)) return current;
+        return providers.find((provider) => provider.supported && provider.configured)?.name || "fake";
+      });
+    } catch {
+      setAIProviders([{ name: "fake", label: "fake", configured: true, supported: true }]);
+      setAIProvider("fake");
+    }
+  }, []);
+
   const loadAICallEvents = useCallback(async (callId: string) => {
     if (!callId) return;
     try {
@@ -516,7 +541,8 @@ export default function PhonePage() {
 
   useEffect(() => {
     void loadDevices();
-  }, [loadDevices]);
+    void loadAIProviders();
+  }, [loadDevices, loadAIProviders]);
 
   useEffect(() => {
     if (!deviceId) return;

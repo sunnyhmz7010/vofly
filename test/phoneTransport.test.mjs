@@ -82,3 +82,13 @@ test("phone page can update AI task instructions during an active session", asyn
   assert.match(phonePage, /await loadAICallEvents\(activeAISession\.callId\);/);
   assert.match(phonePage, /更新任务/);
 });
+
+test("phone page loads AI provider options from backend availability", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+
+  assert.match(phonePage, /interface AICallProvider/);
+  assert.match(phonePage, /const \[aiProviders, setAIProviders\] = useState<AICallProvider\[\]>\(\[\]\);/);
+  assert.match(phonePage, /api<\{ data: AICallProvider\[\] \}>\("\/ai-call-providers"\)/);
+  assert.match(phonePage, /provider\.supported && provider\.configured/);
+  assert.doesNotMatch(phonePage, /value: "doubao", label: "Doubao"/);
+});
