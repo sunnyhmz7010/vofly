@@ -65,6 +65,17 @@ test("phone page loads AI call record details for transcripts and summaries", as
   assert.match(phonePage, /aiVerdictText\(recordDetail\.summary\)/);
 });
 
+test("phone page displays AI result verification from carrier SMS summaries", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+
+  assert.match(phonePage, /function aiVerificationText\(summary\?: AICallSummary\)/);
+  assert.match(phonePage, /result_verification/);
+  assert.match(phonePage, /result_source/);
+  assert.match(phonePage, /结果核实/);
+  assert.match(phonePage, /已核实/);
+  assert.match(phonePage, /aiVerificationText\(recordDetail\.summary\)/);
+});
+
 test("phone page polls and renders live AI call events while a session is active", async () => {
   const phonePage = await source("src/pages/PhonePage.tsx");
 

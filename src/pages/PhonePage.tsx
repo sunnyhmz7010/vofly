@@ -180,6 +180,21 @@ function aiVerdictText(summary?: AICallSummary) {
   }
 }
 
+function aiVerificationText(summary?: AICallSummary) {
+  const raw = summary?.summaryJson?.trim();
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const verification = typeof parsed.result_verification === "string" ? parsed.result_verification : "";
+    const source = typeof parsed.result_source === "string" ? parsed.result_source : "";
+    if (verification === "verified" && source === "carrier_sms") return "运营商短信 · 已核实";
+    if (verification === "unverified") return source === "transcript" ? "通话转写 · 待核实" : "待核实";
+    return "";
+  } catch {
+    return "";
+  }
+}
+
 function mergeAICallEvents(current: AICallEvent[], next: AICallEvent[]) {
   const merged = new Map<string, AICallEvent>();
   for (const event of [...current, ...next]) {
@@ -1201,6 +1216,12 @@ export default function PhonePage() {
                         <p className="mt-2 text-gray-500 dark:text-gray-400">{aiSummaryText(recordDetail.summary)}</p>
                       ) : (
                         <p className="mt-2 text-gray-400">{t("暂无 AI 摘要")}</p>
+                      )}
+                      <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("结果核实")}</div>
+                      {aiVerificationText(recordDetail.summary) ? (
+                        <p className="mt-2 text-gray-500 dark:text-gray-400">{aiVerificationText(recordDetail.summary)}</p>
+                      ) : (
+                        <p className="mt-2 text-gray-400">{t("暂无结果核实")}</p>
                       )}
                       <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("任务判定")}</div>
                       {aiVerdictText(recordDetail.summary) ? (
