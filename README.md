@@ -35,7 +35,7 @@ OpenWrt/Kwrt 默认已在 root shell 中运行，通常不带 `sudo`：
 curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sh
 ```
 
-安装后默认监听 `0.0.0.0:7575`，数据库位于 `/opt/vofly/data/vofly.db`。普通 Linux 写入 `systemd` 服务，OpenWrt/Kwrt 写入 `/etc/init.d/vofly` procd 服务。首次安装会生成管理员初始密码并仅在终端显示一次；默认用户名为 `admin`，请立即记录密码并在登录后修改。
+安装后默认监听 `0.0.0.0:7575`，数据库位于 `/opt/vofly/data/vofly.db`。普通 Linux 写入 `systemd` 服务，OpenWrt/Kwrt 写入 `/etc/init.d/vofly` procd 服务。首次安装会生成初始访问密令并仅在终端显示一次，请立即记录；登录后可在 Web 设置或运行 `vofly menu` 修改。
 
 #### 📌 安装指定版本
 

@@ -55,6 +55,13 @@ test("installer no longer exposes a check-only mode", async () => {
   assert.doesNotMatch(readme, /仅检查依赖不安装|--check-env/);
 });
 
+test("README describes the single access-secret login model", async () => {
+  const readme = await source("README.md");
+
+  assert.match(readme, /初始访问密令/);
+  assert.doesNotMatch(readme, /默认用户名|用户名为 `?admin`?|管理员初始密码/);
+});
+
 test("uninstaller removes application link and only recorded packages", async () => {
   const uninstall = await source("uninstall.sh");
 
