@@ -180,6 +180,25 @@ test("phone page forwards AI preset instruction fields to call requests", async 
   assert.match(phonePage, /body: \{ numbers, task: aiTask\.trim\(\), provider: aiProvider, \.\.\.aiPresetInstructionBody\(\) \}/);
 });
 
+test("phone page loads call playbooks and forwards task package context", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+  const dict = await source("src/lib/i18n-en.ts");
+
+  assert.match(phonePage, /interface AICallPlaybook/);
+  assert.match(phonePage, /taskPackage\?: Record<string, Record<string, string>>/);
+  assert.match(phonePage, /const \[aiPlaybooks, setAIPlaybooks\] = useState<AICallPlaybook\[\]>\(\[\]\);/);
+  assert.match(phonePage, /const \[playbooksEnabled, setPlaybooksEnabled\] = useState\(false\);/);
+  assert.match(phonePage, /async function loadAIPlaybooks\(\)/);
+  assert.match(phonePage, /api<\{ ok: boolean; enabled: boolean; playbooks: AICallPlaybook\[\] \}>\("\/playbooks"\)/);
+  assert.match(phonePage, /function matchingAIPlaybook\(number: string\)/);
+  assert.match(phonePage, /const selectedAIPlaybook = matchingAIPlaybook\(dialNumber\);/);
+  assert.match(phonePage, /task_package: selectedAIPreset\.taskPackage/);
+  assert.match(phonePage, /热线情报/);
+  assert.match(phonePage, /必采信息/);
+  assert.match(phonePage, /IVR 流程/);
+  assert.match(dict, /"热线情报": "Hotline playbook"/);
+});
+
 test("phone page manages local AI number profiles", async () => {
   const phonePage = await source("src/pages/PhonePage.tsx");
   const dict = await source("src/lib/i18n-en.ts");

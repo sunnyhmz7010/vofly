@@ -85,6 +85,16 @@ interface AICallPreset {
   openingMode?: "say" | "wait" | string;
   dtmfSpokenFollowup?: boolean;
   resultVerification?: "none" | "carrier_sms" | string;
+  taskPackage?: Record<string, Record<string, string>>;
+}
+
+interface AICallPlaybook {
+  id: string;
+  numbers?: string[];
+  label?: string;
+  requiredInfo?: { key: string; label?: string; purpose?: string }[];
+  ivrNotes?: string;
+  useCases?: { label?: string; notes?: string }[];
 }
 
 interface ManagedNumberProfile {
@@ -155,6 +165,10 @@ function callDirectionLabel(direction: string) {
     default:
       return "未知";
   }
+}
+
+function normalizedDialNumber(value: string) {
+  return value.replace(/\D/g, "");
 }
 
 function isActiveCall(call: CallItem) {
@@ -627,6 +641,8 @@ export default function PhonePage() {
   const [aiProviders, setAIProviders] = useState<AICallProvider[]>([]);
   const [aiPresets, setAIPresets] = useState<AICallPreset[]>([]);
   const [selectedAIPreset, setSelectedAIPreset] = useState<AICallPreset | null>(null);
+  const [aiPlaybooks, setAIPlaybooks] = useState<AICallPlaybook[]>([]);
+  const [playbooksEnabled, setPlaybooksEnabled] = useState(false);
   const [managedProfiles, setManagedProfiles] = useState<ManagedNumberProfile[]>([]);
   const [profilesConfigured, setProfilesConfigured] = useState(true);
   const [profileManagerOpen, setProfileManagerOpen] = useState(false);
@@ -804,6 +820,17 @@ export default function PhonePage() {
     }
   }, []);
 
+  async function loadAIPlaybooks() {
+    try {
+      const res = await api<{ ok: boolean; enabled: boolean; playbooks: AICallPlaybook[] }>("/playbooks");
+      setPlaybooksEnabled(res.enabled === true);
+      setAIPlaybooks(camelize<AICallPlaybook[]>(res.playbooks || []));
+    } catch {
+      setPlaybooksEnabled(false);
+      setAIPlaybooks([]);
+    }
+  }
+
   async function loadManagedProfiles() {
     try {
       const res = await api<{ profiles: ManagedNumberProfile[]; configured: boolean }>("/number_profiles/manage");
@@ -892,6 +919,7 @@ export default function PhonePage() {
     void loadDevices();
     void loadAIProviders();
     void loadAIPresets();
+    void loadAIPlaybooks();
   }, [loadDevices, loadAIProviders, loadAIPresets]);
 
   function applyAIPreset(presetID: string) {
@@ -909,7 +937,14 @@ export default function PhonePage() {
       opening_mode: selectedAIPreset.openingMode,
       dtmf_spoken_followup: selectedAIPreset.dtmfSpokenFollowup,
       result_verification: selectedAIPreset.resultVerification,
+      task_package: selectedAIPreset.taskPackage,
     };
+  }
+
+  function matchingAIPlaybook(number: string) {
+    const normalized = normalizedDialNumber(number);
+    if (!normalized) return null;
+    return aiPlaybooks.find((playbook) => (playbook.numbers || []).some((candidate) => normalizedDialNumber(candidate) === normalized)) || null;
   }
 
   useEffect(() => {
@@ -1254,6 +1289,8 @@ export default function PhonePage() {
     }
   }
 
+  const selectedAIPlaybook = matchingAIPlaybook(dialNumber);
+
   return (
     <div className="phone-page mx-auto w-full max-w-[1500px]">
       <PageHeader title={t("通话")} />
@@ -1490,6 +1527,33 @@ export default function PhonePage() {
               placeholder={t("例如：确认套餐余量并记录关键信息")}
               disabled={controlsLocked || aiBusy}
             />
+            {playbooksEnabled && selectedAIPlaybook ? (
+              <div className="mt-3 rounded-lg border border-cyan-100 bg-cyan-50/70 p-3 text-xs text-cyan-900 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-100">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold">{t("热线情报")}</span>
+                  <span className="text-cyan-700 dark:text-cyan-200">{selectedAIPlaybook.label || selectedAIPlaybook.id}</span>
+                </div>
+                {selectedAIPlaybook.ivrNotes ? (
+                  <p className="mt-2">
+                    <span className="font-semibold">{t("IVR 流程")}：</span>
+                    {selectedAIPlaybook.ivrNotes}
+                  </p>
+                ) : null}
+                {selectedAIPlaybook.requiredInfo?.length ? (
+                  <div className="mt-2">
+                    <p className="font-semibold">{t("必采信息")}</p>
+                    <ul className="mt-1 space-y-1">
+                      {selectedAIPlaybook.requiredInfo.map((item) => (
+                        <li key={item.key}>
+                          {item.label || item.key}
+                          {item.purpose ? `：${item.purpose}` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <label className="mb-2 mt-3 block text-xs font-bold text-gray-500 dark:text-gray-400">{t("批量号码")}</label>
             <textarea
               className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/10 dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
