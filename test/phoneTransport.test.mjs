@@ -72,3 +72,13 @@ test("phone page polls and renders live AI call events while a session is active
   assert.match(phonePage, /event\.type === "transcript"/);
   assert.match(phonePage, /event\.type === "tool_call"/);
 });
+
+test("phone page can update AI task instructions during an active session", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+
+  assert.match(phonePage, /async function updateAIInstructions\(\)/);
+  assert.match(phonePage, /\/ai-calls\/\$\{encodeURIComponent\(activeAISession\.id\)\}\/instructions/);
+  assert.match(phonePage, /body: \{ instructions: aiTask\.trim\(\) \}/);
+  assert.match(phonePage, /await loadAICallEvents\(activeAISession\.callId\);/);
+  assert.match(phonePage, /更新任务/);
+});

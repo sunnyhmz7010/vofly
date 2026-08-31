@@ -702,6 +702,23 @@ export default function PhonePage() {
     }
   }
 
+  async function updateAIInstructions() {
+    if (controlsLocked || !activeAISession || aiBusy || !aiTask.trim()) return;
+    setAIBusy(true);
+    try {
+      await api(`/ai-calls/${encodeURIComponent(activeAISession.id)}/instructions`, {
+        method: "POST",
+        body: { instructions: aiTask.trim() },
+      });
+      await loadAISessions();
+      await loadAICallEvents(activeAISession.callId);
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setAIBusy(false);
+    }
+  }
+
   async function loadRecordDetail(record: CallRecord) {
     if (recordDetail?.record?.callId === record.callId) {
       setRecordDetail(null);
@@ -891,6 +908,16 @@ export default function PhonePage() {
                     onClick={() => void hangupAICall(activeAISession.id)}
                   >
                     {t("结束 AI 通话")}
+                  </Button>
+                  <Button
+                    size="small"
+                    plain
+                    variant="primary"
+                    loading={aiBusy}
+                    disabled={controlsLocked || !aiTask.trim()}
+                    onClick={() => void updateAIInstructions()}
+                  >
+                    {t("更新任务")}
                   </Button>
                 </div>
                 {activeAISession.task ? <p className="mt-2">{activeAISession.task}</p> : null}

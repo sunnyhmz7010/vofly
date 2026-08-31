@@ -1332,6 +1332,7 @@ export const EN_DICT: Record<string, string> = {
   "AI 外呼": "AI Dial",
   "AI 接管": "AI Takeover",
   "结束 AI 通话": "End AI Call",
+  "更新任务": "Update Task",
   "AI 实时事件": "AI Live Events",
   "等待 AI 转写或状态事件": "Waiting for AI transcript or status events",
   "AI 通话详情": "AI Call Details",
