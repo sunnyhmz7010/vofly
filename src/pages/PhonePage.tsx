@@ -83,6 +83,14 @@ interface AICallPreset {
   task: string;
 }
 
+interface AIBatchQueueStatus {
+  pendingNumbers: string[];
+  currentNumber?: string;
+  active?: boolean;
+  cancelledNumbers?: string[];
+  cancelledCount?: number;
+}
+
 interface AICallEvent {
   id?: number;
   type: string;
@@ -601,6 +609,7 @@ export default function PhonePage() {
   const [aiProvider, setAIProvider] = useState("fake");
   const [aiProviders, setAIProviders] = useState<AICallProvider[]>([]);
   const [aiPresets, setAIPresets] = useState<AICallPreset[]>([]);
+  const [aiBatchQueue, setAIBatchQueue] = useState<AIBatchQueueStatus>({ pendingNumbers: [], active: false });
   const [aiSessions, setAISessions] = useState<AICallSession[]>([]);
   const [aiCallEvents, setAICallEvents] = useState<AICallEvent[]>([]);
   const [aiBusy, setAIBusy] = useState(false);
@@ -689,6 +698,20 @@ export default function PhonePage() {
     }
   }, []);
 
+  async function loadAIBatchQueue() {
+    if (!deviceId) {
+      setAIBatchQueue({ pendingNumbers: [], active: false });
+      return;
+    }
+    try {
+      const res = await api<{ data: AIBatchQueueStatus }>(`/devices/${encodeURIComponent(deviceId)}/ai-calls/batch`);
+      const status = camelize<AIBatchQueueStatus>(res.data || { pending_numbers: [], active: false });
+      setAIBatchQueue({ ...status, pendingNumbers: status.pendingNumbers || [] });
+    } catch {
+      // 队列状态只增强批量外呼可见性，失败时不阻塞通话控制。
+    }
+  }
+
   const loadAIProviders = useCallback(async () => {
     try {
       const res = await api<{ data: AICallProvider[] }>("/ai-call-providers");
@@ -746,17 +769,21 @@ export default function PhonePage() {
     void refresh();
     void loadRecords();
     void loadAISessions();
+    void loadAIBatchQueue();
     const timer = window.setInterval(() => void refresh(), 3000);
     const aiTimer = window.setInterval(() => void loadAISessions(), 3000);
+    const aiBatchTimer = window.setInterval(() => void loadAIBatchQueue(), 3000);
     return () => {
       window.clearInterval(timer);
       window.clearInterval(aiTimer);
+      window.clearInterval(aiBatchTimer);
     };
   }, [deviceId, refresh, loadRecords, loadAISessions]);
 
   const activeCall = callsPayload?.calls.find(isActiveCall) || null;
   const activeAISession =
     aiSessions.find((session) => session.deviceId === deviceId && session.state !== "ended" && session.state !== "failed") || null;
+  const aiBatchPendingNumbers = aiBatchQueue.pendingNumbers || [];
   const structuredSummaryFields = useMemo(() => aiStructuredSummaryFields(recordDetail?.summary), [recordDetail?.summary]);
   const pendingOwnerTakeover = useMemo(() => hasPendingOwnerTakeover(aiCallEvents), [aiCallEvents]);
   const transport = callsPayload?.transport || "";
@@ -905,9 +932,25 @@ export default function PhonePage() {
       setAIBatchNumbers("");
       await refresh();
       await loadAISessions();
+      await loadAIBatchQueue();
       await loadRecords();
     } catch (error) {
       release();
+      window.alert(apiMessage(error));
+    } finally {
+      setAIBusy(false);
+    }
+  }
+
+  async function cancelAIBatchQueue() {
+    if (controlsLocked || !deviceId || aiBusy || aiBatchPendingNumbers.length === 0) return;
+    setAIBusy(true);
+    try {
+      const res = await api<{ data: AIBatchQueueStatus }>(`/devices/${encodeURIComponent(deviceId)}/ai-calls/batch`, { method: "DELETE" });
+      const status = camelize<AIBatchQueueStatus>(res.data || { pending_numbers: [], active: false });
+      setAIBatchQueue({ ...status, pendingNumbers: status.pendingNumbers || [] });
+      await loadAIBatchQueue();
+    } catch (error) {
       window.alert(apiMessage(error));
     } finally {
       setAIBusy(false);
@@ -941,6 +984,7 @@ export default function PhonePage() {
       release();
       await refresh();
       await loadAISessions();
+      await loadAIBatchQueue();
       await loadRecords();
     } catch (error) {
       window.alert(apiMessage(error));
@@ -977,6 +1021,7 @@ export default function PhonePage() {
       await loadAISessions();
       await loadAICallEvents(activeAISession.callId);
       await refresh();
+      await loadAIBatchQueue();
     } catch (error) {
       window.alert(apiMessage(error));
     } finally {
@@ -1182,6 +1227,36 @@ export default function PhonePage() {
                 </Button>
               ) : null}
             </div>
+            {aiBatchQueue.active || aiBatchPendingNumbers.length > 0 ? (
+              <div className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50/70 p-3 text-xs text-indigo-800 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-semibold">{t("批量队列")}</span>
+                  <span>{tf("待拨 {count} 个", { count: aiBatchPendingNumbers.length })}</span>
+                  {aiBatchPendingNumbers.length > 0 ? (
+                    <Button
+                      size="small"
+                      plain
+                      variant="danger"
+                      loading={aiBusy}
+                      disabled={controlsLocked}
+                      onClick={() => void cancelAIBatchQueue()}
+                    >
+                      {t("取消待拨")}
+                    </Button>
+                  ) : null}
+                </div>
+                {aiBatchQueue.currentNumber ? (
+                  <p className="mt-2">
+                    {t("当前外呼")}：{aiBatchQueue.currentNumber}
+                  </p>
+                ) : null}
+                {aiBatchQueue.pendingNumbers?.length ? (
+                  <p className="mt-1 break-all">
+                    {t("待拨号码")}：{aiBatchQueue.pendingNumbers.join("、")}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             {activeAISession ? (
               <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/70 p-3 text-xs text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200">
                 <div className="flex flex-wrap items-center justify-between gap-2">

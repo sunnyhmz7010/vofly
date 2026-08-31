@@ -177,3 +177,21 @@ test("phone page exposes AI batch dial controls", async () => {
   assert.match(dict, /"AI 批量外呼": "AI Batch Dial"/);
   assert.match(dict, /"批量号码": "Batch numbers"/);
 });
+
+test("phone page displays and cancels AI batch queue", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+  const dict = await source("src/lib/i18n-en.ts");
+
+  assert.match(phonePage, /interface AIBatchQueueStatus/);
+  assert.match(phonePage, /const \[aiBatchQueue, setAIBatchQueue\] = useState<AIBatchQueueStatus>/);
+  assert.match(phonePage, /async function loadAIBatchQueue\(\)/);
+  assert.match(phonePage, /api<\{ data: AIBatchQueueStatus \}>\(`\/devices\/\$\{encodeURIComponent\(deviceId\)\}\/ai-calls\/batch`\)/);
+  assert.match(phonePage, /async function cancelAIBatchQueue\(\)/);
+  assert.match(phonePage, /method: "DELETE"/);
+  assert.match(phonePage, /await loadAIBatchQueue\(\);/);
+  assert.match(phonePage, /aiBatchQueue\.currentNumber/);
+  assert.match(phonePage, /aiBatchQueue\.pendingNumbers/);
+  assert.match(phonePage, /取消待拨/);
+  assert.match(dict, /"批量队列": "Batch queue"/);
+  assert.match(dict, /"取消待拨": "Cancel pending"/);
+});
