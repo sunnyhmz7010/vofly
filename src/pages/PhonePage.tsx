@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { CallRegular, MicRegular, QrCode24Regular, Speaker0Regular } from "@fluentui/react-icons";
 import { ApiError, api, apiMessage, camelize } from "../api";
 import { QrSendModal, type QrSendPayload } from "../components/QrSendModal";
-import { Button, Input, PageHeader, Select, StatusDot, Tag } from "../components/ui";
+import { Button, Input, PageHeader, Select, StatusDot, type StatusTone, Tag } from "../components/ui";
 import { tf, useI18n } from "../lib/i18n";
 import { usePhoneControlLease } from "../lib/phoneLease";
 import { requestedPhoneDeviceId } from "../lib/phoneNavigation";
@@ -35,7 +35,7 @@ interface CallItem {
 
 interface CallsPayload {
   deviceId: string;
-  transport: "vowifi" | "cellular" | string;
+  transport: "vowifi" | "volte" | "cellular" | string;
   calls: CallItem[];
 }
 
@@ -54,7 +54,173 @@ interface CallRecord {
   recordingSeconds?: number;
 }
 
+interface AICallSession {
+  id: string;
+  callId: string;
+  deviceId: string;
+  number?: string;
+  direction: string;
+  state: string;
+  provider: string;
+  task?: string;
+  startedAt?: string;
+  endedAt?: string;
+  error?: string;
+}
+
+interface AICallProvider {
+  name: string;
+  label: string;
+  configured: boolean;
+  supported: boolean;
+  experimental?: boolean;
+}
+
+interface AICallSettings {
+  ownerName: string;
+  agentPersona: string;
+}
+
+type AICallTaskPackage = Record<string, Record<string, string> | string[]>;
+
+interface AICallPreset {
+  id: string;
+  label: string;
+  number: string;
+  task: string;
+  opening?: string;
+  openingMode?: "say" | "wait" | string;
+  dtmfSpokenFollowup?: boolean;
+  resultVerification?: "none" | "carrier_sms" | string;
+  taskPackage?: AICallTaskPackage;
+  maxCallSeconds?: number;
+}
+
+interface AICallPlaybook {
+  id: string;
+  numbers?: string[];
+  label?: string;
+  requiredInfo?: { key: string; label?: string; purpose?: string }[];
+  ivrNotes?: string;
+  useCases?: { label?: string; notes?: string }[];
+}
+
+interface ManagedNumberProfile {
+  id: string;
+  enabled?: boolean;
+  number: string;
+  label: string;
+  task: string;
+  scenario?: string;
+  opening?: string;
+  openingMode?: "say" | "wait" | string;
+  dtmfSpokenFollowup?: boolean;
+  resultVerification?: "none" | "carrier_sms" | string;
+  taskPackage?: AICallTaskPackage;
+  taskPackageText?: string;
+  maxCallSeconds?: number;
+}
+
+interface ScenarioDraftResult {
+  ok: boolean;
+  scenario?: string;
+  opening?: string;
+  error?: string;
+}
+
+interface TaskIntakeMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+interface TaskIntakeDraft {
+  number: string;
+  task: string;
+  label?: string;
+  scenario?: string;
+  opening?: string;
+  taskPackage?: AICallTaskPackage;
+}
+
+interface TaskIntakeResult {
+  ok: boolean;
+  reply?: string;
+  options?: string[];
+  ready?: boolean;
+  draft?: TaskIntakeDraft;
+  error?: string;
+}
+
+interface PlaybookLearningResult {
+  ok: boolean;
+  learned?: {
+    newRequiredInfo?: { key: string; label?: Record<string, string>; purpose?: Record<string, string> }[];
+    ivrNotesUpdate?: Record<string, string>;
+  };
+  playbook?: AICallPlaybook;
+  error?: string;
+}
+
+interface AIBatchQueueStatus {
+  pendingNumbers: string[];
+  currentNumber?: string;
+  active?: boolean;
+  cancelledNumbers?: string[];
+  cancelledCount?: number;
+}
+
+interface AICallEvent {
+  id?: number;
+  type: string;
+  role?: string;
+  text?: string;
+  payloadJson?: string;
+  createdAt?: string;
+}
+
+interface AICallSummary {
+  state?: string;
+  summaryJson?: string;
+  error?: string;
+}
+
+interface CallRecordDetail {
+  record: CallRecord;
+  events: AICallEvent[];
+  summary?: AICallSummary;
+}
+
 const SAMPLE_RATE = 8000;
+
+function callTransportPresentation(transport: CallsPayload["transport"]): { text: string; tone: StatusTone; webAudioReady: boolean } {
+  switch (transport) {
+    case "vowifi":
+      return { text: "VoWiFi IMS", tone: "success", webAudioReady: true };
+    case "volte":
+      return { text: "VoLTE IMS", tone: "success", webAudioReady: true };
+    case "cellular":
+      return { text: "蜂窝通话", tone: "warning", webAudioReady: false };
+    default:
+      return { text: "未注册 IMS", tone: "neutral", webAudioReady: false };
+  }
+}
+
+function callDirectionLabel(direction: string) {
+  switch (direction) {
+    case "outgoing":
+    case "outbound":
+      return "呼出";
+    case "incoming":
+    case "inbound":
+      return "呼入";
+    default:
+      return "未知";
+  }
+}
+
+function normalizedDialNumber(value: string) {
+  return value.replace(/\D/g, "");
+}
 
 function isActiveCall(call: CallItem) {
   return call.state !== "ended" && call.state !== "failed";
@@ -73,6 +239,205 @@ function formatDuration(startedAt: string | undefined, endedAt?: string) {
   const end = endedAt ? new Date(endedAt).getTime() : Date.now();
   const seconds = Math.max(0, Math.round((end - start) / 1000));
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function aiSummaryText(summary?: AICallSummary) {
+  const raw = summary?.summaryJson?.trim();
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const title = typeof parsed.title === "string" ? parsed.title : "";
+    const text = typeof parsed.summary === "string" ? parsed.summary : "";
+    return [title, text].filter(Boolean).join(" · ") || raw;
+  } catch {
+    return raw;
+  }
+}
+
+function aiVerdictText(summary?: AICallSummary) {
+  const raw = summary?.summaryJson?.trim();
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw) as { verdict?: Record<string, unknown> };
+    const verdict = parsed.verdict;
+    if (!verdict) return "";
+    const conclusion = typeof verdict.conclusion === "string" ? verdict.conclusion : "";
+    const review = verdict.needs_review === true ? "需复核" : "无需复核";
+    const reason = typeof verdict.reasons === "string" ? verdict.reasons : "";
+    return [conclusion, review, reason ? `原因：${reason}` : ""].filter(Boolean).join(" · ");
+  } catch {
+    return "";
+  }
+}
+
+function aiVerificationText(summary?: AICallSummary) {
+  const raw = summary?.summaryJson?.trim();
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const verification = typeof parsed.result_verification === "string" ? parsed.result_verification : "";
+    const source = typeof parsed.result_source === "string" ? parsed.result_source : "";
+    if (verification === "verified" && source === "carrier_sms") return "运营商短信 · 已核实";
+    if (verification === "unverified") return source === "transcript" ? "通话转写 · 待核实" : "待核实";
+    return "";
+  } catch {
+    return "";
+  }
+}
+
+function aiStructuredSummaryFields(summary?: AICallSummary) {
+  const raw = summary?.summaryJson?.trim();
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const fields: { label: string; value: string }[] = [];
+    const addText = (key: string, label: string) => {
+      const value = parsed[key];
+      if (typeof value === "string" && value.trim()) fields.push({ label, value: value.trim() });
+    };
+    addText("caller_identity", "来电人");
+    addText("intent", "来意");
+    const urgency = typeof parsed.urgency === "string" ? parsed.urgency.trim().toLowerCase() : "";
+    if (urgency) {
+      fields.push({ label: "紧急程度", value: urgency === "high" ? "高" : urgency === "low" ? "低" : urgency === "medium" ? "中" : urgency });
+    }
+    if (typeof parsed.callback_needed === "boolean") {
+      fields.push({ label: "是否回电", value: parsed.callback_needed ? "是" : "否" });
+    }
+    return fields;
+  } catch {
+    return [];
+  }
+}
+
+function mergeAICallEvents(current: AICallEvent[], next: AICallEvent[]) {
+  const merged = new Map<string, AICallEvent>();
+  for (const event of [...current, ...next]) {
+    const key = event.id ? String(event.id) : `${event.createdAt || ""}:${event.type}:${event.role || ""}:${event.text || ""}`;
+    merged.set(key, event);
+  }
+  return [...merged.values()].sort((left, right) => (left.id || 0) - (right.id || 0));
+}
+
+function triageCategoryText(value: string) {
+  switch (value) {
+    case "marketing":
+      return "营销来电";
+    case "personal":
+      return "个人来电";
+    case "needs_owner":
+      return "需要本人";
+    case "unknown":
+      return "类型未知";
+    default:
+      return value || "类型未知";
+  }
+}
+
+function triageActionText(value: string) {
+  switch (value) {
+    case "clarify":
+      return "继续确认";
+    case "continue_ai":
+      return "AI 继续处理";
+    case "reject":
+      return "已拒绝";
+    case "transfer":
+      return "请求转接";
+    default:
+      return value || "继续确认";
+  }
+}
+
+function takeoverStateText(value: string) {
+  switch (value) {
+    case "requested":
+      return "正在请求转接";
+    case "committed":
+      return "已由本人接听";
+    case "owner_hangup":
+      return "本人已挂断";
+    case "failed":
+      return "转接失败";
+    default:
+      return value || "转接状态未知";
+  }
+}
+
+function aiEventTypeLabel(event: AICallEvent) {
+  if (event.type === "triage") return "智能分诊";
+  if (event.type === "takeover") return "转接状态";
+  if (event.type === "transcript") return event.role || "ai";
+  if (event.type === "tool_call") return "tool_call";
+  return event.type;
+}
+
+function aiEventText(event: AICallEvent) {
+  if (event.type === "transcript") return event.text || "";
+  if (event.type === "triage") {
+    try {
+      const payload = JSON.parse(event.payloadJson || "{}") as {
+        category?: string;
+        action?: string;
+        confidence?: number;
+        reason?: string;
+      };
+      const confidence = typeof payload.confidence === "number" ? `${Math.round(payload.confidence * 100)}%` : "";
+      return [
+        triageCategoryText(payload.category || ""),
+        triageActionText(payload.action || ""),
+        confidence,
+        payload.reason,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    } catch {
+      return event.text || "智能分诊";
+    }
+  }
+  if (event.type === "takeover") {
+    try {
+      const payload = JSON.parse(event.payloadJson || "{}") as { state?: string; reason?: string };
+      return [takeoverStateText(payload.state || ""), payload.reason].filter(Boolean).join(" · ");
+    } catch {
+      return event.text || "转接状态";
+    }
+  }
+  if (event.type === "tool_call") {
+    try {
+      const payload = JSON.parse(event.payloadJson || "{}") as { name?: string; result?: { code?: string } };
+      return [payload.name, payload.result?.code].filter(Boolean).join(" · ") || "tool_call";
+    } catch {
+      return "tool_call";
+    }
+  }
+  return event.text || event.type;
+}
+
+function takeoverEventState(event: AICallEvent) {
+  if (event.type !== "takeover") return "";
+  try {
+    const payload = JSON.parse(event.payloadJson || "{}") as { state?: string };
+    return typeof payload.state === "string" ? payload.state.trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+function hasPendingOwnerTakeover(events: AICallEvent[]) {
+  let latestState = "";
+  for (const event of events) {
+    const state = takeoverEventState(event);
+    if (state) latestState = state;
+  }
+  return latestState === "requested";
+}
+
+function parseBatchNumbers(value: string) {
+  return value
+    .split(/[\s,，;；]+/)
+    .map((number) => number.trim())
+    .filter(Boolean);
 }
 
 class CallAudioBridge {
@@ -321,8 +686,40 @@ export default function PhonePage() {
   const [dialNumber, setDialNumber] = useState("");
   const [dialing, setDialing] = useState(false);
   const [acting, setActing] = useState(false);
+  const [aiTask, setAITask] = useState("");
+  const [aiBatchNumbers, setAIBatchNumbers] = useState("");
+  const [aiProvider, setAIProvider] = useState("fake");
+  const [aiProviders, setAIProviders] = useState<AICallProvider[]>([]);
+  const [aiCallSettings, setAICallSettings] = useState<AICallSettings>({ ownerName: "", agentPersona: "" });
+  const [aiCallSettingsBusy, setAICallSettingsBusy] = useState(false);
+  const [aiPresets, setAIPresets] = useState<AICallPreset[]>([]);
+  const [selectedAIPreset, setSelectedAIPreset] = useState<AICallPreset | null>(null);
+  const [aiScenarioBusy, setAIScenarioBusy] = useState(false);
+  const [aiDraftOpening, setAIDraftOpening] = useState("");
+  const [aiDraftTaskPackageText, setAIDraftTaskPackageText] = useState("");
+  const [aiIntakeOpen, setAIIntakeOpen] = useState(false);
+  const [aiIntakeMessages, setAIIntakeMessages] = useState<TaskIntakeMessage[]>([]);
+  const [aiIntakeInput, setAIIntakeInput] = useState("");
+  const [aiIntakeOptions, setAIIntakeOptions] = useState<string[]>([]);
+  const [aiIntakeBusy, setAIIntakeBusy] = useState(false);
+  const [aiPlaybooks, setAIPlaybooks] = useState<AICallPlaybook[]>([]);
+  const [playbooksEnabled, setPlaybooksEnabled] = useState(false);
+  const [managedProfiles, setManagedProfiles] = useState<ManagedNumberProfile[]>([]);
+  const [profilesConfigured, setProfilesConfigured] = useState(true);
+  const [profileManagerOpen, setProfileManagerOpen] = useState(false);
+  const [profileForm, setProfileForm] = useState<ManagedNumberProfile>(emptyManagedProfile());
+  const [editingProfileID, setEditingProfileID] = useState("");
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [aiBatchQueue, setAIBatchQueue] = useState<AIBatchQueueStatus>({ pendingNumbers: [], active: false });
+  const [aiSessions, setAISessions] = useState<AICallSession[]>([]);
+  const [aiCallEvents, setAICallEvents] = useState<AICallEvent[]>([]);
+  const [aiBusy, setAIBusy] = useState(false);
   const [mediaConnected, setMediaConnected] = useState(false);
   const [records, setRecords] = useState<CallRecord[]>([]);
+  const [recordDetail, setRecordDetail] = useState<CallRecordDetail | null>(null);
+  const [detailLoadingId, setDetailLoadingId] = useState("");
+  const [playbookLearningId, setPlaybookLearningId] = useState("");
+  const [playbookLearningResult, setPlaybookLearningResult] = useState<PlaybookLearningResult | null>(null);
   const [dtmfSending, setDtmfSending] = useState(false);
   const [lastDTMF, setLastDTMF] = useState("");
   const [qrPayload, setQrPayload] = useState<QrSendPayload | null>(null);
@@ -330,6 +727,8 @@ export default function PhonePage() {
   const bridgeRef = useRef<CallAudioBridge | null>(null);
   const webrtcRef = useRef<CallWebRTCBridge | null>(null);
   const mediaCallIdRef = useRef("");
+  const aiEventCursorRef = useRef(0);
+  const aiEventCallIdRef = useRef("");
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   // 多标签页控制租约：同一活动通话仅允许一个标签页操作，其余只读观察（对齐 hideck）。
   const { controlsLocked, claim, release } = usePhoneControlLease();
@@ -338,6 +737,73 @@ export default function PhonePage() {
     () => devices.map((device) => ({ value: device.id, label: device.name || device.id })),
     [devices],
   );
+  const aiProviderOptions = useMemo(
+    () =>
+      (aiProviders.length > 0 ? aiProviders : [{ name: "fake", label: "fake", configured: true, supported: true }])
+        .filter((provider) => provider.supported && provider.configured)
+        .map((provider) => ({
+          value: provider.name,
+          label: provider.experimental ? `${provider.label}（实验）` : provider.label,
+        })),
+    [aiProviders],
+  );
+  const aiPresetOptions = useMemo(
+    () => [
+      { value: "", label: t("不使用预设") },
+      ...aiPresets.map((preset) => ({ value: preset.id, label: preset.label })),
+    ],
+    [aiPresets, t],
+  );
+
+  function emptyManagedProfile(): ManagedNumberProfile {
+    return {
+      id: "",
+      enabled: true,
+      number: "",
+      label: "",
+      task: "",
+      scenario: "",
+      opening: "",
+      openingMode: "say",
+      dtmfSpokenFollowup: false,
+      resultVerification: "none",
+      taskPackage: undefined,
+      taskPackageText: "",
+      maxCallSeconds: undefined,
+    };
+  }
+
+  function profileText(value: unknown) {
+    if (typeof value === "string") return value;
+    if (value && typeof value === "object") {
+      const record = value as Record<string, unknown>;
+      for (const key of ["zh", "en"]) {
+        if (typeof record[key] === "string" && record[key].trim()) return record[key].trim();
+      }
+      for (const item of Object.values(record)) {
+        if (typeof item === "string" && item.trim()) return item.trim();
+      }
+    }
+    return "";
+  }
+
+  function normalizeManagedProfile(profile: Partial<ManagedNumberProfile>): ManagedNumberProfile {
+    return {
+      id: profileText(profile.id),
+      enabled: profile.enabled !== false,
+      number: profileText(profile.number),
+      label: profileText(profile.label),
+      task: profileText(profile.task),
+      scenario: profileText(profile.scenario),
+      opening: profileText(profile.opening),
+      openingMode: profileText(profile.openingMode) || "say",
+      dtmfSpokenFollowup: profile.dtmfSpokenFollowup === true,
+      resultVerification: profileText(profile.resultVerification) || "none",
+      taskPackage: profile.taskPackage,
+      taskPackageText: profile.taskPackage ? JSON.stringify(profile.taskPackage, null, 2) : "",
+      maxCallSeconds: typeof profile.maxCallSeconds === "number" ? profile.maxCallSeconds : undefined,
+    };
+  }
 
   const loadDevices = useCallback(async () => {
     try {
@@ -375,22 +841,356 @@ export default function PhonePage() {
     }
   }, []);
 
+  const loadAISessions = useCallback(async () => {
+    try {
+      const res = await api<{ data: AICallSession[] }>("/ai-calls");
+      const raw = Array.isArray(res) ? res : res.data || [];
+      setAISessions(camelize<AICallSession[]>(raw));
+    } catch {
+      // AI 会话列表加载失败不影响人工通话控制。
+    }
+  }, []);
+
+  async function loadAIBatchQueue() {
+    if (!deviceId) {
+      setAIBatchQueue({ pendingNumbers: [], active: false });
+      return;
+    }
+    try {
+      const res = await api<{ data: AIBatchQueueStatus }>(`/devices/${encodeURIComponent(deviceId)}/ai-calls/batch`);
+      const status = camelize<AIBatchQueueStatus>(res.data || { pending_numbers: [], active: false });
+      setAIBatchQueue({ ...status, pendingNumbers: status.pendingNumbers || [] });
+    } catch {
+      // 队列状态只增强批量外呼可见性，失败时不阻塞通话控制。
+    }
+  }
+
+  const loadAIProviders = useCallback(async () => {
+    try {
+      const res = await api<{ data: AICallProvider[] }>("/ai-call-providers");
+      const providers = camelize<AICallProvider[]>(res.data || []);
+      setAIProviders(providers);
+      setAIProvider((current) => {
+        if (providers.some((provider) => provider.name === current && provider.supported && provider.configured)) return current;
+        return providers.find((provider) => provider.supported && provider.configured)?.name || "fake";
+      });
+    } catch {
+      setAIProviders([{ name: "fake", label: "fake", configured: true, supported: true }]);
+      setAIProvider("fake");
+    }
+  }, []);
+
+  async function loadAICallSettings() {
+    try {
+      const settings = camelize<AICallSettings>(await api<AICallSettings>("/ai-call-settings"));
+      setAICallSettings({
+        ownerName: settings.ownerName || "",
+        agentPersona: settings.agentPersona || "",
+      });
+    } catch {
+      setAICallSettings({ ownerName: "", agentPersona: "" });
+    }
+  }
+
+  async function saveAICallSettings() {
+    if (aiCallSettingsBusy) return;
+    setAICallSettingsBusy(true);
+    try {
+      const settings = camelize<AICallSettings>(
+        await api<AICallSettings>("/ai-call-settings", {
+          method: "PUT",
+          body: {
+            owner_name: aiCallSettings.ownerName.trim(),
+            agent_persona: aiCallSettings.agentPersona.trim(),
+          },
+        }),
+      );
+      setAICallSettings({
+        ownerName: settings.ownerName || "",
+        agentPersona: settings.agentPersona || "",
+      });
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setAICallSettingsBusy(false);
+    }
+  }
+
+  const loadAIPresets = useCallback(async () => {
+    try {
+      const res = await api<{ data: AICallPreset[] }>("/ai-call-presets");
+      setAIPresets(camelize<AICallPreset[]>(res.data || []));
+    } catch {
+      setAIPresets([]);
+    }
+  }, []);
+
+  async function loadAIPlaybooks() {
+    try {
+      const res = await api<{ ok: boolean; enabled: boolean; playbooks: AICallPlaybook[] }>("/playbooks");
+      setPlaybooksEnabled(res.enabled === true);
+      setAIPlaybooks(camelize<AICallPlaybook[]>(res.playbooks || []));
+    } catch {
+      setPlaybooksEnabled(false);
+      setAIPlaybooks([]);
+    }
+  }
+
+  async function loadManagedProfiles() {
+    try {
+      const res = await api<{ profiles: ManagedNumberProfile[]; configured: boolean }>("/number_profiles/manage");
+      setManagedProfiles(camelize<ManagedNumberProfile[]>(res.profiles || []).map(normalizeManagedProfile));
+      setProfilesConfigured(res.configured !== false);
+    } catch {
+      setManagedProfiles([]);
+      setProfilesConfigured(false);
+    }
+  }
+
+  function managedProfileRequestBody() {
+    return {
+      id: profileForm.id.trim(),
+      enabled: profileForm.enabled !== false,
+      number: profileForm.number.trim(),
+      label: profileForm.label.trim(),
+      task: profileForm.task.trim(),
+      scenario: profileForm.scenario?.trim() || undefined,
+      opening: profileForm.opening?.trim() || undefined,
+      opening_mode: profileForm.openingMode || "say",
+      dtmf_spoken_followup: profileForm.dtmfSpokenFollowup === true,
+      result_verification: profileForm.resultVerification || "none",
+      task_package: parseProfileTaskPackage(),
+      max_call_seconds: profileForm.maxCallSeconds || undefined,
+    };
+  }
+
+  function parseProfileTaskPackage() {
+    const text = profileForm.taskPackageText?.trim();
+    if (!text) return undefined;
+    return JSON.parse(text) as AICallTaskPackage;
+  }
+
+  function parseAIDraftTaskPackage() {
+    const text = aiDraftTaskPackageText.trim();
+    if (!text) return undefined;
+    return JSON.parse(text) as AICallTaskPackage;
+  }
+
+  async function requestAICallScenario() {
+    if (aiScenarioBusy || (!dialNumber.trim() && !aiTask.trim())) return;
+    setAIScenarioBusy(true);
+    try {
+      const res = await api<ScenarioDraftResult>("/ai-call-scenario", {
+        method: "POST",
+        body: { number: dialNumber.trim(), task: aiTask.trim(), provider: aiProvider, lang: "zh" },
+      });
+      if (!res.ok) {
+        window.alert(res.error || t("生成失败"));
+        return;
+      }
+      if (res.scenario) setAITask(res.scenario);
+      if (res.opening) setAIDraftOpening(res.opening);
+      setSelectedAIPreset(null);
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setAIScenarioBusy(false);
+    }
+  }
+
+  async function requestAICallIntake() {
+    const content = aiIntakeInput.trim();
+    if (aiIntakeBusy || !content) return;
+    const nextMessages: TaskIntakeMessage[] = [...aiIntakeMessages, { role: "user", content }];
+    setAIIntakeMessages(nextMessages);
+    setAIIntakeInput("");
+    setAIIntakeOptions([]);
+    setAIIntakeBusy(true);
+    try {
+      const res = await api<TaskIntakeResult>("/ai-call-intake", {
+        method: "POST",
+        body: { provider: aiProvider, lang: "zh", owner: aiCallSettings.ownerName.trim() || "机主", messages: nextMessages },
+      });
+      const result = camelize<TaskIntakeResult>(res);
+      if (result.reply) setAIIntakeMessages([...nextMessages, { role: "assistant", content: result.reply }]);
+      setAIIntakeOptions(result.options || []);
+      if (result.ready && result.draft) applyAIIntakeDraft(result.draft);
+      if (!result.ok && result.error) window.alert(result.error);
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setAIIntakeBusy(false);
+    }
+  }
+
+  function applyAIIntakeDraft(draft: TaskIntakeDraft) {
+    setSelectedAIPreset(null);
+    setDialNumber(draft.number);
+    setAITask(draft.scenario || draft.task);
+    setAIDraftOpening(draft.opening || "");
+    setAIDraftTaskPackageText(draft.taskPackage ? JSON.stringify(draft.taskPackage, null, 2) : "");
+  }
+
+  async function learnCallPlaybook(callId: string) {
+    if (!callId || playbookLearningId) return;
+    setPlaybookLearningId(callId);
+    setPlaybookLearningResult(null);
+    try {
+      const result = camelize<PlaybookLearningResult>(
+        await api<PlaybookLearningResult>(`/call-records/${encodeURIComponent(callId)}/playbook/learn`, {
+          method: "POST",
+          body: { provider: aiProvider, task_package: parseAIDraftTaskPackage() || selectedAIPreset?.taskPackage },
+        }),
+      );
+      setPlaybookLearningResult(result);
+      if (result.ok) await loadAIPlaybooks();
+      if (!result.ok && result.error) window.alert(result.error);
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setPlaybookLearningId("");
+    }
+  }
+
+  async function saveManagedProfile() {
+    if (profileBusy || !profileForm.id.trim() || !profileForm.number.trim() || !profileForm.label.trim() || !profileForm.task.trim()) return;
+    setProfileBusy(true);
+    try {
+      await api(editingProfileID ? `/number_profiles/${encodeURIComponent(editingProfileID)}` : "/number_profiles", {
+        method: editingProfileID ? "PATCH" : "POST",
+        body: managedProfileRequestBody(),
+      });
+      setProfileForm(emptyManagedProfile());
+      setEditingProfileID("");
+      await loadManagedProfiles();
+      await loadAIPresets();
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
+  async function deleteManagedProfile(profileID: string) {
+    if (profileBusy || !profileID) return;
+    if (!window.confirm(t("确认删除这个预设？"))) return;
+    setProfileBusy(true);
+    try {
+      await api(`/number_profiles/${encodeURIComponent(profileID)}`, { method: "DELETE" });
+      if (editingProfileID === profileID) {
+        setEditingProfileID("");
+        setProfileForm(emptyManagedProfile());
+      }
+      await loadManagedProfiles();
+      await loadAIPresets();
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
+  function editManagedProfile(profile: ManagedNumberProfile) {
+    setEditingProfileID(profile.id);
+    setProfileForm(normalizeManagedProfile(profile));
+  }
+
+  const loadAICallEvents = useCallback(async (callId: string) => {
+    if (!callId) return;
+    try {
+      const res = await api<{ data: { events?: AICallEvent[]; nextAfterId?: number } }>(
+        `/call-records/${encodeURIComponent(callId)}/events?after_id=${aiEventCursorRef.current}&limit=50`,
+      );
+      const data = camelize<{ events?: AICallEvent[]; nextAfterId?: number }>(res.data || {});
+      const events = camelize<AICallEvent[]>(data.events || []);
+      if (typeof data.nextAfterId === "number") aiEventCursorRef.current = data.nextAfterId;
+      if (events.length > 0) setAICallEvents((current) => mergeAICallEvents(current, events));
+    } catch {
+      // 实时事件只增强通话观察能力，失败时保留当前会话控制。
+    }
+  }, []);
+
   useEffect(() => {
     void loadDevices();
-  }, [loadDevices]);
+    void loadAIProviders();
+    void loadAICallSettings();
+    void loadAIPresets();
+    void loadAIPlaybooks();
+  }, [loadDevices, loadAIProviders, loadAIPresets]);
+
+  function applyAIPreset(presetID: string) {
+    const preset = aiPresets.find((item) => item.id === presetID);
+    if (!preset) return;
+    setSelectedAIPreset(preset);
+    setDialNumber(preset.number);
+    setAITask(preset.task);
+    setAIDraftOpening("");
+    setAIDraftTaskPackageText("");
+  }
+
+  function aiPresetInstructionBody() {
+    const draftTaskPackage = parseAIDraftTaskPackage();
+    if (!selectedAIPreset) return { opening: aiDraftOpening || undefined, task_package: draftTaskPackage };
+    return {
+      opening: aiDraftOpening || selectedAIPreset.opening,
+      opening_mode: selectedAIPreset.openingMode,
+      dtmf_spoken_followup: selectedAIPreset.dtmfSpokenFollowup,
+      result_verification: selectedAIPreset.resultVerification,
+      task_package: parseAIDraftTaskPackage() || selectedAIPreset.taskPackage,
+      max_call_seconds: selectedAIPreset.maxCallSeconds,
+    };
+  }
+
+  function matchingAIPlaybook(number: string) {
+    const normalized = normalizedDialNumber(number);
+    if (!normalized) return null;
+    return aiPlaybooks.find((playbook) => (playbook.numbers || []).some((candidate) => normalizedDialNumber(candidate) === normalized)) || null;
+  }
 
   useEffect(() => {
     if (!deviceId) return;
     void refresh();
     void loadRecords();
+    void loadAISessions();
+    void loadAIBatchQueue();
     const timer = window.setInterval(() => void refresh(), 3000);
-    return () => window.clearInterval(timer);
-  }, [deviceId, refresh, loadRecords]);
+    const aiTimer = window.setInterval(() => void loadAISessions(), 3000);
+    const aiBatchTimer = window.setInterval(() => void loadAIBatchQueue(), 3000);
+    return () => {
+      window.clearInterval(timer);
+      window.clearInterval(aiTimer);
+      window.clearInterval(aiBatchTimer);
+    };
+  }, [deviceId, refresh, loadRecords, loadAISessions]);
 
   const activeCall = callsPayload?.calls.find(isActiveCall) || null;
+  const activeAISession =
+    aiSessions.find((session) => session.deviceId === deviceId && session.state !== "ended" && session.state !== "failed") || null;
+  const aiBatchPendingNumbers = aiBatchQueue.pendingNumbers || [];
+  const structuredSummaryFields = useMemo(() => aiStructuredSummaryFields(recordDetail?.summary), [recordDetail?.summary]);
+  const pendingOwnerTakeover = useMemo(() => hasPendingOwnerTakeover(aiCallEvents), [aiCallEvents]);
   const transport = callsPayload?.transport || "";
-  const vowifiReady = transport === "vowifi";
+  const transportPresentation = callTransportPresentation(transport);
+  const webAudioReady = transportPresentation.webAudioReady;
   const dtmfAvailable = transport === "vowifi" || transport === "volte";
+
+  useEffect(() => {
+    const callId = activeAISession?.callId || "";
+    if (!callId) {
+      aiEventCallIdRef.current = "";
+      aiEventCursorRef.current = 0;
+      setAICallEvents([]);
+      return;
+    }
+    if (aiEventCallIdRef.current !== callId) {
+      aiEventCallIdRef.current = callId;
+      aiEventCursorRef.current = 0;
+      setAICallEvents([]);
+    }
+    void loadAICallEvents(callId);
+    const aiEventsTimer = window.setInterval(() => void loadAICallEvents(callId), 2000);
+    return () => window.clearInterval(aiEventsTimer);
+  }, [activeAISession?.callId, loadAICallEvents]);
 
   // 通话切换或结束后清空最近按键提示。
   useEffect(() => {
@@ -408,7 +1208,7 @@ export default function PhonePage() {
 
   useEffect(() => {
     const wantMedia =
-      !!deviceId && vowifiReady && !!activeCall && activeCall.state === "active" && activeCall.mediaReady === true;
+      !!deviceId && webAudioReady && !!activeCall && activeCall.state === "active" && activeCall.mediaReady === true;
     const callId = activeCall?.id || "";
     if (wantMedia && !mediaConnected && mediaCallIdRef.current !== callId) {
       mediaCallIdRef.current = callId;
@@ -431,7 +1231,7 @@ export default function PhonePage() {
       webrtcRef.current = null;
       mediaCallIdRef.current = "";
     }
-  }, [deviceId, vowifiReady, activeCall, mediaConnected]);
+  }, [deviceId, webAudioReady, activeCall, mediaConnected]);
 
   useEffect(
     () => () => {
@@ -477,6 +1277,157 @@ export default function PhonePage() {
       window.alert(apiMessage(error));
     } finally {
       setActing(false);
+    }
+  }
+
+  async function startAICall() {
+    const number = dialNumber.trim();
+    if (controlsLocked || !deviceId || !number || !validDialNumber(number) || aiBusy) return;
+    setAIBusy(true);
+    claim();
+    try {
+      await api(`/devices/${encodeURIComponent(deviceId)}/ai-calls/dial`, {
+        method: "POST",
+        body: { number, task: aiTask.trim(), provider: aiProvider, ...aiPresetInstructionBody() },
+      });
+      setDialNumber("");
+      await refresh();
+      await loadAISessions();
+      await loadRecords();
+    } catch (error) {
+      release();
+      window.alert(apiMessage(error));
+    } finally {
+      setAIBusy(false);
+    }
+  }
+
+  async function startAIBatchCall() {
+    const numbers = parseBatchNumbers(aiBatchNumbers);
+    if (controlsLocked || !deviceId || numbers.length === 0 || aiBusy) return;
+    setAIBusy(true);
+    claim();
+    try {
+      await api(`/devices/${encodeURIComponent(deviceId)}/ai-calls/batch`, {
+        method: "POST",
+        body: { numbers, task: aiTask.trim(), provider: aiProvider, ...aiPresetInstructionBody() },
+      });
+      setAIBatchNumbers("");
+      await refresh();
+      await loadAISessions();
+      await loadAIBatchQueue();
+      await loadRecords();
+    } catch (error) {
+      release();
+      window.alert(apiMessage(error));
+    } finally {
+      setAIBusy(false);
+    }
+  }
+
+  async function cancelAIBatchQueue() {
+    if (controlsLocked || !deviceId || aiBusy || aiBatchPendingNumbers.length === 0) return;
+    setAIBusy(true);
+    try {
+      const res = await api<{ data: AIBatchQueueStatus }>(`/devices/${encodeURIComponent(deviceId)}/ai-calls/batch`, { method: "DELETE" });
+      const status = camelize<AIBatchQueueStatus>(res.data || { pending_numbers: [], active: false });
+      setAIBatchQueue({ ...status, pendingNumbers: status.pendingNumbers || [] });
+      await loadAIBatchQueue();
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setAIBusy(false);
+    }
+  }
+
+  async function answerWithAI() {
+    if (controlsLocked || !deviceId || !activeCall || aiBusy) return;
+    setAIBusy(true);
+    claim();
+    try {
+      await api(`/devices/${encodeURIComponent(deviceId)}/ai-calls/${encodeURIComponent(activeCall.id)}/answer`, {
+        method: "POST",
+        body: { task: aiTask.trim(), provider: aiProvider, ...aiPresetInstructionBody() },
+      });
+      await refresh();
+      await loadAISessions();
+    } catch (error) {
+      release();
+      window.alert(apiMessage(error));
+    } finally {
+      setAIBusy(false);
+    }
+  }
+
+  async function hangupAICall(sessionId: string) {
+    if (controlsLocked || !sessionId || aiBusy) return;
+    setAIBusy(true);
+    try {
+      await api(`/ai-calls/${encodeURIComponent(sessionId)}/hangup`, { method: "POST", body: {} });
+      release();
+      await refresh();
+      await loadAISessions();
+      await loadAIBatchQueue();
+      await loadRecords();
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setAIBusy(false);
+    }
+  }
+
+  async function updateAIInstructions() {
+    if (controlsLocked || !activeAISession || aiBusy || !aiTask.trim()) return;
+    setAIBusy(true);
+    try {
+      await api(`/ai-calls/${encodeURIComponent(activeAISession.id)}/instructions`, {
+        method: "POST",
+        body: { instructions: aiTask.trim() },
+      });
+      await loadAISessions();
+      await loadAICallEvents(activeAISession.callId);
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setAIBusy(false);
+    }
+  }
+
+  async function updateOwnerTakeover(state: "committed" | "failed") {
+    if (controlsLocked || !activeAISession || aiBusy) return;
+    setAIBusy(true);
+    try {
+      await api(`/ai-calls/${encodeURIComponent(activeAISession.id)}/takeover`, {
+        method: "POST",
+        body: { state, reason: state === "committed" ? "owner confirmed takeover" : "owner marked takeover failed" },
+      });
+      await loadAISessions();
+      await loadAICallEvents(activeAISession.callId);
+      await refresh();
+      await loadAIBatchQueue();
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setAIBusy(false);
+    }
+  }
+
+  async function loadRecordDetail(record: CallRecord) {
+    if (recordDetail?.record?.callId === record.callId) {
+      setRecordDetail(null);
+      setPlaybookLearningResult(null);
+      return;
+    }
+    setDetailLoadingId(record.callId);
+    setPlaybookLearningResult(null);
+    try {
+      const res = await api<{ data: CallRecordDetail } | CallRecordDetail>(`/call-records/${encodeURIComponent(record.callId)}`);
+      const raw = "data" in res ? res.data : res;
+      setRecordDetail(camelize<CallRecordDetail>(raw));
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setDetailLoadingId("");
     }
   }
 
@@ -540,6 +1491,8 @@ export default function PhonePage() {
     }
   }
 
+  const selectedAIPlaybook = matchingAIPlaybook(dialNumber);
+
   return (
     <div className="phone-page mx-auto w-full max-w-[1500px]">
       <PageHeader title={t("通话")} />
@@ -570,14 +1523,17 @@ export default function PhonePage() {
             <div className="mt-3 flex items-center justify-between">
               <label className="text-xs font-bold text-gray-500 dark:text-gray-400">{t("拨号号码")}</label>
               <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-                <StatusDot tone={vowifiReady ? "success" : "neutral"} />
-                {vowifiReady ? t("VoWiFi IMS") : t("未注册 IMS")}
+                <StatusDot tone={transportPresentation.tone} />
+                {t(transportPresentation.text)}
               </div>
             </div>
             <div className="mt-2 flex gap-2">
               <Input
                 value={dialNumber}
-                onChange={(event) => setDialNumber(event.target.value)}
+                onChange={(event) => {
+                  setDialNumber(event.target.value);
+                  setSelectedAIPreset(null);
+                }}
                 placeholder={t("例如 +12025550123 或 *100#")}
                 disabled={dialing || !deviceId || controlsLocked}
                 onKeyDown={(event) => {
@@ -597,6 +1553,455 @@ export default function PhonePage() {
             <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">{t("支持 +、数字、*、#；拨号请求不会自动挂断。")}</p>
           </div>
 
+          <div className="ui-card p-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">{t("AI 通话")}</h3>
+                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                  {t("让 AI 接管当前来电，或按上方号码发起 AI 外呼。")}
+                </p>
+              </div>
+              <Tag type={activeAISession ? "success" : "info"}>
+                {activeAISession ? t("AI 接管中") : t("待命")}
+              </Tag>
+            </div>
+            <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50/70 p-3 text-xs dark:border-white/10 dark:bg-white/5">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="font-bold text-gray-600 dark:text-gray-300">{t("AI 通话身份")}</span>
+                <Button size="small" plain loading={aiCallSettingsBusy} onClick={() => void saveAICallSettings()}>
+                  {t("保存身份")}
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <Input
+                  value={aiCallSettings.ownerName}
+                  onChange={(event) => setAICallSettings((current) => ({ ...current, ownerName: event.target.value }))}
+                  placeholder={t("机主称谓")}
+                  disabled={aiCallSettingsBusy}
+                />
+                <Input
+                  value={aiCallSettings.agentPersona}
+                  onChange={(event) => setAICallSettings((current) => ({ ...current, agentPersona: event.target.value }))}
+                  placeholder={t("AI 人设称谓")}
+                  disabled={aiCallSettingsBusy}
+                />
+              </div>
+              <p className="mt-2 text-[11px] text-gray-400 dark:text-gray-500">
+                {t("用于实时通话提示词，避免 AI 冒充机主本人；留空使用默认称谓。")}
+              </p>
+            </div>
+            {aiPresets.length > 0 ? (
+              <div className="mb-3">
+                <label className="mb-2 block text-xs font-bold text-gray-500 dark:text-gray-400">{t("预设任务")}</label>
+                <Select value="" onChange={applyAIPreset} options={aiPresetOptions} />
+              </div>
+            ) : null}
+            <div className="mb-3">
+              <Button
+                size="small"
+                plain
+                variant="primary"
+                loading={profileBusy}
+                onClick={() => {
+                  const next = !profileManagerOpen;
+                  setProfileManagerOpen(next);
+                  if (next) void loadManagedProfiles();
+                }}
+              >
+                {t("本地预设管理")}
+              </Button>
+            </div>
+            {profileManagerOpen ? (
+              <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50/70 p-3 text-xs dark:border-white/10 dark:bg-white/5">
+                {!profilesConfigured ? (
+                  <p className="mb-3 rounded-md bg-amber-50 px-2 py-1 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                    {t("未配置预设文件，需设置 VOFLY_AI_CALL_PRESETS_FILE 或 NUMBER_PROFILES_FILE 后才能保存")}
+                  </p>
+                ) : null}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <Input
+                    value={profileForm.id}
+                    onChange={(event) => setProfileForm((current) => ({ ...current, id: event.target.value }))}
+                    placeholder={t("预设 ID")}
+                    disabled={profileBusy || !!editingProfileID}
+                  />
+                  <Input
+                    value={profileForm.number}
+                    onChange={(event) => setProfileForm((current) => ({ ...current, number: event.target.value }))}
+                    placeholder={t("号码")}
+                    disabled={profileBusy}
+                  />
+                  <Input
+                    value={profileForm.label}
+                    onChange={(event) => setProfileForm((current) => ({ ...current, label: event.target.value }))}
+                    placeholder={t("显示名称")}
+                    disabled={profileBusy}
+                  />
+                  <Input
+                    value={profileForm.task}
+                    onChange={(event) => setProfileForm((current) => ({ ...current, task: event.target.value }))}
+                    placeholder={t("匹配任务")}
+                    disabled={profileBusy}
+                  />
+                </div>
+                <label className="mb-1 mt-2 block font-semibold text-gray-500 dark:text-gray-400">{t("场景策略")}</label>
+                <textarea
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/10 dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
+                  value={profileForm.scenario || ""}
+                  onChange={(event) => setProfileForm((current) => ({ ...current, scenario: event.target.value }))}
+                  placeholder={t("给 AI 的精调场景策略")}
+                  disabled={profileBusy}
+                  rows={2}
+                />
+                <label className="mb-1 mt-2 block font-semibold text-gray-500 dark:text-gray-400">{t("开场白")}</label>
+                <textarea
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/10 dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
+                  value={profileForm.opening || ""}
+                  onChange={(event) => setProfileForm((current) => ({ ...current, opening: event.target.value }))}
+                  placeholder={t("接通后的第一句话")}
+                  disabled={profileBusy}
+                  rows={2}
+                />
+                <label className="mb-1 mt-2 block font-semibold text-gray-500 dark:text-gray-400">{t("时长上限（秒）")}</label>
+                <Input
+                  value={profileForm.maxCallSeconds ? String(profileForm.maxCallSeconds) : ""}
+                  onChange={(event) => setProfileForm((current) => ({ ...current, maxCallSeconds: Number(event.target.value) || undefined }))}
+                  placeholder="3600"
+                  disabled={profileBusy}
+                />
+                <label className="mb-1 mt-2 block font-semibold text-gray-500 dark:text-gray-400">{t("任务包 JSON")}</label>
+                <textarea
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/10 dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
+                  value={profileForm.taskPackageText || ""}
+                  onChange={(event) => setProfileForm((current) => ({ ...current, taskPackageText: event.target.value }))}
+                  placeholder={t("例如：{\"verification\":{\"account_pin\":\"1234\"}}")}
+                  disabled={profileBusy}
+                  rows={4}
+                />
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <Select
+                    value={profileForm.openingMode || "say"}
+                    onChange={(value) => setProfileForm((current) => ({ ...current, openingMode: value }))}
+                    options={[
+                      { value: "say", label: t("直接开场") },
+                      { value: "wait", label: t("等待 IVR") },
+                    ]}
+                  />
+                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                    {t("结果校验")}
+                    <Select
+                      value={profileForm.resultVerification || "none"}
+                      onChange={(value) => setProfileForm((current) => ({ ...current, resultVerification: value }))}
+                      options={[
+                        { value: "none", label: t("仅通话记录") },
+                        { value: "carrier_sms", label: t("短信校验") },
+                      ]}
+                    />
+                  </label>
+                  <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 dark:border-white/10 dark:bg-white/10 dark:text-gray-200">
+                    <input
+                      type="checkbox"
+                      checked={profileForm.dtmfSpokenFollowup === true}
+                      onChange={(event) => setProfileForm((current) => ({ ...current, dtmfSpokenFollowup: event.target.checked }))}
+                      disabled={profileBusy}
+                    />
+                    {t("口述后补按键")}
+                  </label>
+                </div>
+                <label className="mt-2 flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={profileForm.enabled !== false}
+                    onChange={(event) => setProfileForm((current) => ({ ...current, enabled: event.target.checked }))}
+                    disabled={profileBusy}
+                  />
+                  {t("启用预设")}
+                </label>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    size="small"
+                    variant="primary"
+                    loading={profileBusy}
+                    disabled={!profilesConfigured || !profileForm.id.trim() || !profileForm.number.trim() || !profileForm.label.trim() || !profileForm.task.trim()}
+                    onClick={() => void saveManagedProfile()}
+                  >
+                    {editingProfileID ? t("保存预设") : t("新建预设")}
+                  </Button>
+                  <Button
+                    size="small"
+                    plain
+                    onClick={() => {
+                      setEditingProfileID("");
+                      setProfileForm(emptyManagedProfile());
+                    }}
+                  >
+                    {t("清空表单")}
+                  </Button>
+                </div>
+                {managedProfiles.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    {managedProfiles.map((profile) => (
+                      <div key={profile.id} className="rounded-md bg-white p-2 dark:bg-white/10">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-semibold">
+                            {profile.label} · {profile.number}
+                          </span>
+                          <span className="text-gray-400">{profile.enabled === false ? t("已禁用") : t("已启用")}</span>
+                        </div>
+                        <p className="mt-1 text-gray-500 dark:text-gray-400">{profile.scenario || profile.task}</p>
+                        <div className="mt-2 flex gap-2">
+                          <Button size="small" plain onClick={() => editManagedProfile(profile)}>
+                            {t("编辑")}
+                          </Button>
+                          <Button size="small" plain variant="danger" onClick={() => void deleteManagedProfile(profile.id)}>
+                            {t("删除")}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            <label className="mb-2 block text-xs font-bold text-gray-500 dark:text-gray-400">{t("任务目标")}</label>
+            <Input
+              value={aiTask}
+              onChange={(event) => setAITask(event.target.value)}
+              placeholder={t("例如：确认套餐余量并记录关键信息")}
+              disabled={controlsLocked || aiBusy}
+            />
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button size="small" plain loading={aiScenarioBusy} disabled={controlsLocked || aiBusy || (!dialNumber.trim() && !aiTask.trim())} onClick={() => void requestAICallScenario()}>
+                {t("生成场景策略")}
+              </Button>
+              <Button size="small" plain onClick={() => setAIIntakeOpen((open) => !open)}>
+                {t("AI 建单助手")}
+              </Button>
+            </div>
+            {aiDraftOpening ? (
+              <p className="mt-2 rounded-md bg-emerald-50 px-2 py-1 text-xs text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                {t("AI 已生成开场白")}：{aiDraftOpening}
+              </p>
+            ) : null}
+            {aiDraftTaskPackageText ? (
+              <p className="mt-2 rounded-md bg-indigo-50 px-2 py-1 text-xs text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+                {t("任务包已生成")}
+              </p>
+            ) : null}
+            {aiIntakeOpen ? (
+              <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50/70 p-3 text-xs dark:border-white/10 dark:bg-white/5">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="font-semibold text-gray-700 dark:text-gray-200">{t("AI 建单助手")}</span>
+                  <span className="text-gray-400">{t("描述你要 AI 代打的事")}</span>
+                </div>
+                {aiIntakeMessages.length > 0 ? (
+                  <div className="mb-2 max-h-36 space-y-1 overflow-auto">
+                    {aiIntakeMessages.map((message, index) => (
+                      <p key={`${message.role}-${index}`} className={message.role === "user" ? "text-gray-700 dark:text-gray-200" : "text-cyan-700 dark:text-cyan-200"}>
+                        {message.role === "user" ? t("我") : t("AI")}：{message.content}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+                {aiIntakeOptions.length > 0 ? (
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {aiIntakeOptions.map((option) => (
+                      <Button key={option} size="small" plain onClick={() => setAIIntakeInput(option)}>
+                        {option}
+                      </Button>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <Input
+                    value={aiIntakeInput}
+                    onChange={(event) => setAIIntakeInput(event.target.value)}
+                    placeholder={t("描述你要 AI 代打的事")}
+                    disabled={controlsLocked || aiIntakeBusy}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void requestAICallIntake();
+                    }}
+                  />
+                  <Button size="small" variant="primary" loading={aiIntakeBusy} disabled={controlsLocked || !aiIntakeInput.trim()} onClick={() => void requestAICallIntake()}>
+                    {t("发送")}
+                  </Button>
+                </div>
+                {dialNumber && aiTask ? (
+                  <Button size="small" plain className="mt-2" onClick={() => applyAIIntakeDraft({ number: dialNumber, task: aiTask })}>
+                    {t("套用草稿")}
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+            {playbooksEnabled && selectedAIPlaybook ? (
+              <div className="mt-3 rounded-lg border border-cyan-100 bg-cyan-50/70 p-3 text-xs text-cyan-900 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-100">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold">{t("热线情报")}</span>
+                  <span className="text-cyan-700 dark:text-cyan-200">{selectedAIPlaybook.label || selectedAIPlaybook.id}</span>
+                </div>
+                {selectedAIPlaybook.ivrNotes ? (
+                  <p className="mt-2">
+                    <span className="font-semibold">{t("IVR 流程")}：</span>
+                    {selectedAIPlaybook.ivrNotes}
+                  </p>
+                ) : null}
+                {selectedAIPlaybook.requiredInfo?.length ? (
+                  <div className="mt-2">
+                    <p className="font-semibold">{t("必采信息")}</p>
+                    <ul className="mt-1 space-y-1">
+                      {selectedAIPlaybook.requiredInfo.map((item) => (
+                        <li key={item.key}>
+                          {item.label || item.key}
+                          {item.purpose ? `：${item.purpose}` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            <label className="mb-2 mt-3 block text-xs font-bold text-gray-500 dark:text-gray-400">{t("批量号码")}</label>
+            <textarea
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/10 dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
+              value={aiBatchNumbers}
+              onChange={(event) => setAIBatchNumbers(event.target.value)}
+              placeholder={t("每行一个号码，或用逗号分隔")}
+              disabled={controlsLocked || aiBusy}
+              rows={3}
+            />
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+              <Select value={aiProvider} onChange={setAIProvider} options={aiProviderOptions} />
+              <Button
+                variant="primary"
+                loading={aiBusy}
+                disabled={controlsLocked || !deviceId || !validDialNumber(dialNumber)}
+                onClick={() => void startAICall()}
+              >
+                {t("AI 外呼")}
+              </Button>
+              <Button
+                variant="primary"
+                plain
+                loading={aiBusy}
+                disabled={controlsLocked || !deviceId || parseBatchNumbers(aiBatchNumbers).length === 0}
+                onClick={() => void startAIBatchCall()}
+              >
+                {t("AI 批量外呼")}
+              </Button>
+              {activeCall?.state === "ringing" ? (
+                <Button
+                  variant="primary"
+                  loading={aiBusy}
+                  disabled={controlsLocked || !deviceId}
+                  onClick={() => void answerWithAI()}
+                >
+                  {t("AI 接管")}
+                </Button>
+              ) : null}
+            </div>
+            {aiBatchQueue.active || aiBatchPendingNumbers.length > 0 ? (
+              <div className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50/70 p-3 text-xs text-indigo-800 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-semibold">{t("批量队列")}</span>
+                  <span>{tf("待拨 {count} 个", { count: aiBatchPendingNumbers.length })}</span>
+                  {aiBatchPendingNumbers.length > 0 ? (
+                    <Button
+                      size="small"
+                      plain
+                      variant="danger"
+                      loading={aiBusy}
+                      disabled={controlsLocked}
+                      onClick={() => void cancelAIBatchQueue()}
+                    >
+                      {t("取消待拨")}
+                    </Button>
+                  ) : null}
+                </div>
+                {aiBatchQueue.currentNumber ? (
+                  <p className="mt-2">
+                    {t("当前外呼")}：{aiBatchQueue.currentNumber}
+                  </p>
+                ) : null}
+                {aiBatchQueue.pendingNumbers?.length ? (
+                  <p className="mt-1 break-all">
+                    {t("待拨号码")}：{aiBatchQueue.pendingNumbers.join("、")}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            {activeAISession ? (
+              <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/70 p-3 text-xs text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    {activeAISession.provider || "fake"} · {activeAISession.state} ·{" "}
+                    {activeAISession.number || activeAISession.callId}
+                  </span>
+                  <Button
+                    size="small"
+                    variant="danger"
+                    loading={aiBusy}
+                    disabled={controlsLocked}
+                    onClick={() => void hangupAICall(activeAISession.id)}
+                  >
+                    {t("结束 AI 通话")}
+                  </Button>
+                  <Button
+                    size="small"
+                    plain
+                    variant="primary"
+                    loading={aiBusy}
+                    disabled={controlsLocked || !aiTask.trim()}
+                    onClick={() => void updateAIInstructions()}
+                  >
+                    {t("更新任务")}
+                  </Button>
+                </div>
+                {activeAISession.task ? <p className="mt-2">{activeAISession.task}</p> : null}
+                {activeAISession.error ? <p className="mt-2 text-red-500">{activeAISession.error}</p> : null}
+                {pendingOwnerTakeover ? (
+                  <div className="mt-3 flex flex-wrap gap-2 rounded-md bg-white/70 p-2 dark:bg-white/10">
+                    <Button
+                      size="small"
+                      variant="primary"
+                      loading={aiBusy}
+                      disabled={controlsLocked}
+                      onClick={() => void updateOwnerTakeover("committed")}
+                    >
+                      {t("本人已接管")}
+                    </Button>
+                    <Button
+                      size="small"
+                      plain
+                      variant="danger"
+                      loading={aiBusy}
+                      disabled={controlsLocked}
+                      onClick={() => void updateOwnerTakeover("failed")}
+                    >
+                      {t("转接失败")}
+                    </Button>
+                  </div>
+                ) : null}
+                <div className="mt-3 border-t border-sky-200/70 pt-3 dark:border-sky-500/20">
+                  <div className="font-bold">{t("AI 实时事件")}</div>
+                  {aiCallEvents.length > 0 ? (
+                    <div className="mt-2 max-h-40 space-y-1 overflow-auto">
+                      {aiCallEvents.map((event, index) => (
+                        <p key={event.id ?? index} className="text-sky-700 dark:text-sky-200">
+                          <span className="font-semibold">
+                            {t(aiEventTypeLabel(event))}：
+                          </span>
+                          {aiEventText(event)}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sky-500/80 dark:text-sky-300/80">{t("等待 AI 转写或状态事件")}</p>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
           {loadError ? <p className="text-sm text-red-500">{loadError}</p> : null}
 
           <div className="ui-card p-5">
@@ -614,7 +2019,7 @@ export default function PhonePage() {
                       {activeCall.number || t("未知号码")}
                     </div>
                     <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      {activeCall.direction === "outgoing" ? t("呼出") : t("呼入")} · {formatClock(activeCall.startedAt)}
+                      {t(callDirectionLabel(activeCall.direction))} · {formatClock(activeCall.startedAt)}
                       {activeCall.state === "active" ? ` · ${formatDuration(activeCall.startedAt)}` : ""}
                     </div>
                     {activeCall.reason ? (
@@ -692,7 +2097,7 @@ export default function PhonePage() {
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold text-gray-800 dark:text-gray-200">
-                        {record.direction === "outgoing" ? t("呼出") : t("呼入")} · {record.number || t("未知号码")}
+                        {t(callDirectionLabel(record.direction))} · {record.number || t("未知号码")}
                       </div>
                       <div className="text-xs text-gray-400">
                         {formatClock(record.startedAt)}
@@ -721,6 +2126,116 @@ export default function PhonePage() {
                       >
                         {t("二维码发送")}
                       </Button>
+                    </div>
+                  ) : null}
+                  <div className="mt-2">
+                    <Button
+                      size="small"
+                      plain
+                      variant="primary"
+                      loading={detailLoadingId === record.callId}
+                      disabled={!!detailLoadingId && detailLoadingId !== record.callId}
+                      onClick={() => void loadRecordDetail(record)}
+                    >
+                      {t("AI 通话详情")}
+                    </Button>
+                  </div>
+                  {recordDetail?.record?.callId === record.callId ? (
+                    <div className="mt-3 rounded-lg border border-gray-100 bg-gray-50/80 p-3 text-xs dark:border-white/10 dark:bg-white/5">
+                      <div className="font-bold text-gray-600 dark:text-gray-300">{t("AI 转写")}</div>
+                      {recordDetail.events.filter((event) => event.type === "transcript" && event.text).length > 0 ? (
+                        <div className="mt-2 space-y-1">
+                          {recordDetail.events
+                            .filter((event) => event.type === "transcript" && event.text)
+                            .map((event, index) => (
+                              <p key={event.id ?? index} className="text-gray-500 dark:text-gray-400">
+                                <span className="font-semibold">{event.role || "ai"}：</span>
+                                {event.text}
+                              </p>
+                            ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-gray-400">{t("暂无 AI 转写")}</p>
+                      )}
+                      <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("AI 时间线")}</div>
+                      {recordDetail.events.filter((event) => event.type !== "transcript").length > 0 ? (
+                        <div className="mt-2 space-y-1">
+                          {recordDetail.events
+                            .filter((event) => event.type !== "transcript")
+                            .map((event, index) => (
+                              <p key={event.id ?? index} className="text-gray-500 dark:text-gray-400">
+                                <span className="font-semibold">
+                                  {t(aiEventTypeLabel(event))}
+                                  {event.createdAt ? ` · ${formatClock(event.createdAt)}` : ""}：
+                                </span>
+                                {aiEventText(event)}
+                              </p>
+                            ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-gray-400">{t("暂无 AI 时间线事件")}</p>
+                      )}
+                      <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("AI 摘要")}</div>
+                      {aiSummaryText(recordDetail.summary) ? (
+                        <p className="mt-2 text-gray-500 dark:text-gray-400">{aiSummaryText(recordDetail.summary)}</p>
+                      ) : (
+                        <p className="mt-2 text-gray-400">{t("暂无 AI 摘要")}</p>
+                      )}
+                      {structuredSummaryFields.length > 0 ? (
+                        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {structuredSummaryFields.map((field) => (
+                            <div key={field.label} className="rounded-lg border border-gray-100 bg-white/70 px-3 py-2 dark:border-white/10 dark:bg-white/5">
+                              <div className="text-[11px] font-bold text-gray-400">{t(field.label)}</div>
+                              <div className="mt-1 text-gray-600 dark:text-gray-300">{t(field.value)}</div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                      <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("结果核实")}</div>
+                      {aiVerificationText(recordDetail.summary) ? (
+                        <p className="mt-2 text-gray-500 dark:text-gray-400">{aiVerificationText(recordDetail.summary)}</p>
+                      ) : (
+                        <p className="mt-2 text-gray-400">{t("暂无结果核实")}</p>
+                      )}
+                      <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("任务判定")}</div>
+                      {aiVerdictText(recordDetail.summary) ? (
+                        <p className="mt-2 text-gray-500 dark:text-gray-400">{aiVerdictText(recordDetail.summary)}</p>
+                      ) : (
+                        <p className="mt-2 text-gray-400">{t("暂无任务判定")}</p>
+                      )}
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                        <div className="font-bold text-gray-600 dark:text-gray-300">{t("热线情报学习")}</div>
+                        <Button
+                          size="small"
+                          plain
+                          variant="primary"
+                          loading={playbookLearningId === recordDetail.record.callId}
+                          disabled={!playbooksEnabled || (!!playbookLearningId && playbookLearningId !== recordDetail.record.callId)}
+                          onClick={() => void learnCallPlaybook(recordDetail.record.callId)}
+                        >
+                          {t("学习热线情报")}
+                        </Button>
+                      </div>
+                      {!playbooksEnabled ? (
+                        <p className="mt-2 text-gray-400">{t("未配置热线情报文件")}</p>
+                      ) : playbookLearningResult ? (
+                        <div className="mt-2 rounded-lg border border-cyan-100 bg-cyan-50/70 px-3 py-2 text-cyan-700 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:text-cyan-200">
+                          <p>{playbookLearningResult.ok ? t("已更新热线情报") : t("未学习到新情报")}</p>
+                          {playbookLearningResult.error ? <p className="mt-1 opacity-80">{playbookLearningResult.error}</p> : null}
+                          {playbookLearningResult.learned?.newRequiredInfo?.length ? (
+                            <p className="mt-1">
+                              {t("新增必采信息")}：
+                              {playbookLearningResult.learned?.newRequiredInfo?.map((item) => item.key).join("、")}
+                            </p>
+                          ) : null}
+                          {playbookLearningResult.learned?.ivrNotesUpdate ? (
+                            <p className="mt-1">
+                              {t("新增 IVR 记录")}：
+                              {profileText(playbookLearningResult.learned.ivrNotesUpdate)}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>

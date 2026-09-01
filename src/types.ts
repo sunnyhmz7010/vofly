@@ -412,7 +412,7 @@ export interface BalanceQuery {
   currency?: string;
   previousAmount?: string;
   changeAmount?: string;
-  changeDirection?: "increase" | "decrease" | "unchanged" | string;
+  changeDirection?: "increase" | "decrease" | "unchanged" | "unknown" | string;
   summary?: string;
   rawResponse?: string;
   responseSmsId?: number;
@@ -469,7 +469,7 @@ export interface BalancePlan {
   notify: boolean;
   nextRunAt: string;
   lastRunAt?: string;
-  lastStatus: string;
+  lastStatus?: string;
   lastError?: string;
   createdAt: string;
   updatedAt: string;
