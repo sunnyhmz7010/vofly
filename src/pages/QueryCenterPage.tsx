@@ -260,64 +260,85 @@ export default function QueryCenterPage() {
 
           {showDetailColumn ? (
             <div className="flex min-h-0 flex-col">
-              <div className="border-b border-gray-100 p-4 dark:border-white/10">
-                <div className="flex items-center gap-3">
-                  {!isDesktop ? (
-                    <Button
-                      size="small"
-                      variant="text"
-                      icon={<ArrowLeftRegular />}
-                      onClick={() => syncQuery({ iccid: "", profile_aid: "" })}
-                    >
-                      {t("返回")}
-                    </Button>
-                  ) : null}
-                  {selectedCard ? (
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-bold text-gray-800 dark:text-gray-100">
-                        {selectedCard.label || selectedIccid}
-                      </div>
-                      <div className="truncate text-xs text-gray-400">
-                        {selectedIccid}
-                        {selectedCard.active ? ` · ${t("当前激活")}` : ""}
+              {selectedCard && device ? (
+                <>
+                  <div className="border-b border-gray-100 p-4 dark:border-white/10">
+                    <div className="flex items-center gap-3">
+                      {!isDesktop ? (
+                        <Button
+                          size="small"
+                          variant="text"
+                          icon={<ArrowLeftRegular />}
+                          onClick={() => syncQuery({ iccid: "", profile_aid: "" })}
+                        >
+                          {t("返回")}
+                        </Button>
+                      ) : null}
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-bold text-gray-800 dark:text-gray-100">
+                          {selectedCard.label || selectedIccid}
+                        </div>
+                        <div className="truncate text-xs text-gray-400">
+                          {selectedIccid}
+                          {selectedCard.active ? ` · ${t("当前激活")}` : ""}
+                        </div>
                       </div>
                     </div>
-                  ) : (
-                    <div className="min-w-0 text-sm text-gray-400">
-                      {t("未选择卡或Profile")}
-                    </div>
-                  )}
-                </div>
-                <Tabs
-                  className="mt-3"
-                  value={menu}
-                  onChange={(key) => syncQuery({ menu: key })}
-                  tabs={MENUS.map((item) => ({ key: item.key, label: t(item.label) }))}
-                />
-              </div>
-              <div className="min-h-0 flex-1 overflow-auto">
-                {selectedCard && device ? (
-                  menu === "balance" ? (
-                    <BalancePanel
-                      deviceId={device.id}
-                      card={selectedCard}
-                      onOpenPlans={() => syncQuery({ menu: "plans" })}
+                    <Tabs
+                      className="mt-3"
+                      value={menu}
+                      onChange={(key) => syncQuery({ menu: key })}
+                      tabs={MENUS.map((item) => ({ key: item.key, label: t(item.label) }))}
                     />
-                  ) : menu === "plans" ? (
-                    <BalancePlansPanel deviceId={device.id} card={selectedCard} />
-                  ) : (
-                    <CardLinksPanel
-                      deviceId={device.id}
-                      card={selectedCard}
-                      section={menu === "links" ? "recharge" : "knowledge"}
-                    />
-                  )
-                ) : (
-                  <div className="flex flex-1 items-center justify-center p-6">
-                    <EmptyState title={t("请选择左侧的卡或 Profile 查看余额、卡资料与计划")} />
                   </div>
-                )}
-              </div>
+                  <div className="min-h-0 flex-1 overflow-auto">
+                    {menu === "balance" ? (
+                      <BalancePanel
+                        deviceId={device.id}
+                        card={selectedCard}
+                        onOpenPlans={() => syncQuery({ menu: "plans" })}
+                      />
+                    ) : menu === "plans" ? (
+                      <BalancePlansPanel deviceId={device.id} card={selectedCard} />
+                    ) : (
+                      <CardLinksPanel
+                        deviceId={device.id}
+                        card={selectedCard}
+                        section={menu === "links" ? "recharge" : "knowledge"}
+                      />
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="flex h-full flex-col">
+                  <div className="border-b border-gray-100 p-4 dark:border-white/10">
+                    <div className="flex items-center gap-3">
+                      {!isDesktop ? (
+                        <Button
+                          size="small"
+                          variant="text"
+                          icon={<ArrowLeftRegular />}
+                          onClick={() => syncQuery({ iccid: "", profile_aid: "" })}
+                        >
+                          {t("返回")}
+                        </Button>
+                      ) : null}
+                      <div className="min-w-0 text-sm text-gray-400">
+                        {t("未选择卡或Profile")}
+                      </div>
+                    </div>
+                    <Tabs
+                      className="mt-3"
+                      value={menu}
+                      onChange={(key) => syncQuery({ menu: key })}
+                      tabs={MENUS.map((item) => ({ key: item.key, label: t(item.label) }))}
+                    />
+                  </div>
+                  <div className="flex flex-1 items-center justify-center p-6">
+                    <EmptyState title={t("请选择左侧的卡或 Profile")} />
+                  </div>
+                </div>
+              )}
             </div>
           ) : null}
         </div>
