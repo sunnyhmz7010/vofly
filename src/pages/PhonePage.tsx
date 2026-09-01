@@ -229,6 +229,12 @@ function isActiveCall(call: CallItem) {
   return call.state !== "ended" && call.state !== "failed";
 }
 
+function isDialFailureRecord(record?: CallRecord | null) {
+  if (!record) return false;
+  const state = record.state.trim().toLowerCase();
+  return state !== "active" && (state === "failed" || !!record.reason || !!record.sipCode);
+}
+
 function formatClock(value?: string) {
   if (!value) return "";
   const date = new Date(value);
@@ -688,6 +694,7 @@ export default function PhonePage() {
   const [loadError, setLoadError] = useState("");
   const [dialNumber, setDialNumber] = useState("");
   const [dialing, setDialing] = useState(false);
+  const [lastDialAttempt, setLastDialAttempt] = useState<{ number: string; at: number } | null>(null);
   const [acting, setActing] = useState(false);
   const [aiTask, setAITask] = useState("");
   const [aiBatchNumbers, setAIBatchNumbers] = useState("");
@@ -1190,6 +1197,19 @@ export default function PhonePage() {
   }, [deviceId, refresh, loadRecords, loadAISessions]);
 
   const activeCall = callsPayload?.calls.find(isActiveCall) || null;
+  const recentDialRecord = useMemo(() => {
+    if (!lastDialAttempt) return null;
+    const attemptedNumber = normalizedDialNumber(lastDialAttempt.number);
+    if (!attemptedNumber) return null;
+    return (
+      records.find((record) => {
+        if (normalizedDialNumber(record.number) !== attemptedNumber) return false;
+        const startedAt = record.startedAt ? new Date(record.startedAt).getTime() : 0;
+        return startedAt >= lastDialAttempt.at - 15000;
+      }) || null
+    );
+  }, [lastDialAttempt, records]);
+  const recentDialFailure = recentDialRecord && isDialFailureRecord(recentDialRecord) ? recentDialRecord : null;
   const activeAISession =
     aiSessions.find((session) => session.deviceId === deviceId && session.state !== "ended" && session.state !== "failed") || null;
   const aiBatchPendingNumbers = aiBatchQueue.pendingNumbers || [];
@@ -1275,6 +1295,7 @@ export default function PhonePage() {
     claim(); // 拨号即声明控制权（最新声明胜出，可接管其他标签页的陈旧/漏看租约）
     try {
       await api(`/devices/${encodeURIComponent(deviceId)}/calls/dial`, { method: "POST", body: { number } });
+      setLastDialAttempt({ number, at: Date.now() });
       setDialNumber("");
       await refresh();
       await loadRecords();
@@ -1598,441 +1619,6 @@ export default function PhonePage() {
             <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">{t("支持 +、数字、*、#；拨号请求不会自动挂断。")}</p>
           </div>
 
-          <div className="ui-card p-5">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">{t("AI 通话")}</h3>
-                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                  {t("让 AI 接管当前来电，或按上方号码发起 AI 外呼。")}
-                </p>
-              </div>
-              <Tag type={activeAISession ? "success" : "info"}>
-                {activeAISession ? t("AI 接管中") : t("待命")}
-              </Tag>
-            </div>
-            <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50/70 p-3 text-xs dark:border-white/10 dark:bg-white/5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <span className="font-bold text-gray-600 dark:text-gray-300">{t("AI 通话身份")}</span>
-                  <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">{t("身份与自动接听设置已收进右上角的 AI 通话弹窗。")}</p>
-                </div>
-                <Button size="small" plain onClick={() => setAICallDialogOpen(true)}>
-                  {t("打开设置")}
-                </Button>
-              </div>
-            </div>
-            {aiPresets.length > 0 ? (
-              <div className="mb-3">
-                <label className="mb-2 block text-xs font-bold text-gray-500 dark:text-gray-400">{t("预设任务")}</label>
-                <Select value="" onChange={applyAIPreset} options={aiPresetOptions} />
-              </div>
-            ) : null}
-            <div className="mb-3">
-              <Button
-                size="small"
-                plain
-                variant="primary"
-                loading={profileBusy}
-                onClick={() => {
-                  const next = !profileManagerOpen;
-                  setProfileManagerOpen(next);
-                  if (next) void loadManagedProfiles();
-                }}
-              >
-                {t("本地预设管理")}
-              </Button>
-            </div>
-            {profileManagerOpen ? (
-              <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50/70 p-3 text-xs dark:border-white/10 dark:bg-white/5">
-                {!profilesConfigured ? (
-                  <p className="mb-3 rounded-md bg-amber-50 px-2 py-1 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-                    {t("未配置预设文件，需设置 VOFLY_AI_CALL_PRESETS_FILE 或 NUMBER_PROFILES_FILE 后才能保存")}
-                  </p>
-                ) : null}
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <Input
-                    value={profileForm.id}
-                    onChange={(event) => setProfileForm((current) => ({ ...current, id: event.target.value }))}
-                    placeholder={t("预设 ID")}
-                    disabled={profileBusy || !!editingProfileID}
-                  />
-                  <Input
-                    value={profileForm.number}
-                    onChange={(event) => setProfileForm((current) => ({ ...current, number: event.target.value }))}
-                    placeholder={t("号码")}
-                    disabled={profileBusy}
-                  />
-                  <Input
-                    value={profileForm.label}
-                    onChange={(event) => setProfileForm((current) => ({ ...current, label: event.target.value }))}
-                    placeholder={t("显示名称")}
-                    disabled={profileBusy}
-                  />
-                  <Input
-                    value={profileForm.task}
-                    onChange={(event) => setProfileForm((current) => ({ ...current, task: event.target.value }))}
-                    placeholder={t("匹配任务")}
-                    disabled={profileBusy}
-                  />
-                </div>
-                <label className="mb-1 mt-2 block font-semibold text-gray-500 dark:text-gray-400">{t("场景策略")}</label>
-                <textarea
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/10 dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
-                  value={profileForm.scenario || ""}
-                  onChange={(event) => setProfileForm((current) => ({ ...current, scenario: event.target.value }))}
-                  placeholder={t("给 AI 的精调场景策略")}
-                  disabled={profileBusy}
-                  rows={2}
-                />
-                <label className="mb-1 mt-2 block font-semibold text-gray-500 dark:text-gray-400">{t("开场白")}</label>
-                <textarea
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/10 dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
-                  value={profileForm.opening || ""}
-                  onChange={(event) => setProfileForm((current) => ({ ...current, opening: event.target.value }))}
-                  placeholder={t("接通后的第一句话")}
-                  disabled={profileBusy}
-                  rows={2}
-                />
-                <label className="mb-1 mt-2 block font-semibold text-gray-500 dark:text-gray-400">{t("时长上限（秒）")}</label>
-                <Input
-                  value={profileForm.maxCallSeconds ? String(profileForm.maxCallSeconds) : ""}
-                  onChange={(event) => setProfileForm((current) => ({ ...current, maxCallSeconds: Number(event.target.value) || undefined }))}
-                  placeholder="3600"
-                  disabled={profileBusy}
-                />
-                <label className="mb-1 mt-2 block font-semibold text-gray-500 dark:text-gray-400">{t("任务包 JSON")}</label>
-                <textarea
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/10 dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
-                  value={profileForm.taskPackageText || ""}
-                  onChange={(event) => setProfileForm((current) => ({ ...current, taskPackageText: event.target.value }))}
-                  placeholder={t("例如：{\"verification\":{\"account_pin\":\"1234\"}}")}
-                  disabled={profileBusy}
-                  rows={4}
-                />
-                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  <Select
-                    value={profileForm.openingMode || "say"}
-                    onChange={(value) => setProfileForm((current) => ({ ...current, openingMode: value }))}
-                    options={[
-                      { value: "say", label: t("直接开场") },
-                      { value: "wait", label: t("等待 IVR") },
-                    ]}
-                  />
-                  <label className="text-xs font-semibold text-gray-500 dark:text-gray-400">
-                    {t("结果校验")}
-                    <Select
-                      value={profileForm.resultVerification || "none"}
-                      onChange={(value) => setProfileForm((current) => ({ ...current, resultVerification: value }))}
-                      options={[
-                        { value: "none", label: t("仅通话记录") },
-                        { value: "carrier_sms", label: t("短信校验") },
-                      ]}
-                    />
-                  </label>
-                  <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 dark:border-white/10 dark:bg-white/10 dark:text-gray-200">
-                    <input
-                      type="checkbox"
-                      checked={profileForm.dtmfSpokenFollowup === true}
-                      onChange={(event) => setProfileForm((current) => ({ ...current, dtmfSpokenFollowup: event.target.checked }))}
-                      disabled={profileBusy}
-                    />
-                    {t("口述后补按键")}
-                  </label>
-                </div>
-                <label className="mt-2 flex items-center gap-2 text-gray-600 dark:text-gray-300">
-                  <input
-                    type="checkbox"
-                    checked={profileForm.enabled !== false}
-                    onChange={(event) => setProfileForm((current) => ({ ...current, enabled: event.target.checked }))}
-                    disabled={profileBusy}
-                  />
-                  {t("启用预设")}
-                </label>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    size="small"
-                    variant="primary"
-                    loading={profileBusy}
-                    disabled={!profilesConfigured || !profileForm.id.trim() || !profileForm.number.trim() || !profileForm.label.trim() || !profileForm.task.trim()}
-                    onClick={() => void saveManagedProfile()}
-                  >
-                    {editingProfileID ? t("保存预设") : t("新建预设")}
-                  </Button>
-                  <Button
-                    size="small"
-                    plain
-                    onClick={() => {
-                      setEditingProfileID("");
-                      setProfileForm(emptyManagedProfile());
-                    }}
-                  >
-                    {t("清空表单")}
-                  </Button>
-                </div>
-                {managedProfiles.length > 0 ? (
-                  <div className="mt-3 space-y-2">
-                    {managedProfiles.map((profile) => (
-                      <div key={profile.id} className="rounded-md bg-white p-2 dark:bg-white/10">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="font-semibold">
-                            {profile.label} · {profile.number}
-                          </span>
-                          <span className="text-gray-400">{profile.enabled === false ? t("已禁用") : t("已启用")}</span>
-                        </div>
-                        <p className="mt-1 text-gray-500 dark:text-gray-400">{profile.scenario || profile.task}</p>
-                        <div className="mt-2 flex gap-2">
-                          <Button size="small" plain onClick={() => editManagedProfile(profile)}>
-                            {t("编辑")}
-                          </Button>
-                          <Button size="small" plain variant="danger" onClick={() => void deleteManagedProfile(profile.id)}>
-                            {t("删除")}
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-            <label className="mb-2 block text-xs font-bold text-gray-500 dark:text-gray-400">{t("任务目标")}</label>
-            <Input
-              value={aiTask}
-              onChange={(event) => setAITask(event.target.value)}
-              placeholder={t("例如：确认套餐余量并记录关键信息")}
-              disabled={controlsLocked || aiBusy}
-            />
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Button size="small" plain loading={aiScenarioBusy} disabled={controlsLocked || aiBusy || (!dialNumber.trim() && !aiTask.trim())} onClick={() => void requestAICallScenario()}>
-                {t("生成场景策略")}
-              </Button>
-              <Button size="small" plain onClick={() => setAIIntakeOpen((open) => !open)}>
-                {t("AI 建单助手")}
-              </Button>
-            </div>
-            {aiDraftOpening ? (
-              <p className="mt-2 rounded-md bg-emerald-50 px-2 py-1 text-xs text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-                {t("AI 已生成开场白")}：{aiDraftOpening}
-              </p>
-            ) : null}
-            {aiDraftTaskPackageText ? (
-              <p className="mt-2 rounded-md bg-indigo-50 px-2 py-1 text-xs text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
-                {t("任务包已生成")}
-              </p>
-            ) : null}
-            {aiIntakeOpen ? (
-              <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50/70 p-3 text-xs dark:border-white/10 dark:bg-white/5">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="font-semibold text-gray-700 dark:text-gray-200">{t("AI 建单助手")}</span>
-                  <span className="text-gray-400">{t("描述你要 AI 代打的事")}</span>
-                </div>
-                {aiIntakeMessages.length > 0 ? (
-                  <div className="mb-2 max-h-36 space-y-1 overflow-auto">
-                    {aiIntakeMessages.map((message, index) => (
-                      <p key={`${message.role}-${index}`} className={message.role === "user" ? "text-gray-700 dark:text-gray-200" : "text-cyan-700 dark:text-cyan-200"}>
-                        {message.role === "user" ? t("我") : t("AI")}：{message.content}
-                      </p>
-                    ))}
-                  </div>
-                ) : null}
-                {aiIntakeOptions.length > 0 ? (
-                  <div className="mb-2 flex flex-wrap gap-2">
-                    {aiIntakeOptions.map((option) => (
-                      <Button key={option} size="small" plain onClick={() => setAIIntakeInput(option)}>
-                        {option}
-                      </Button>
-                    ))}
-                  </div>
-                ) : null}
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                  <Input
-                    value={aiIntakeInput}
-                    onChange={(event) => setAIIntakeInput(event.target.value)}
-                    placeholder={t("描述你要 AI 代打的事")}
-                    disabled={controlsLocked || aiIntakeBusy}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") void requestAICallIntake();
-                    }}
-                  />
-                  <Button size="small" variant="primary" loading={aiIntakeBusy} disabled={controlsLocked || !aiIntakeInput.trim()} onClick={() => void requestAICallIntake()}>
-                    {t("发送")}
-                  </Button>
-                </div>
-                {dialNumber && aiTask ? (
-                  <Button size="small" plain className="mt-2" onClick={() => applyAIIntakeDraft({ number: dialNumber, task: aiTask })}>
-                    {t("套用草稿")}
-                  </Button>
-                ) : null}
-              </div>
-            ) : null}
-            {playbooksEnabled && selectedAIPlaybook ? (
-              <div className="mt-3 rounded-lg border border-cyan-100 bg-cyan-50/70 p-3 text-xs text-cyan-900 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-100">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-semibold">{t("热线情报")}</span>
-                  <span className="text-cyan-700 dark:text-cyan-200">{selectedAIPlaybook.label || selectedAIPlaybook.id}</span>
-                </div>
-                {selectedAIPlaybook.ivrNotes ? (
-                  <p className="mt-2">
-                    <span className="font-semibold">{t("IVR 流程")}：</span>
-                    {selectedAIPlaybook.ivrNotes}
-                  </p>
-                ) : null}
-                {selectedAIPlaybook.requiredInfo?.length ? (
-                  <div className="mt-2">
-                    <p className="font-semibold">{t("必采信息")}</p>
-                    <ul className="mt-1 space-y-1">
-                      {selectedAIPlaybook.requiredInfo.map((item) => (
-                        <li key={item.key}>
-                          {item.label || item.key}
-                          {item.purpose ? `：${item.purpose}` : ""}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-            <label className="mb-2 mt-3 block text-xs font-bold text-gray-500 dark:text-gray-400">{t("批量号码")}</label>
-            <textarea
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/10 dark:text-white dark:focus:border-cyan-300 dark:focus:ring-cyan-300/20"
-              value={aiBatchNumbers}
-              onChange={(event) => setAIBatchNumbers(event.target.value)}
-              placeholder={t("每行一个号码，或用逗号分隔")}
-              disabled={controlsLocked || aiBusy}
-              rows={3}
-            />
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-              <Select value={aiProvider} onChange={setAIProvider} options={aiProviderOptions} />
-              <Button
-                variant="primary"
-                loading={aiBusy}
-                disabled={controlsLocked || !deviceId || !validDialNumber(dialNumber)}
-                onClick={() => void startAICall()}
-              >
-                {t("AI 外呼")}
-              </Button>
-              <Button
-                variant="primary"
-                plain
-                loading={aiBusy}
-                disabled={controlsLocked || !deviceId || parseBatchNumbers(aiBatchNumbers).length === 0}
-                onClick={() => void startAIBatchCall()}
-              >
-                {t("AI 批量外呼")}
-              </Button>
-              {activeCall?.state === "ringing" ? (
-                <Button
-                  variant="primary"
-                  loading={aiBusy}
-                  disabled={controlsLocked || !deviceId}
-                  onClick={() => void answerWithAI()}
-                >
-                  {t("AI 接管")}
-                </Button>
-              ) : null}
-            </div>
-            {aiBatchQueue.active || aiBatchPendingNumbers.length > 0 ? (
-              <div className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50/70 p-3 text-xs text-indigo-800 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-semibold">{t("批量队列")}</span>
-                  <span>{tf("待拨 {count} 个", { count: aiBatchPendingNumbers.length })}</span>
-                  {aiBatchPendingNumbers.length > 0 ? (
-                    <Button
-                      size="small"
-                      plain
-                      variant="danger"
-                      loading={aiBusy}
-                      disabled={controlsLocked}
-                      onClick={() => void cancelAIBatchQueue()}
-                    >
-                      {t("取消待拨")}
-                    </Button>
-                  ) : null}
-                </div>
-                {aiBatchQueue.currentNumber ? (
-                  <p className="mt-2">
-                    {t("当前外呼")}：{aiBatchQueue.currentNumber}
-                  </p>
-                ) : null}
-                {aiBatchQueue.pendingNumbers?.length ? (
-                  <p className="mt-1 break-all">
-                    {t("待拨号码")}：{aiBatchQueue.pendingNumbers.join("、")}
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
-            {activeAISession ? (
-              <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50/70 p-3 text-xs text-sky-800 dark:border-sky-500/30 dark:bg-sky-500/10 dark:text-sky-200">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span>
-                    {activeAISession.provider || "fake"} · {activeAISession.state} ·{" "}
-                    {activeAISession.number || activeAISession.callId}
-                  </span>
-                  <Button
-                    size="small"
-                    variant="danger"
-                    loading={aiBusy}
-                    disabled={controlsLocked}
-                    onClick={() => void hangupAICall(activeAISession.id)}
-                  >
-                    {t("结束 AI 通话")}
-                  </Button>
-                  <Button
-                    size="small"
-                    plain
-                    variant="primary"
-                    loading={aiBusy}
-                    disabled={controlsLocked || !aiTask.trim()}
-                    onClick={() => void updateAIInstructions()}
-                  >
-                    {t("更新任务")}
-                  </Button>
-                </div>
-                {activeAISession.task ? <p className="mt-2">{activeAISession.task}</p> : null}
-                {activeAISession.error ? <p className="mt-2 text-red-500">{activeAISession.error}</p> : null}
-                {pendingOwnerTakeover ? (
-                  <div className="mt-3 flex flex-wrap gap-2 rounded-md bg-white/70 p-2 dark:bg-white/10">
-                    <Button
-                      size="small"
-                      variant="primary"
-                      loading={aiBusy}
-                      disabled={controlsLocked}
-                      onClick={() => void updateOwnerTakeover("committed")}
-                    >
-                      {t("本人已接管")}
-                    </Button>
-                    <Button
-                      size="small"
-                      plain
-                      variant="danger"
-                      loading={aiBusy}
-                      disabled={controlsLocked}
-                      onClick={() => void updateOwnerTakeover("failed")}
-                    >
-                      {t("转接失败")}
-                    </Button>
-                  </div>
-                ) : null}
-                <div className="mt-3 border-t border-sky-200/70 pt-3 dark:border-sky-500/20">
-                  <div className="font-bold">{t("AI 实时事件")}</div>
-                  {aiCallEvents.length > 0 ? (
-                    <div className="mt-2 max-h-40 space-y-1 overflow-auto">
-                      {aiCallEvents.map((event, index) => (
-                        <p key={event.id ?? index} className="text-sky-700 dark:text-sky-200">
-                          <span className="font-semibold">
-                            {t(aiEventTypeLabel(event))}：
-                          </span>
-                          {aiEventText(event)}
-                        </p>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-sky-500/80 dark:text-sky-300/80">{t("等待 AI 转写或状态事件")}</p>
-                  )}
-                </div>
-              </div>
-            ) : null}
-          </div>
-
           {loadError ? <p className="text-sm text-red-500">{loadError}</p> : null}
 
           <div className="ui-card p-5">
@@ -2042,6 +1628,19 @@ export default function PhonePage() {
                 {t("刷新")}
               </Button>
             </div>
+            {recentDialFailure ? (
+              <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
+                <div className="font-bold">{t("最近一次拨号失败")}</div>
+                <div className="mt-1">
+                  {tf("{number} · {status}", {
+                    number: recentDialFailure.number || t("未知号码"),
+                    status: [recentDialFailure.sipCode ? `${recentDialFailure.sipCode}` : "", recentDialFailure.reason || t("呼叫已发出，但在接通前被终止。")]
+                      .filter(Boolean)
+                      .join(" "),
+                  })}
+                </div>
+              </div>
+            ) : null}
             {activeCall ? (
               <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-4 dark:border-sky-500/30 dark:bg-sky-500/10">
                 <div className="flex items-start justify-between gap-3">
@@ -2157,116 +1756,6 @@ export default function PhonePage() {
                       >
                         {t("二维码发送")}
                       </Button>
-                    </div>
-                  ) : null}
-                  <div className="mt-2">
-                    <Button
-                      size="small"
-                      plain
-                      variant="primary"
-                      loading={detailLoadingId === record.callId}
-                      disabled={!!detailLoadingId && detailLoadingId !== record.callId}
-                      onClick={() => void loadRecordDetail(record)}
-                    >
-                      {t("AI 通话详情")}
-                    </Button>
-                  </div>
-                  {recordDetail?.record?.callId === record.callId ? (
-                    <div className="mt-3 rounded-lg border border-gray-100 bg-gray-50/80 p-3 text-xs dark:border-white/10 dark:bg-white/5">
-                      <div className="font-bold text-gray-600 dark:text-gray-300">{t("AI 转写")}</div>
-                      {recordDetail.events.filter((event) => event.type === "transcript" && event.text).length > 0 ? (
-                        <div className="mt-2 space-y-1">
-                          {recordDetail.events
-                            .filter((event) => event.type === "transcript" && event.text)
-                            .map((event, index) => (
-                              <p key={event.id ?? index} className="text-gray-500 dark:text-gray-400">
-                                <span className="font-semibold">{event.role || "ai"}：</span>
-                                {event.text}
-                              </p>
-                            ))}
-                        </div>
-                      ) : (
-                        <p className="mt-2 text-gray-400">{t("暂无 AI 转写")}</p>
-                      )}
-                      <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("AI 时间线")}</div>
-                      {recordDetail.events.filter((event) => event.type !== "transcript").length > 0 ? (
-                        <div className="mt-2 space-y-1">
-                          {recordDetail.events
-                            .filter((event) => event.type !== "transcript")
-                            .map((event, index) => (
-                              <p key={event.id ?? index} className="text-gray-500 dark:text-gray-400">
-                                <span className="font-semibold">
-                                  {t(aiEventTypeLabel(event))}
-                                  {event.createdAt ? ` · ${formatClock(event.createdAt)}` : ""}：
-                                </span>
-                                {aiEventText(event)}
-                              </p>
-                            ))}
-                        </div>
-                      ) : (
-                        <p className="mt-2 text-gray-400">{t("暂无 AI 时间线事件")}</p>
-                      )}
-                      <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("AI 摘要")}</div>
-                      {aiSummaryText(recordDetail.summary) ? (
-                        <p className="mt-2 text-gray-500 dark:text-gray-400">{aiSummaryText(recordDetail.summary)}</p>
-                      ) : (
-                        <p className="mt-2 text-gray-400">{t("暂无 AI 摘要")}</p>
-                      )}
-                      {structuredSummaryFields.length > 0 ? (
-                        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          {structuredSummaryFields.map((field) => (
-                            <div key={field.label} className="rounded-lg border border-gray-100 bg-white/70 px-3 py-2 dark:border-white/10 dark:bg-white/5">
-                              <div className="text-[11px] font-bold text-gray-400">{t(field.label)}</div>
-                              <div className="mt-1 text-gray-600 dark:text-gray-300">{t(field.value)}</div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-                      <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("结果核实")}</div>
-                      {aiVerificationText(recordDetail.summary) ? (
-                        <p className="mt-2 text-gray-500 dark:text-gray-400">{aiVerificationText(recordDetail.summary)}</p>
-                      ) : (
-                        <p className="mt-2 text-gray-400">{t("暂无结果核实")}</p>
-                      )}
-                      <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("任务判定")}</div>
-                      {aiVerdictText(recordDetail.summary) ? (
-                        <p className="mt-2 text-gray-500 dark:text-gray-400">{aiVerdictText(recordDetail.summary)}</p>
-                      ) : (
-                        <p className="mt-2 text-gray-400">{t("暂无任务判定")}</p>
-                      )}
-                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                        <div className="font-bold text-gray-600 dark:text-gray-300">{t("热线情报学习")}</div>
-                        <Button
-                          size="small"
-                          plain
-                          variant="primary"
-                          loading={playbookLearningId === recordDetail.record.callId}
-                          disabled={!playbooksEnabled || (!!playbookLearningId && playbookLearningId !== recordDetail.record.callId)}
-                          onClick={() => void learnCallPlaybook(recordDetail.record.callId)}
-                        >
-                          {t("学习热线情报")}
-                        </Button>
-                      </div>
-                      {!playbooksEnabled ? (
-                        <p className="mt-2 text-gray-400">{t("未配置热线情报文件")}</p>
-                      ) : playbookLearningResult ? (
-                        <div className="mt-2 rounded-lg border border-cyan-100 bg-cyan-50/70 px-3 py-2 text-cyan-700 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:text-cyan-200">
-                          <p>{playbookLearningResult.ok ? t("已更新热线情报") : t("未学习到新情报")}</p>
-                          {playbookLearningResult.error ? <p className="mt-1 opacity-80">{playbookLearningResult.error}</p> : null}
-                          {playbookLearningResult.learned?.newRequiredInfo?.length ? (
-                            <p className="mt-1">
-                              {t("新增必采信息")}：
-                              {playbookLearningResult.learned?.newRequiredInfo?.map((item) => item.key).join("、")}
-                            </p>
-                          ) : null}
-                          {playbookLearningResult.learned?.ivrNotesUpdate ? (
-                            <p className="mt-1">
-                              {t("新增 IVR 记录")}：
-                              {profileText(playbookLearningResult.learned.ivrNotesUpdate)}
-                            </p>
-                          ) : null}
-                        </div>
-                      ) : null}
                     </div>
                   ) : null}
                 </div>

@@ -1329,6 +1329,8 @@ export const EN_DICT: Record<string, string> = {
     "Supports +, digits, *, and #; dial requests are not hung up automatically.",
   "网页音频已桥接当前通话": "Browser audio is bridged to the active call",
   "当前通话": "Current call",
+  "最近一次拨号失败": "Latest dial failed",
+  "呼叫已发出，但在接通前被终止。": "The call was placed but terminated before it connected.",
   "响铃中": "Ringing",
   "通话中": "Active",
   "已结束": "Ended",
