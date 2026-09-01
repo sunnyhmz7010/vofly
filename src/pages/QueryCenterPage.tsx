@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ArrowLeftRegular } from "@fluentui/react-icons";
 import { ApiError, api } from "../api";
-import { Button, ErrorState, PageHeader, RefreshButton, Spinner, Tabs } from "../components/ui";
+import { Button, EmptyState, ErrorState, PageHeader, RefreshButton, Spinner, Tabs } from "../components/ui";
 import { CardContextList } from "../components/query-center/CardContextList";
 import { BalancePanel } from "../components/query-center/BalancePanel";
 import { CardLinksPanel } from "../components/query-center/CardLinksPanel";
@@ -313,8 +313,8 @@ export default function QueryCenterPage() {
                     />
                   )
                 ) : (
-                  <div className="flex h-full items-center justify-center p-8 text-center text-sm text-gray-400">
-                    {t("请选择左侧的卡或 Profile 查看余额、卡资料与计划")}
+                  <div className="flex flex-1 items-center justify-center p-6">
+                    <EmptyState title={t("请选择左侧的卡或 Profile 查看余额、卡资料与计划")} />
                   </div>
                 )}
               </div>
