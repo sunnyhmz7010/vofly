@@ -152,6 +152,26 @@ test("phone page loads AI provider options from backend availability", async () 
   assert.doesNotMatch(phonePage, /value: "doubao", label: "Doubao"/);
 });
 
+test("phone page manages AI call owner and persona settings", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+  const dict = await source("src/lib/i18n-en.ts");
+
+  assert.match(phonePage, /interface AICallSettings/);
+  assert.match(phonePage, /const \[aiCallSettings, setAICallSettings\] = useState<AICallSettings>/);
+  assert.match(phonePage, /async function loadAICallSettings\(\)/);
+  assert.match(phonePage, /api<AICallSettings>\("\/ai-call-settings"\)/);
+  assert.match(phonePage, /async function saveAICallSettings\(\)/);
+  assert.match(phonePage, /method: "PUT"/);
+  assert.match(phonePage, /owner_name: aiCallSettings\.ownerName\.trim\(\)/);
+  assert.match(phonePage, /agent_persona: aiCallSettings\.agentPersona\.trim\(\)/);
+  assert.match(phonePage, /owner: aiCallSettings\.ownerName\.trim\(\) \|\| "机主"/);
+  assert.match(phonePage, /AI 通话身份/);
+  assert.match(phonePage, /机主称谓/);
+  assert.match(phonePage, /AI 人设称谓/);
+  assert.match(dict, /"AI 通话身份": "AI call identity"/);
+  assert.match(dict, /"AI 人设称谓": "AI persona"/);
+});
+
 test("phone page loads AI call presets and applies number and task", async () => {
   const phonePage = await source("src/pages/PhonePage.tsx");
 

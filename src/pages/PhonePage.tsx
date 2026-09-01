@@ -76,6 +76,11 @@ interface AICallProvider {
   experimental?: boolean;
 }
 
+interface AICallSettings {
+  ownerName: string;
+  agentPersona: string;
+}
+
 type AICallTaskPackage = Record<string, Record<string, string> | string[]>;
 
 interface AICallPreset {
@@ -685,6 +690,8 @@ export default function PhonePage() {
   const [aiBatchNumbers, setAIBatchNumbers] = useState("");
   const [aiProvider, setAIProvider] = useState("fake");
   const [aiProviders, setAIProviders] = useState<AICallProvider[]>([]);
+  const [aiCallSettings, setAICallSettings] = useState<AICallSettings>({ ownerName: "", agentPersona: "" });
+  const [aiCallSettingsBusy, setAICallSettingsBusy] = useState(false);
   const [aiPresets, setAIPresets] = useState<AICallPreset[]>([]);
   const [selectedAIPreset, setSelectedAIPreset] = useState<AICallPreset | null>(null);
   const [aiScenarioBusy, setAIScenarioBusy] = useState(false);
@@ -873,6 +880,42 @@ export default function PhonePage() {
     }
   }, []);
 
+  async function loadAICallSettings() {
+    try {
+      const settings = camelize<AICallSettings>(await api<AICallSettings>("/ai-call-settings"));
+      setAICallSettings({
+        ownerName: settings.ownerName || "",
+        agentPersona: settings.agentPersona || "",
+      });
+    } catch {
+      setAICallSettings({ ownerName: "", agentPersona: "" });
+    }
+  }
+
+  async function saveAICallSettings() {
+    if (aiCallSettingsBusy) return;
+    setAICallSettingsBusy(true);
+    try {
+      const settings = camelize<AICallSettings>(
+        await api<AICallSettings>("/ai-call-settings", {
+          method: "PUT",
+          body: {
+            owner_name: aiCallSettings.ownerName.trim(),
+            agent_persona: aiCallSettings.agentPersona.trim(),
+          },
+        }),
+      );
+      setAICallSettings({
+        ownerName: settings.ownerName || "",
+        agentPersona: settings.agentPersona || "",
+      });
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setAICallSettingsBusy(false);
+    }
+  }
+
   const loadAIPresets = useCallback(async () => {
     try {
       const res = await api<{ data: AICallPreset[] }>("/ai-call-presets");
@@ -966,7 +1009,7 @@ export default function PhonePage() {
     try {
       const res = await api<TaskIntakeResult>("/ai-call-intake", {
         method: "POST",
-        body: { provider: aiProvider, lang: "zh", owner: "机主", messages: nextMessages },
+        body: { provider: aiProvider, lang: "zh", owner: aiCallSettings.ownerName.trim() || "机主", messages: nextMessages },
       });
       const result = camelize<TaskIntakeResult>(res);
       if (result.reply) setAIIntakeMessages([...nextMessages, { role: "assistant", content: result.reply }]);
@@ -1070,6 +1113,7 @@ export default function PhonePage() {
   useEffect(() => {
     void loadDevices();
     void loadAIProviders();
+    void loadAICallSettings();
     void loadAIPresets();
     void loadAIPlaybooks();
   }, [loadDevices, loadAIProviders, loadAIPresets]);
@@ -1520,6 +1564,31 @@ export default function PhonePage() {
               <Tag type={activeAISession ? "success" : "info"}>
                 {activeAISession ? t("AI 接管中") : t("待命")}
               </Tag>
+            </div>
+            <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50/70 p-3 text-xs dark:border-white/10 dark:bg-white/5">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="font-bold text-gray-600 dark:text-gray-300">{t("AI 通话身份")}</span>
+                <Button size="small" plain loading={aiCallSettingsBusy} onClick={() => void saveAICallSettings()}>
+                  {t("保存身份")}
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <Input
+                  value={aiCallSettings.ownerName}
+                  onChange={(event) => setAICallSettings((current) => ({ ...current, ownerName: event.target.value }))}
+                  placeholder={t("机主称谓")}
+                  disabled={aiCallSettingsBusy}
+                />
+                <Input
+                  value={aiCallSettings.agentPersona}
+                  onChange={(event) => setAICallSettings((current) => ({ ...current, agentPersona: event.target.value }))}
+                  placeholder={t("AI 人设称谓")}
+                  disabled={aiCallSettingsBusy}
+                />
+              </div>
+              <p className="mt-2 text-[11px] text-gray-400 dark:text-gray-500">
+                {t("用于实时通话提示词，避免 AI 冒充机主本人；留空使用默认称谓。")}
+              </p>
             </div>
             {aiPresets.length > 0 ? (
               <div className="mb-3">

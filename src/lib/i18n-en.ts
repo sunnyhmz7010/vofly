@@ -5,6 +5,11 @@
  * 富文本片段（嵌套链接/代码块的说明框）不走字典，在组件里按语言分支渲染。
  */
 export const EN_DICT: Record<string, string> = {
+	"AI 通话身份": "AI call identity",
+	"保存身份": "Save identity",
+	"机主称谓": "Owner name",
+	"AI 人设称谓": "AI persona",
+	"用于实时通话提示词，避免 AI 冒充机主本人；留空使用默认称谓。": "Used in realtime call prompts to prevent the AI from impersonating the owner; leave blank to use defaults.",
 	"未知设备": "Unknown device",
 	"系统已发现 USB 读卡器，但 PC/SC 服务未运行；请安装并启动 pcscd 后重新扫描。": "The USB card reader was found, but the PC/SC service is not running. Install and start pcscd, then scan again.",
 	"系统已发现 USB 读卡器，但 PC/SC 驱动未加载；请安装 libccid 或厂商驱动后重新扫描。": "The USB card reader was found, but its PC/SC driver is not loaded. Install libccid or the vendor driver, then scan again.",
