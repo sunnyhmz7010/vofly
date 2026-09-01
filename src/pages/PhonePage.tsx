@@ -76,6 +76,8 @@ interface AICallProvider {
   experimental?: boolean;
 }
 
+type AICallTaskPackage = Record<string, Record<string, string> | string[]>;
+
 interface AICallPreset {
   id: string;
   label: string;
@@ -85,7 +87,7 @@ interface AICallPreset {
   openingMode?: "say" | "wait" | string;
   dtmfSpokenFollowup?: boolean;
   resultVerification?: "none" | "carrier_sms" | string;
-  taskPackage?: Record<string, Record<string, string>>;
+  taskPackage?: AICallTaskPackage;
   maxCallSeconds?: number;
 }
 
@@ -109,9 +111,39 @@ interface ManagedNumberProfile {
   openingMode?: "say" | "wait" | string;
   dtmfSpokenFollowup?: boolean;
   resultVerification?: "none" | "carrier_sms" | string;
-  taskPackage?: Record<string, Record<string, string>>;
+  taskPackage?: AICallTaskPackage;
   taskPackageText?: string;
   maxCallSeconds?: number;
+}
+
+interface ScenarioDraftResult {
+  ok: boolean;
+  scenario?: string;
+  opening?: string;
+  error?: string;
+}
+
+interface TaskIntakeMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+interface TaskIntakeDraft {
+  number: string;
+  task: string;
+  label?: string;
+  scenario?: string;
+  opening?: string;
+  taskPackage?: AICallTaskPackage;
+}
+
+interface TaskIntakeResult {
+  ok: boolean;
+  reply?: string;
+  options?: string[];
+  ready?: boolean;
+  draft?: TaskIntakeDraft;
+  error?: string;
 }
 
 interface AIBatchQueueStatus {
@@ -645,6 +677,14 @@ export default function PhonePage() {
   const [aiProviders, setAIProviders] = useState<AICallProvider[]>([]);
   const [aiPresets, setAIPresets] = useState<AICallPreset[]>([]);
   const [selectedAIPreset, setSelectedAIPreset] = useState<AICallPreset | null>(null);
+  const [aiScenarioBusy, setAIScenarioBusy] = useState(false);
+  const [aiDraftOpening, setAIDraftOpening] = useState("");
+  const [aiDraftTaskPackageText, setAIDraftTaskPackageText] = useState("");
+  const [aiIntakeOpen, setAIIntakeOpen] = useState(false);
+  const [aiIntakeMessages, setAIIntakeMessages] = useState<TaskIntakeMessage[]>([]);
+  const [aiIntakeInput, setAIIntakeInput] = useState("");
+  const [aiIntakeOptions, setAIIntakeOptions] = useState<string[]>([]);
+  const [aiIntakeBusy, setAIIntakeBusy] = useState(false);
   const [aiPlaybooks, setAIPlaybooks] = useState<AICallPlaybook[]>([]);
   const [playbooksEnabled, setPlaybooksEnabled] = useState(false);
   const [managedProfiles, setManagedProfiles] = useState<ManagedNumberProfile[]>([]);
@@ -872,7 +912,68 @@ export default function PhonePage() {
   function parseProfileTaskPackage() {
     const text = profileForm.taskPackageText?.trim();
     if (!text) return undefined;
-    return JSON.parse(text) as Record<string, Record<string, string>>;
+    return JSON.parse(text) as AICallTaskPackage;
+  }
+
+  function parseAIDraftTaskPackage() {
+    const text = aiDraftTaskPackageText.trim();
+    if (!text) return undefined;
+    return JSON.parse(text) as AICallTaskPackage;
+  }
+
+  async function requestAICallScenario() {
+    if (aiScenarioBusy || (!dialNumber.trim() && !aiTask.trim())) return;
+    setAIScenarioBusy(true);
+    try {
+      const res = await api<ScenarioDraftResult>("/ai-call-scenario", {
+        method: "POST",
+        body: { number: dialNumber.trim(), task: aiTask.trim(), provider: aiProvider, lang: "zh" },
+      });
+      if (!res.ok) {
+        window.alert(res.error || t("生成失败"));
+        return;
+      }
+      if (res.scenario) setAITask(res.scenario);
+      if (res.opening) setAIDraftOpening(res.opening);
+      setSelectedAIPreset(null);
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setAIScenarioBusy(false);
+    }
+  }
+
+  async function requestAICallIntake() {
+    const content = aiIntakeInput.trim();
+    if (aiIntakeBusy || !content) return;
+    const nextMessages: TaskIntakeMessage[] = [...aiIntakeMessages, { role: "user", content }];
+    setAIIntakeMessages(nextMessages);
+    setAIIntakeInput("");
+    setAIIntakeOptions([]);
+    setAIIntakeBusy(true);
+    try {
+      const res = await api<TaskIntakeResult>("/ai-call-intake", {
+        method: "POST",
+        body: { provider: aiProvider, lang: "zh", owner: "机主", messages: nextMessages },
+      });
+      const result = camelize<TaskIntakeResult>(res);
+      if (result.reply) setAIIntakeMessages([...nextMessages, { role: "assistant", content: result.reply }]);
+      setAIIntakeOptions(result.options || []);
+      if (result.ready && result.draft) applyAIIntakeDraft(result.draft);
+      if (!result.ok && result.error) window.alert(result.error);
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setAIIntakeBusy(false);
+    }
+  }
+
+  function applyAIIntakeDraft(draft: TaskIntakeDraft) {
+    setSelectedAIPreset(null);
+    setDialNumber(draft.number);
+    setAITask(draft.scenario || draft.task);
+    setAIDraftOpening(draft.opening || "");
+    setAIDraftTaskPackageText(draft.taskPackage ? JSON.stringify(draft.taskPackage, null, 2) : "");
   }
 
   async function saveManagedProfile() {
@@ -946,16 +1047,19 @@ export default function PhonePage() {
     setSelectedAIPreset(preset);
     setDialNumber(preset.number);
     setAITask(preset.task);
+    setAIDraftOpening("");
+    setAIDraftTaskPackageText("");
   }
 
   function aiPresetInstructionBody() {
-    if (!selectedAIPreset) return {};
+    const draftTaskPackage = parseAIDraftTaskPackage();
+    if (!selectedAIPreset) return { opening: aiDraftOpening || undefined, task_package: draftTaskPackage };
     return {
-      opening: selectedAIPreset.opening,
+      opening: aiDraftOpening || selectedAIPreset.opening,
       opening_mode: selectedAIPreset.openingMode,
       dtmf_spoken_followup: selectedAIPreset.dtmfSpokenFollowup,
       result_verification: selectedAIPreset.resultVerification,
-      task_package: selectedAIPreset.taskPackage,
+      task_package: parseAIDraftTaskPackage() || selectedAIPreset.taskPackage,
       max_call_seconds: selectedAIPreset.maxCallSeconds,
     };
   }
@@ -1562,6 +1666,69 @@ export default function PhonePage() {
               placeholder={t("例如：确认套餐余量并记录关键信息")}
               disabled={controlsLocked || aiBusy}
             />
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button size="small" plain loading={aiScenarioBusy} disabled={controlsLocked || aiBusy || (!dialNumber.trim() && !aiTask.trim())} onClick={() => void requestAICallScenario()}>
+                {t("生成场景策略")}
+              </Button>
+              <Button size="small" plain onClick={() => setAIIntakeOpen((open) => !open)}>
+                {t("AI 建单助手")}
+              </Button>
+            </div>
+            {aiDraftOpening ? (
+              <p className="mt-2 rounded-md bg-emerald-50 px-2 py-1 text-xs text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                {t("AI 已生成开场白")}：{aiDraftOpening}
+              </p>
+            ) : null}
+            {aiDraftTaskPackageText ? (
+              <p className="mt-2 rounded-md bg-indigo-50 px-2 py-1 text-xs text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+                {t("任务包已生成")}
+              </p>
+            ) : null}
+            {aiIntakeOpen ? (
+              <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50/70 p-3 text-xs dark:border-white/10 dark:bg-white/5">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="font-semibold text-gray-700 dark:text-gray-200">{t("AI 建单助手")}</span>
+                  <span className="text-gray-400">{t("描述你要 AI 代打的事")}</span>
+                </div>
+                {aiIntakeMessages.length > 0 ? (
+                  <div className="mb-2 max-h-36 space-y-1 overflow-auto">
+                    {aiIntakeMessages.map((message, index) => (
+                      <p key={`${message.role}-${index}`} className={message.role === "user" ? "text-gray-700 dark:text-gray-200" : "text-cyan-700 dark:text-cyan-200"}>
+                        {message.role === "user" ? t("我") : t("AI")}：{message.content}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+                {aiIntakeOptions.length > 0 ? (
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {aiIntakeOptions.map((option) => (
+                      <Button key={option} size="small" plain onClick={() => setAIIntakeInput(option)}>
+                        {option}
+                      </Button>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <Input
+                    value={aiIntakeInput}
+                    onChange={(event) => setAIIntakeInput(event.target.value)}
+                    placeholder={t("描述你要 AI 代打的事")}
+                    disabled={controlsLocked || aiIntakeBusy}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void requestAICallIntake();
+                    }}
+                  />
+                  <Button size="small" variant="primary" loading={aiIntakeBusy} disabled={controlsLocked || !aiIntakeInput.trim()} onClick={() => void requestAICallIntake()}>
+                    {t("发送")}
+                  </Button>
+                </div>
+                {dialNumber && aiTask ? (
+                  <Button size="small" plain className="mt-2" onClick={() => applyAIIntakeDraft({ number: dialNumber, task: aiTask })}>
+                    {t("套用草稿")}
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
             {playbooksEnabled && selectedAIPlaybook ? (
               <div className="mt-3 rounded-lg border border-cyan-100 bg-cyan-50/70 p-3 text-xs text-cyan-900 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-100">
                 <div className="flex items-center justify-between gap-2">

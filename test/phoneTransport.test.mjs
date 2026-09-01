@@ -172,7 +172,7 @@ test("phone page forwards AI preset instruction fields to call requests", async 
   assert.match(phonePage, /resultVerification\?: "none" \| "carrier_sms" \| string/);
   assert.match(phonePage, /const \[selectedAIPreset, setSelectedAIPreset\] = useState<AICallPreset \| null>\(null\);/);
   assert.match(phonePage, /function aiPresetInstructionBody\(\)/);
-  assert.match(phonePage, /opening: selectedAIPreset\.opening/);
+  assert.match(phonePage, /opening: aiDraftOpening \|\| selectedAIPreset\.opening/);
   assert.match(phonePage, /opening_mode: selectedAIPreset\.openingMode/);
   assert.match(phonePage, /dtmf_spoken_followup: selectedAIPreset\.dtmfSpokenFollowup/);
   assert.match(phonePage, /result_verification: selectedAIPreset\.resultVerification/);
@@ -185,14 +185,14 @@ test("phone page loads call playbooks and forwards task package context", async 
   const dict = await source("src/lib/i18n-en.ts");
 
   assert.match(phonePage, /interface AICallPlaybook/);
-  assert.match(phonePage, /taskPackage\?: Record<string, Record<string, string>>/);
+  assert.match(phonePage, /taskPackage\?: AICallTaskPackage/);
   assert.match(phonePage, /const \[aiPlaybooks, setAIPlaybooks\] = useState<AICallPlaybook\[\]>\(\[\]\);/);
   assert.match(phonePage, /const \[playbooksEnabled, setPlaybooksEnabled\] = useState\(false\);/);
   assert.match(phonePage, /async function loadAIPlaybooks\(\)/);
   assert.match(phonePage, /api<\{ ok: boolean; enabled: boolean; playbooks: AICallPlaybook\[\] \}>\("\/playbooks"\)/);
   assert.match(phonePage, /function matchingAIPlaybook\(number: string\)/);
   assert.match(phonePage, /const selectedAIPlaybook = matchingAIPlaybook\(dialNumber\);/);
-  assert.match(phonePage, /task_package: selectedAIPreset\.taskPackage/);
+  assert.match(phonePage, /task_package: parseAIDraftTaskPackage\(\) \|\| selectedAIPreset\.taskPackage/);
   assert.match(phonePage, /热线情报/);
   assert.match(phonePage, /必采信息/);
   assert.match(phonePage, /IVR 流程/);
@@ -213,6 +213,32 @@ test("phone page manages profile task packages and max call seconds", async () =
   assert.match(phonePage, /任务包 JSON/);
   assert.match(phonePage, /时长上限（秒）/);
   assert.match(dict, /"任务包 JSON": "Task package JSON"/);
+});
+
+test("phone page generates and applies AI call intake drafts", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+  const dict = await source("src/lib/i18n-en.ts");
+
+  assert.match(phonePage, /type AICallTaskPackage = Record<string, Record<string, string> \| string\[\]>/);
+  assert.match(phonePage, /interface TaskIntakeMessage/);
+  assert.match(phonePage, /interface TaskIntakeResult/);
+  assert.match(phonePage, /const \[aiIntakeOpen, setAIIntakeOpen\] = useState\(false\);/);
+  assert.match(phonePage, /const \[aiIntakeMessages, setAIIntakeMessages\] = useState<TaskIntakeMessage\[\]>\(\[\]\);/);
+  assert.match(phonePage, /const \[aiDraftOpening, setAIDraftOpening\] = useState\(""\);/);
+  assert.match(phonePage, /async function requestAICallScenario\(\)/);
+  assert.match(phonePage, /api<ScenarioDraftResult>\("\/ai-call-scenario"/);
+  assert.match(phonePage, /async function requestAICallIntake\(\)/);
+  assert.match(phonePage, /api<TaskIntakeResult>\("\/ai-call-intake"/);
+  assert.match(phonePage, /function applyAIIntakeDraft\(draft: TaskIntakeDraft\)/);
+  assert.match(phonePage, /setDialNumber\(draft\.number\)/);
+  assert.match(phonePage, /setAITask\(draft\.scenario \|\| draft\.task\)/);
+  assert.match(phonePage, /setAIDraftTaskPackageText\(draft\.taskPackage \? JSON\.stringify\(draft\.taskPackage, null, 2\) : ""\)/);
+  assert.match(phonePage, /task_package: parseAIDraftTaskPackage\(\) \|\| selectedAIPreset\.taskPackage/);
+  assert.match(phonePage, /AI 建单助手/);
+  assert.match(phonePage, /生成场景策略/);
+  assert.match(phonePage, /套用草稿/);
+  assert.match(dict, /"AI 建单助手": "AI task intake"/);
+  assert.match(dict, /"生成场景策略": "Generate scenario"/);
 });
 
 test("phone page manages local AI number profiles", async () => {
