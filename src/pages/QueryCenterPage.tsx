@@ -35,6 +35,45 @@ function toLoadError(e: unknown): LoadError {
   return { message: tl("加载失败") };
 }
 
+function QueryCenterSummaryCard({
+  title,
+  subtitle,
+  placeholder = false,
+}: {
+  title: string;
+  subtitle: string;
+  placeholder?: boolean;
+}) {
+  return (
+    <div
+      className={cx(
+        "query-center-summary-card flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5",
+        placeholder
+          ? "border-dashed border-gray-200 bg-gray-50/70 dark:border-white/10 dark:bg-white/5"
+          : "border-gray-200 bg-white/80 dark:border-white/10 dark:bg-white/5",
+      )}
+    >
+      <div className="min-w-0">
+        <div
+          className={cx(
+            "truncate text-sm font-bold",
+            placeholder ? "text-gray-500 dark:text-gray-300" : "text-gray-800 dark:text-gray-100",
+          )}
+        >
+          {title}
+        </div>
+        <div className="mt-1 truncate text-xs text-gray-400">{subtitle}</div>
+      </div>
+      <span
+        className={cx(
+          "mt-0.5 h-2 w-2 shrink-0 rounded-full",
+          placeholder ? "bg-gray-300 dark:bg-gray-600" : "bg-green-500",
+        )}
+      />
+    </div>
+  );
+}
+
 export default function QueryCenterPage() {
   const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -274,14 +313,11 @@ export default function QueryCenterPage() {
                           {t("返回")}
                         </Button>
                       ) : null}
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-bold text-gray-800 dark:text-gray-100">
-                          {selectedCard.label || selectedIccid}
-                        </div>
-                        <div className="truncate text-xs text-gray-400">
-                          {selectedIccid}
-                          {selectedCard.active ? ` · ${t("当前激活")}` : ""}
-                        </div>
+                      <div className="min-w-0 flex-1">
+                        <QueryCenterSummaryCard
+                          title={selectedCard.label || selectedIccid}
+                          subtitle={`${selectedIccid}${selectedCard.active ? ` · ${t("当前激活")}` : ""}`}
+                        />
                       </div>
                     </div>
                     <Tabs
@@ -323,8 +359,12 @@ export default function QueryCenterPage() {
                           {t("返回")}
                         </Button>
                       ) : null}
-                      <div className="min-w-0 text-sm text-gray-400">
-                        {t("未选择卡或Profile")}
+                      <div className="min-w-0 flex-1">
+                        <QueryCenterSummaryCard
+                          title={t("未选择卡或Profile")}
+                          subtitle={t("请选择左侧的卡或 Profile 查看余额、卡资料与计划")}
+                          placeholder
+                        />
                       </div>
                     </div>
                     <Tabs
@@ -334,7 +374,7 @@ export default function QueryCenterPage() {
                       tabs={MENUS.map((item) => ({ key: item.key, label: t(item.label) }))}
                     />
                   </div>
-                  <div className="flex flex-1 items-end justify-center p-6">
+                  <div className="query-center-empty-state flex flex-1 items-center justify-center p-6">
                     <EmptyState title={t("请选择左侧的卡或 Profile")} />
                   </div>
                 </div>
