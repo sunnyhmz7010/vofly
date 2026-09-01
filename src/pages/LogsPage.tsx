@@ -278,7 +278,7 @@ export default function LogsPage() {
   return (
     <div className="max-w-7xl mx-auto">
       <PageHeader
-        title={t("设备与业务日志")}
+        title={t("实时日志")}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button

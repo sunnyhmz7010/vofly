@@ -120,15 +120,19 @@ export function SystemInfoCard({
   updateInfo,
   checkingUpdate,
   applyingUpdate,
+  restartingService,
   onCheckUpdate,
   onApplyUpdate,
+  onRestartService,
 }: {
   info: SystemInfo;
   updateInfo: UpdateInfo | null;
   checkingUpdate: boolean;
   applyingUpdate: boolean;
+  restartingService: boolean;
   onCheckUpdate: () => void;
   onApplyUpdate: () => void;
+  onRestartService: () => void;
 }) {
   const { t } = useI18n();
   return (
@@ -144,6 +148,9 @@ export function SystemInfoCard({
         <div className="rounded-lg bg-gray-50 p-3 dark:bg-white/5">
           <FieldRow label={t("版本")} value={info.version} monospace>
             <div className="flex items-center justify-end gap-3">
+              <Button size="small" variant="primary" className="!border-0" loading={restartingService} onClick={onRestartService}>
+                {t("重启 vofly 后端服务")}
+              </Button>
               <Button size="small" variant="primary" className="!border-0" loading={checkingUpdate} onClick={onCheckUpdate}>
                 {t("检查更新")}
               </Button>
@@ -166,9 +173,6 @@ export function SystemInfoCard({
         ) : null}
         <div className="rounded-lg bg-gray-50 p-3 dark:bg-white/5">
           <FieldRow label={t("构建时间")} value={info.buildTime} monospace />
-        </div>
-        <div className="rounded-lg bg-gray-50 p-3 dark:bg-white/5">
-          <FieldRow label={t("配置路径")} value={info.config} monospace copyable />
         </div>
         <div className="rounded-lg bg-gray-50 p-3 dark:bg-white/5">
           <FieldRow label={t("运行时长")} value={info.uptime} monospace />

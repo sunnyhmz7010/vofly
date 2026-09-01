@@ -33,6 +33,11 @@ test("renders custom phone editing inside each eSIM profile policy", () => {
   assert.match(policySource, /自定义手机号/);
 });
 
+test("hides the top-level custom phone editor when eSIM profiles are detected", () => {
+  assert.match(cardPolicySource, /!esimDetected\s*\?/);
+  assert.match(cardPolicySource, /自定义手机号/);
+});
+
 test("does not render a manual source badge beside the current ICCID", () => {
   assert.doesNotMatch(cardPolicySource, /sourceLabel/);
   assert.doesNotMatch(cardPolicySource, /手动设置/);

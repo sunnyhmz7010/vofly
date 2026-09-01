@@ -10,9 +10,9 @@ import {
   PanelLeftContractRegular,
   PanelLeftExpandRegular,
   RouterRegular,
+  SearchRegular,
   SettingsRegular,
   SignOutRegular,
-  WindowConsoleRegular,
 } from "@fluentui/react-icons";
 import { useAuth } from "../../store/auth";
 import { useI18n } from "../../lib/i18n";
@@ -32,7 +32,7 @@ const NAV = [
   { to: "/sms", label: "短信", icon: MailRegular },
   { to: "/phone", label: "通话", icon: CallRegular },
   { to: "/proxy", label: "代理管理", icon: GlobeRegular },
-  { to: "/commands", label: "命令中心", icon: WindowConsoleRegular },
+  { to: "/query-center", label: "查询中心", icon: SearchRegular },
   { to: "/automatic-tasks", label: "自动任务", icon: SendClockRegular },
   { to: "/logs", label: "实时日志", icon: DocumentTextRegular },
   { to: "/settings", label: "系统设置", icon: SettingsRegular },

@@ -16,8 +16,9 @@
 
 ### 📋 前置要求
 
-- Linux 主机（x86_64 / arm64 / armv7），具备模组串口或 USB 访问权限
+- Linux 主机或 OpenWrt/Kwrt 设备（x86_64 / arm64 / armv7），具备模组串口或 USB 访问权限
 - 安装脚本会自动安装 QMI、网络工具和 CA 证书等运行依赖
+- VoWiFi IMS 需要内核支持 XFRM/IPsec；OpenWrt/Kwrt 会尝试安装当前软件源中与固件内核匹配的 `ip-full`、`kmod-ipsec`、`kmod-ipsec4/6` 和相关 crypto kmod，禁止强装其他内核版本的 kmod
 - USB SIM 读卡器依赖系统 `pcscd` 服务与 CCID 驱动，可通过安装脚本 `--with-pcsc` 选装
 
 ### 📦 安装与运行
@@ -28,7 +29,7 @@
 curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh
 ```
 
-安装后默认监听 `0.0.0.0:7575`，数据库位于 `/opt/vofly/data/vofly.db`。首次安装会生成管理员初始密码并仅在终端显示一次；默认用户名为 `admin`，请立即记录密码并在登录后修改。
+安装后默认监听 `0.0.0.0:7575`，数据库位于 `/opt/vofly/data/vofly.db`。普通 Linux 写入 `systemd` 服务，OpenWrt/Kwrt 写入 `/etc/init.d/vofly` procd 服务。首次安装会生成初始访问密令并仅在终端显示一次，请立即记录；登录后可在 Web 设置或运行 `vofly menu` 修改。
 
 #### 📌 安装指定版本
 
@@ -59,6 +60,16 @@ curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh 
 ```
 
 也可稍后手动安装，例如 Debian/Ubuntu：`sudo apt install ffmpeg`。
+
+#### 📶 VoWiFi 内核检查
+
+安装脚本默认验证 XFRM/IPsec 是否可用。OpenWrt/Kwrt 会优先从当前软件源安装可用的 `ip-full`、`kmod-ipsec`、`kmod-ipsec4`、`kmod-ipsec6`、`kmod-crypto-authenc`、`kmod-crypto-cbc`、`kmod-crypto-aes`、`kmod-crypto-hmac`、`kmod-crypto-sha1`；如果软件源没有与当前内核匹配的 kmod，需要更换包含这些组件的同版本固件。
+
+仅使用蜂窝短信、数据或基础模组管理、不使用 VoWiFi IMS 时，可跳过检查：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh -s -- --skip-vowifi-check
+```
 
 #### 🔄 更新
 

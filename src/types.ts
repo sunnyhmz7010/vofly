@@ -399,59 +399,20 @@ export interface LogEntry {
   fields?: string | Record<string, unknown>;
 }
 
-export interface CommandDefinition {
-  name: string;
-  usage: string;
-  summary: string;
-  dangerous: boolean;
-  async: boolean;
-  deviceArgument: boolean;
-}
-
-export interface CommandExecution {
-  id: string;
-  input: string;
-  command: string;
-  source: string;
-  arguments?: string[];
-  state: "running" | "completed" | "failed" | string;
-  error?: string;
-  startedAt?: string;
-  completedAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface CommandAttachment {
-  type: "audio" | string;
-  recording?: string;
-  contentType?: string;
-  codec?: string;
-  size?: number;
-  // 音频附件关联的通话 ID（可选下发），用于在线回放 /api/call-recordings/{call_id}。
-  callId?: string;
-}
-
-export interface CommandEvent {
-  id: number;
-  executionId: string;
-  kind: "accepted" | "progress" | "result" | "error" | string;
-  text: string;
-  attachments?: CommandAttachment[];
-  execution?: CommandExecution;
-  createdAt: string;
-}
-
 export interface BalanceQuery {
   id: string;
   deviceId: string;
   iccid: string;
+  profileAid?: string;
   ruleId: string;
   transport: "sms" | "ussd" | "manual" | string;
   state: "sending" | "awaiting_reply" | "completed" | "timed_out" | "failed" | string;
   parseState: "pending" | "parsed" | "unparsed" | "manual" | string;
   amount?: string;
   currency?: string;
+  previousAmount?: string;
+  changeAmount?: string;
+  changeDirection?: "increase" | "decrease" | "unchanged" | string;
   summary?: string;
   rawResponse?: string;
   responseSmsId?: number;
@@ -459,6 +420,57 @@ export interface BalanceQuery {
   startedAt: string;
   expiresAt: string;
   completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KnowledgeLink {
+  id: string;
+  title: string;
+  url: string;
+  sortOrder: number;
+}
+
+export interface CardResource {
+  rechargeUrl?: string;
+  renewUrl?: string;
+  knowledgeLinks: KnowledgeLink[];
+}
+
+export interface QueryCenterCardIdentity {
+  iccid: string;
+  profileAid?: string;
+  profileName?: string;
+  carrierMcc?: string;
+  carrierMnc?: string;
+  carrierSpn?: string;
+}
+
+export interface QueryCenterCardResource {
+  card: QueryCenterCardIdentity;
+  customized: boolean;
+  defaults: CardResource;
+  effective: CardResource;
+}
+
+export interface BalancePlan {
+  id: number;
+  name: string;
+  kind: "balance_query" | "renewal_reminder" | string;
+  deviceId: string;
+  iccid: string;
+  profileAid?: string;
+  profileName?: string;
+  intervalDays: number;
+  startDate: string;
+  runTime: string;
+  timezone: string;
+  enabled: boolean;
+  notify: boolean;
+  nextRunAt: string;
+  lastRunAt?: string;
+  lastStatus: string;
+  lastError?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -528,7 +540,6 @@ export interface LoggingSettings {
 export interface SystemInfo {
   version: string;
   buildTime: string;
-  config: string;
   os?: string;
   architecture?: string;
   uptime?: string;

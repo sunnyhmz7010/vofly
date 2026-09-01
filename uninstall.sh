@@ -15,6 +15,7 @@ ENV_DIR="/etc/vofly"
 ENV_FILE="/etc/vofly/env"
 INSTALLED_PACKAGES_FILE="/etc/vofly/installed-packages"
 SYSTEMD_UNIT="/etc/systemd/system/vofly.service"
+OPENWRT_INIT_PATH="/etc/init.d/vofly"
 
 PURGE=0
 
@@ -134,6 +135,13 @@ if command -v systemctl >/dev/null 2>&1; then
     run_root systemctl reset-failed vofly.service >/dev/null 2>&1 || true
     printf '已移除 systemd 服务：%s\n' "$SYSTEMD_UNIT"
   fi
+fi
+
+if [ -x "$OPENWRT_INIT_PATH" ]; then
+  run_root "$OPENWRT_INIT_PATH" stop >/dev/null 2>&1 || true
+  run_root "$OPENWRT_INIT_PATH" disable >/dev/null 2>&1 || true
+  run_root rm -f "$OPENWRT_INIT_PATH"
+  printf '已移除 OpenWrt procd 服务：%s\n' "$OPENWRT_INIT_PATH"
 fi
 
 for file in "$BINARY_PATH" "$BACKUP_PATH"; do

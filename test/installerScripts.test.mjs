@@ -23,6 +23,29 @@ test("installer installs and records required modem runtime dependencies", async
   assert.doesNotMatch(install, /CHECK_ENV|--check-env|run_check_env/);
 });
 
+test("installer creates and starts an OpenWrt procd service", async () => {
+  const install = await source("install.sh");
+
+  assert.match(install, /OPENWRT_INIT_PATH="\/etc\/init\.d\/vofly"/);
+  assert.match(install, /write_openwrt_init/);
+  assert.match(install, /procd_set_param command "\$PROGRAM" serve/);
+  assert.match(install, /\[ -x \/sbin\/procd \] \|\| \[ -x \/sbin\/ubusd \]/);
+  assert.match(install, /"\$OPENWRT_INIT_PATH" enable/);
+  assert.match(install, /"\$OPENWRT_INIT_PATH" restart/);
+});
+
+test("updater and uninstaller handle OpenWrt init.d services", async () => {
+  const update = await source("update.sh");
+  const uninstall = await source("uninstall.sh");
+
+  assert.match(update, /OPENWRT_INIT_PATH="\/etc\/init\.d\/vofly"/);
+  assert.match(update, /"\$OPENWRT_INIT_PATH" restart/);
+  assert.match(uninstall, /OPENWRT_INIT_PATH="\/etc\/init\.d\/vofly"/);
+  assert.match(uninstall, /"\$OPENWRT_INIT_PATH" stop/);
+  assert.match(uninstall, /"\$OPENWRT_INIT_PATH" disable/);
+  assert.match(uninstall, /rm -f "\$OPENWRT_INIT_PATH"/);
+});
+
 test("installer no longer exposes a check-only mode", async () => {
   const install = await source("install.sh");
   const readme = await source("README.md");
@@ -30,6 +53,13 @@ test("installer no longer exposes a check-only mode", async () => {
   assert.doesNotMatch(install, /--check-env/);
   assert.doesNotMatch(install, /CHECK_ENV/);
   assert.doesNotMatch(readme, /仅检查依赖不安装|--check-env/);
+});
+
+test("README describes the single access-secret login model", async () => {
+  const readme = await source("README.md");
+
+  assert.match(readme, /初始访问密令/);
+  assert.doesNotMatch(readme, /默认用户名|用户名为 `?admin`?|管理员初始密码/);
 });
 
 test("uninstaller removes application link and only recorded packages", async () => {

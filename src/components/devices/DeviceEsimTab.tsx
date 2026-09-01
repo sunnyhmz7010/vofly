@@ -21,6 +21,7 @@ export interface DeviceEsimTabProps {
   rebooting?: boolean;
   onRebootModem?: () => Promise<boolean>;
   onProfileChanged?: () => void;
+  onCardPolicyChanged?: () => void;
 	onToggleRoamingData?: (enabled: boolean) => Promise<boolean>;
 }
 
@@ -28,7 +29,10 @@ interface EsimLoadFailure {
   code: string;
   message: string;
   channelStuck: boolean;
+  timeout?: boolean;
 }
+
+const ESIM_LOAD_TIMEOUT_MS = 45000;
 
 function isEUICCChannelStuck(code: string, detail: string): boolean {
   if (code === "euicc_channel_stuck") return true;
@@ -71,7 +75,7 @@ function applyDisableLocal(groups: EsimProfileGroup[], iccid: string, aidHex?: s
   }));
 }
 
-export function DeviceEsimTab({ deviceId, deviceImei, isActive, deviceOnline, rebooting, onRebootModem, onProfileChanged, onToggleRoamingData }: DeviceEsimTabProps) {
+export function DeviceEsimTab({ deviceId, deviceImei, isActive, deviceOnline, rebooting, onRebootModem, onProfileChanged, onCardPolicyChanged, onToggleRoamingData }: DeviceEsimTabProps) {
   const { t } = useI18n();
   const [initialLoading, setInitialLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -133,6 +137,11 @@ export function DeviceEsimTab({ deviceId, deviceImei, isActive, deviceOnline, re
       overviewAbort.current?.abort();
       const controller = new AbortController();
       overviewAbort.current = controller;
+      let timedOut = false;
+      const timeout = window.setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, ESIM_LOAD_TIMEOUT_MS);
       if (refresh) setRefreshing(true);
       else setInitialLoading(true);
       try {
@@ -149,14 +158,15 @@ export function DeviceEsimTab({ deviceId, deviceImei, isActive, deviceOnline, re
         setForm((prev) => ({ ...prev, aidHex: selectDefaultAid(data?.chipInfo || null, prev.aidHex) }));
         return true;
       } catch (e) {
-        if (controller.signal.aborted) return false;
-        const detail = apiMessage(e) || t("获取 eSIM 信息失败");
+        if (controller.signal.aborted && !timedOut) return false;
+        const detail = timedOut ? t("读取 eSIM 超时") : apiMessage(e) || t("获取 eSIM 信息失败");
         const code = String((e as { code?: string })?.code || "");
         const channelStuck = isEUICCChannelStuck(code, detail);
-        setLoadFailure({ code, message: detail, channelStuck });
+        setLoadFailure({ code, message: detail, channelStuck, timeout: timedOut });
         if (!quiet && !channelStuck) message.error(detail);
         return false;
       } finally {
+        window.clearTimeout(timeout);
         if (seq === loadSeq.current) {
           if (refresh) setRefreshing(false);
           else setInitialLoading(false);
@@ -480,6 +490,32 @@ export function DeviceEsimTab({ deviceId, deviceImei, isActive, deviceOnline, re
           </div>
         </div>
       ) : null}
+      {loadFailure && !loadFailure.channelStuck ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-100">
+          <div className="flex items-start gap-3">
+            <WarningRegular className="mt-0.5 shrink-0 text-xl text-amber-600 dark:text-amber-300" />
+            <div className="min-w-0 flex-1">
+              <div className="font-bold">{loadFailure.timeout ? t("读取 eSIM 超时") : t("eSIM 信息读取失败")}</div>
+              <div className="mt-1 text-sm leading-6 text-amber-800 dark:text-amber-200">
+                {t("请先尝试重新检测；如果仍失败，可以尝试重启模组。重启模组无效时，请到系统设置中重启 vofly 服务。")}
+              </div>
+              <div className="mt-2 break-all rounded-lg bg-white/60 px-3 py-2 font-mono text-xs text-amber-700 dark:bg-black/10 dark:text-amber-200">
+                {loadFailure.message}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button loading={refreshing} onClick={() => void loadOverview(true)} icon={<ArrowSyncRegular />}>
+                  {t("重新检测")}
+                </Button>
+                {onRebootModem ? (
+                  <Button variant="primary" loading={!!rebooting} onClick={rebootForChannelRecovery} icon={<PowerRegular />}>
+                    {t("重启模组并自动复检")}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {chipInfo ? (
         <EsimChipHeader
           chipInfo={chipInfo}
@@ -513,7 +549,10 @@ export function DeviceEsimTab({ deviceId, deviceImei, isActive, deviceOnline, re
           onCancelRename={cancelRename}
           onTogglePolicy={(iccid) => setPolicyIccid((prev) => (prev === iccid ? null : iccid))}
           onDelete={openDelete}
-          onPolicyChanged={() => loadOverview(true)}
+          onPolicyChanged={() => {
+            loadOverview(true);
+            onCardPolicyChanged?.();
+          }}
 		  onToggleRoamingData={onToggleRoamingData}
         />
       ))}
