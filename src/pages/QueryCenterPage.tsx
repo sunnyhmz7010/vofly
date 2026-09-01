@@ -334,7 +334,7 @@ export default function QueryCenterPage() {
                       tabs={MENUS.map((item) => ({ key: item.key, label: t(item.label) }))}
                     />
                   </div>
-                  <div className="flex flex-1 items-center justify-center p-6">
+                  <div className="flex flex-1 items-end justify-center p-6">
                     <EmptyState title={t("请选择左侧的卡或 Profile")} />
                   </div>
                 </div>
