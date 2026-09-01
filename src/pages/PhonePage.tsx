@@ -146,6 +146,16 @@ interface TaskIntakeResult {
   error?: string;
 }
 
+interface PlaybookLearningResult {
+  ok: boolean;
+  learned?: {
+    newRequiredInfo?: { key: string; label?: Record<string, string>; purpose?: Record<string, string> }[];
+    ivrNotesUpdate?: Record<string, string>;
+  };
+  playbook?: AICallPlaybook;
+  error?: string;
+}
+
 interface AIBatchQueueStatus {
   pendingNumbers: string[];
   currentNumber?: string;
@@ -701,6 +711,8 @@ export default function PhonePage() {
   const [records, setRecords] = useState<CallRecord[]>([]);
   const [recordDetail, setRecordDetail] = useState<CallRecordDetail | null>(null);
   const [detailLoadingId, setDetailLoadingId] = useState("");
+  const [playbookLearningId, setPlaybookLearningId] = useState("");
+  const [playbookLearningResult, setPlaybookLearningResult] = useState<PlaybookLearningResult | null>(null);
   const [dtmfSending, setDtmfSending] = useState(false);
   const [lastDTMF, setLastDTMF] = useState("");
   const [qrPayload, setQrPayload] = useState<QrSendPayload | null>(null);
@@ -974,6 +986,27 @@ export default function PhonePage() {
     setAITask(draft.scenario || draft.task);
     setAIDraftOpening(draft.opening || "");
     setAIDraftTaskPackageText(draft.taskPackage ? JSON.stringify(draft.taskPackage, null, 2) : "");
+  }
+
+  async function learnCallPlaybook(callId: string) {
+    if (!callId || playbookLearningId) return;
+    setPlaybookLearningId(callId);
+    setPlaybookLearningResult(null);
+    try {
+      const result = camelize<PlaybookLearningResult>(
+        await api<PlaybookLearningResult>(`/call-records/${encodeURIComponent(callId)}/playbook/learn`, {
+          method: "POST",
+          body: { provider: aiProvider, task_package: parseAIDraftTaskPackage() || selectedAIPreset?.taskPackage },
+        }),
+      );
+      setPlaybookLearningResult(result);
+      if (result.ok) await loadAIPlaybooks();
+      if (!result.ok && result.error) window.alert(result.error);
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setPlaybookLearningId("");
+    }
   }
 
   async function saveManagedProfile() {
@@ -1338,9 +1371,11 @@ export default function PhonePage() {
   async function loadRecordDetail(record: CallRecord) {
     if (recordDetail?.record?.callId === record.callId) {
       setRecordDetail(null);
+      setPlaybookLearningResult(null);
       return;
     }
     setDetailLoadingId(record.callId);
+    setPlaybookLearningResult(null);
     try {
       const res = await api<{ data: CallRecordDetail } | CallRecordDetail>(`/call-records/${encodeURIComponent(record.callId)}`);
       const raw = "data" in res ? res.data : res;
@@ -2099,6 +2134,39 @@ export default function PhonePage() {
                       ) : (
                         <p className="mt-2 text-gray-400">{t("暂无任务判定")}</p>
                       )}
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                        <div className="font-bold text-gray-600 dark:text-gray-300">{t("热线情报学习")}</div>
+                        <Button
+                          size="small"
+                          plain
+                          variant="primary"
+                          loading={playbookLearningId === recordDetail.record.callId}
+                          disabled={!playbooksEnabled || (!!playbookLearningId && playbookLearningId !== recordDetail.record.callId)}
+                          onClick={() => void learnCallPlaybook(recordDetail.record.callId)}
+                        >
+                          {t("学习热线情报")}
+                        </Button>
+                      </div>
+                      {!playbooksEnabled ? (
+                        <p className="mt-2 text-gray-400">{t("未配置热线情报文件")}</p>
+                      ) : playbookLearningResult ? (
+                        <div className="mt-2 rounded-lg border border-cyan-100 bg-cyan-50/70 px-3 py-2 text-cyan-700 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:text-cyan-200">
+                          <p>{playbookLearningResult.ok ? t("已更新热线情报") : t("未学习到新情报")}</p>
+                          {playbookLearningResult.error ? <p className="mt-1 opacity-80">{playbookLearningResult.error}</p> : null}
+                          {playbookLearningResult.learned?.newRequiredInfo?.length ? (
+                            <p className="mt-1">
+                              {t("新增必采信息")}：
+                              {playbookLearningResult.learned?.newRequiredInfo?.map((item) => item.key).join("、")}
+                            </p>
+                          ) : null}
+                          {playbookLearningResult.learned?.ivrNotesUpdate ? (
+                            <p className="mt-1">
+                              {t("新增 IVR 记录")}：
+                              {profileText(playbookLearningResult.learned.ivrNotesUpdate)}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>

@@ -241,6 +241,25 @@ test("phone page generates and applies AI call intake drafts", async () => {
   assert.match(dict, /"生成场景策略": "Generate scenario"/);
 });
 
+test("phone page learns hotline playbooks from call record details", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+  const dict = await source("src/lib/i18n-en.ts");
+
+  assert.match(phonePage, /interface PlaybookLearningResult/);
+  assert.match(phonePage, /const \[playbookLearningId, setPlaybookLearningId\] = useState\(""\);/);
+  assert.match(phonePage, /const \[playbookLearningResult, setPlaybookLearningResult\] = useState<PlaybookLearningResult \| null>\(null\);/);
+  assert.match(phonePage, /async function learnCallPlaybook\(callId: string\)/);
+  assert.match(phonePage, /\/call-records\/\$\{encodeURIComponent\(callId\)\}\/playbook\/learn/);
+  assert.match(phonePage, /body: \{ provider: aiProvider, task_package: parseAIDraftTaskPackage\(\) \|\| selectedAIPreset\?\.taskPackage \}/);
+  assert.match(phonePage, /await loadAIPlaybooks\(\);/);
+  assert.match(phonePage, /learnCallPlaybook\(recordDetail\.record\.callId\)/);
+  assert.match(phonePage, /playbookLearningResult\.learned\?\.newRequiredInfo/);
+  assert.match(phonePage, /学习热线情报/);
+  assert.match(phonePage, /热线情报学习/);
+  assert.match(dict, /"学习热线情报": "Learn hotline playbook"/);
+  assert.match(dict, /"热线情报学习": "Hotline playbook learning"/);
+});
+
 test("phone page manages local AI number profiles", async () => {
   const phonePage = await source("src/pages/PhonePage.tsx");
   const dict = await source("src/lib/i18n-en.ts");
