@@ -14,7 +14,7 @@ import PhonePage from "./pages/PhonePage";
 import ProxyPage from "./pages/ProxyPage";
 import ExportProxyPage from "./pages/ExportProxyPage";
 import SmsPage from "./pages/SmsPage";
-import CommandsPage from "./pages/CommandsPage";
+import QueryCenterPage from "./pages/QueryCenterPage";
 import AutomaticTasksPage from "./pages/AutomaticTasksPage";
 import LogsPage from "./pages/LogsPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -87,7 +87,8 @@ function AppRoot() {
           <Route path="proxy" element={<ProxyPage />} />
           <Route path="export-proxy" element={<ExportProxyPage />} />
           <Route path="sms" element={<SmsPage />} />
-          <Route path="commands" element={<CommandsPage />} />
+          <Route path="query-center" element={<QueryCenterPage />} />
+          <Route path="commands" element={<Navigate to="/query-center" replace />} />
           <Route path="automatic-tasks" element={<AutomaticTasksPage />} />
           <Route path="extensions/:pluginId/:contributionId" element={<ExtensionPage />} />
           <Route path="logs" element={<LogsPage />} />
