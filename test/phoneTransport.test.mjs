@@ -157,19 +157,40 @@ test("phone page manages AI call owner and persona settings", async () => {
   const dict = await source("src/lib/i18n-en.ts");
 
   assert.match(phonePage, /interface AICallSettings/);
-  assert.match(phonePage, /const \[aiCallSettings, setAICallSettings\] = useState<AICallSettings>/);
+  assert.match(
+    phonePage,
+    /const \[aiCallSettings, setAICallSettings\] = useState<AICallSettings>\(\{\s*ownerName: "",\s*agentPersona: "",\s*autoAnswerInbound: false,\s*autoAnswerProvider: "",\s*autoAnswerTask: "",\s*\}\);/s,
+  );
   assert.match(phonePage, /async function loadAICallSettings\(\)/);
   assert.match(phonePage, /api<AICallSettings>\("\/ai-call-settings"\)/);
   assert.match(phonePage, /async function saveAICallSettings\(\)/);
   assert.match(phonePage, /method: "PUT"/);
   assert.match(phonePage, /owner_name: aiCallSettings\.ownerName\.trim\(\)/);
   assert.match(phonePage, /agent_persona: aiCallSettings\.agentPersona\.trim\(\)/);
-  assert.match(phonePage, /owner: aiCallSettings\.ownerName\.trim\(\) \|\| "机主"/);
+  assert.match(phonePage, /auto_answer_inbound: aiCallSettings\.autoAnswerInbound === true/);
+  assert.match(phonePage, /auto_answer_provider: aiCallSettings\.autoAnswerProvider\.trim\(\) \|\| aiProvider/);
+  assert.match(phonePage, /auto_answer_task: aiCallSettings\.autoAnswerTask\.trim\(\)/);
   assert.match(phonePage, /AI 通话身份/);
   assert.match(phonePage, /机主称谓/);
   assert.match(phonePage, /AI 人设称谓/);
   assert.match(dict, /"AI 通话身份": "AI call identity"/);
   assert.match(dict, /"AI 人设称谓": "AI persona"/);
+});
+
+test("phone page exposes AI call settings in a dialog from the header", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+  const dict = await source("src/lib/i18n-en.ts");
+
+  assert.match(phonePage, /const \[aiCallDialogOpen, setAICallDialogOpen\] = useState\(false\);/);
+  assert.match(phonePage, /<PageHeader[\s\S]*title=\{t\("通话"\)\}[\s\S]*actions=\{[\s\S]*<div className="flex items-center gap-2">/);
+  assert.match(phonePage, /<Button variant="default" onClick=\{\(\) => setAICallDialogOpen\(true\)\}>\s*\{t\("AI 通话"\)\}\s*<\/Button>/s);
+  assert.match(phonePage, /<RefreshButton loading=\{pageRefreshing\} onClick=\{\(\) => void refreshAll\(\)\} \/>/);
+  assert.match(phonePage, /<Modal[\s\S]*open=\{aiCallDialogOpen\}[\s\S]*onClose=\{\(\) => setAICallDialogOpen\(false\)\}[\s\S]*title=\{t\("AI 通话设置"\)\}/);
+  assert.match(phonePage, /自动接听/);
+  assert.match(phonePage, /VoLTE 来电自动接听/);
+  assert.match(dict, /"AI 通话设置": "AI call settings"/);
+  assert.match(dict, /"自动接听": "Auto-answer"/);
+  assert.match(dict, /"VoLTE 来电自动接听": "Auto-answer VoLTE calls"/);
 });
 
 test("phone page loads AI call presets and applies number and task", async () => {
@@ -320,7 +341,7 @@ test("phone page displays and cancels AI batch queue", async () => {
 
   assert.match(phonePage, /interface AIBatchQueueStatus/);
   assert.match(phonePage, /const \[aiBatchQueue, setAIBatchQueue\] = useState<AIBatchQueueStatus>/);
-  assert.match(phonePage, /async function loadAIBatchQueue\(\)/);
+  assert.match(phonePage, /const loadAIBatchQueue = useCallback\(async \(\) =>/);
   assert.match(phonePage, /api<\{ data: AIBatchQueueStatus \}>\(`\/devices\/\$\{encodeURIComponent\(deviceId\)\}\/ai-calls\/batch`\)/);
   assert.match(phonePage, /async function cancelAIBatchQueue\(\)/);
   assert.match(phonePage, /method: "DELETE"/);

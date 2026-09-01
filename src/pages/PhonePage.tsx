@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { CallRegular, MicRegular, QrCode24Regular, Speaker0Regular } from "@fluentui/react-icons";
 import { ApiError, api, apiMessage, camelize } from "../api";
 import { QrSendModal, type QrSendPayload } from "../components/QrSendModal";
-import { Button, Input, PageHeader, Select, StatusDot, type StatusTone, Tag } from "../components/ui";
+import { Button, Input, Modal, PageHeader, RefreshButton, Select, StatusDot, Switch, Textarea, type StatusTone, Tag } from "../components/ui";
 import { tf, useI18n } from "../lib/i18n";
 import { usePhoneControlLease } from "../lib/phoneLease";
 import { requestedPhoneDeviceId } from "../lib/phoneNavigation";
@@ -79,6 +79,9 @@ interface AICallProvider {
 interface AICallSettings {
   ownerName: string;
   agentPersona: string;
+  autoAnswerInbound: boolean;
+  autoAnswerProvider: string;
+  autoAnswerTask: string;
 }
 
 type AICallTaskPackage = Record<string, Record<string, string> | string[]>;
@@ -690,8 +693,15 @@ export default function PhonePage() {
   const [aiBatchNumbers, setAIBatchNumbers] = useState("");
   const [aiProvider, setAIProvider] = useState("fake");
   const [aiProviders, setAIProviders] = useState<AICallProvider[]>([]);
-  const [aiCallSettings, setAICallSettings] = useState<AICallSettings>({ ownerName: "", agentPersona: "" });
+  const [aiCallSettings, setAICallSettings] = useState<AICallSettings>({
+    ownerName: "",
+    agentPersona: "",
+    autoAnswerInbound: false,
+    autoAnswerProvider: "",
+    autoAnswerTask: "",
+  });
   const [aiCallSettingsBusy, setAICallSettingsBusy] = useState(false);
+  const [aiCallDialogOpen, setAICallDialogOpen] = useState(false);
   const [aiPresets, setAIPresets] = useState<AICallPreset[]>([]);
   const [selectedAIPreset, setSelectedAIPreset] = useState<AICallPreset | null>(null);
   const [aiScenarioBusy, setAIScenarioBusy] = useState(false);
@@ -714,6 +724,7 @@ export default function PhonePage() {
   const [aiSessions, setAISessions] = useState<AICallSession[]>([]);
   const [aiCallEvents, setAICallEvents] = useState<AICallEvent[]>([]);
   const [aiBusy, setAIBusy] = useState(false);
+  const [pageRefreshing, setPageRefreshing] = useState(false);
   const [mediaConnected, setMediaConnected] = useState(false);
   const [records, setRecords] = useState<CallRecord[]>([]);
   const [recordDetail, setRecordDetail] = useState<CallRecordDetail | null>(null);
@@ -851,7 +862,7 @@ export default function PhonePage() {
     }
   }, []);
 
-  async function loadAIBatchQueue() {
+  const loadAIBatchQueue = useCallback(async () => {
     if (!deviceId) {
       setAIBatchQueue({ pendingNumbers: [], active: false });
       return;
@@ -863,7 +874,7 @@ export default function PhonePage() {
     } catch {
       // 队列状态只增强批量外呼可见性，失败时不阻塞通话控制。
     }
-  }
+  }, [deviceId]);
 
   const loadAIProviders = useCallback(async () => {
     try {
@@ -886,9 +897,18 @@ export default function PhonePage() {
       setAICallSettings({
         ownerName: settings.ownerName || "",
         agentPersona: settings.agentPersona || "",
+        autoAnswerInbound: settings.autoAnswerInbound === true,
+        autoAnswerProvider: settings.autoAnswerProvider || "",
+        autoAnswerTask: settings.autoAnswerTask || "",
       });
     } catch {
-      setAICallSettings({ ownerName: "", agentPersona: "" });
+      setAICallSettings({
+        ownerName: "",
+        agentPersona: "",
+        autoAnswerInbound: false,
+        autoAnswerProvider: "",
+        autoAnswerTask: "",
+      });
     }
   }
 
@@ -902,12 +922,18 @@ export default function PhonePage() {
           body: {
             owner_name: aiCallSettings.ownerName.trim(),
             agent_persona: aiCallSettings.agentPersona.trim(),
+            auto_answer_inbound: aiCallSettings.autoAnswerInbound === true,
+            auto_answer_provider: aiCallSettings.autoAnswerProvider.trim() || aiProvider,
+            auto_answer_task: aiCallSettings.autoAnswerTask.trim(),
           },
         }),
       );
       setAICallSettings({
         ownerName: settings.ownerName || "",
         agentPersona: settings.agentPersona || "",
+        autoAnswerInbound: settings.autoAnswerInbound === true,
+        autoAnswerProvider: settings.autoAnswerProvider || "",
+        autoAnswerTask: settings.autoAnswerTask || "",
       });
     } catch (error) {
       window.alert(apiMessage(error));
@@ -1492,10 +1518,29 @@ export default function PhonePage() {
   }
 
   const selectedAIPlaybook = matchingAIPlaybook(dialNumber);
+  const refreshAll = useCallback(async () => {
+    if (!deviceId) return;
+    setPageRefreshing(true);
+    try {
+      await Promise.all([refresh(), loadRecords(), loadAISessions(), loadAIBatchQueue()]);
+    } finally {
+      setPageRefreshing(false);
+    }
+  }, [deviceId, refresh, loadRecords, loadAISessions, loadAIBatchQueue]);
 
   return (
     <div className="phone-page mx-auto w-full max-w-[1500px]">
-      <PageHeader title={t("通话")} />
+      <PageHeader
+        title={t("通话")}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="default" onClick={() => setAICallDialogOpen(true)}>
+              {t("AI 通话")}
+            </Button>
+            <RefreshButton loading={pageRefreshing} onClick={() => void refreshAll()} />
+          </div>
+        }
+      />
 
       {/* WebRTC 下行播放：隐藏元素，自动播放远端音轨 */}
       <audio ref={remoteAudioRef} autoPlay className="hidden" />
@@ -1566,29 +1611,15 @@ export default function PhonePage() {
               </Tag>
             </div>
             <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50/70 p-3 text-xs dark:border-white/10 dark:bg-white/5">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="font-bold text-gray-600 dark:text-gray-300">{t("AI 通话身份")}</span>
-                <Button size="small" plain loading={aiCallSettingsBusy} onClick={() => void saveAICallSettings()}>
-                  {t("保存身份")}
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <span className="font-bold text-gray-600 dark:text-gray-300">{t("AI 通话身份")}</span>
+                  <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">{t("身份与自动接听设置已收进右上角的 AI 通话弹窗。")}</p>
+                </div>
+                <Button size="small" plain onClick={() => setAICallDialogOpen(true)}>
+                  {t("打开设置")}
                 </Button>
               </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <Input
-                  value={aiCallSettings.ownerName}
-                  onChange={(event) => setAICallSettings((current) => ({ ...current, ownerName: event.target.value }))}
-                  placeholder={t("机主称谓")}
-                  disabled={aiCallSettingsBusy}
-                />
-                <Input
-                  value={aiCallSettings.agentPersona}
-                  onChange={(event) => setAICallSettings((current) => ({ ...current, agentPersona: event.target.value }))}
-                  placeholder={t("AI 人设称谓")}
-                  disabled={aiCallSettingsBusy}
-                />
-              </div>
-              <p className="mt-2 text-[11px] text-gray-400 dark:text-gray-500">
-                {t("用于实时通话提示词，避免 AI 冒充机主本人；留空使用默认称谓。")}
-              </p>
             </div>
             {aiPresets.length > 0 ? (
               <div className="mb-3">
@@ -2247,6 +2278,72 @@ export default function PhonePage() {
           ) : null}
         </section>
       </div>
+      <Modal
+        open={aiCallDialogOpen}
+        onClose={() => setAICallDialogOpen(false)}
+        title={t("AI 通话设置")}
+        width="max-w-3xl"
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg border border-gray-200 bg-gray-50/70 p-4 text-sm dark:border-white/10 dark:bg-white/5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-bold text-gray-900 dark:text-gray-100">{t("AI 通话身份")}</div>
+                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{t("用于实时通话提示词，避免 AI 冒充机主本人；留空使用默认称谓。")}</p>
+              </div>
+              <Button size="small" plain loading={aiCallSettingsBusy} onClick={() => void saveAICallSettings()}>
+                {t("保存身份")}
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <Input
+                value={aiCallSettings.ownerName}
+                onChange={(event) => setAICallSettings((current) => ({ ...current, ownerName: event.target.value }))}
+                placeholder={t("机主称谓")}
+                disabled={aiCallSettingsBusy}
+              />
+              <Input
+                value={aiCallSettings.agentPersona}
+                onChange={(event) => setAICallSettings((current) => ({ ...current, agentPersona: event.target.value }))}
+                placeholder={t("AI 人设称谓")}
+                disabled={aiCallSettingsBusy}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-gray-200 bg-gray-50/70 p-4 text-sm dark:border-white/10 dark:bg-white/5">
+            <div className="mb-3">
+              <div className="text-sm font-bold text-gray-900 dark:text-gray-100">{t("自动接听")}</div>
+              <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{t("仅在 VoLTE 来电时生效。保存后会影响后端自动接管逻辑。")}</p>
+            </div>
+            <div className="space-y-3">
+              <label className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 dark:border-white/10 dark:bg-white/10 dark:text-gray-200">
+                <span>{t("VoLTE 来电自动接听")}</span>
+                <Switch
+                  checked={aiCallSettings.autoAnswerInbound === true}
+                  onChange={(checked) => setAICallSettings((current) => ({ ...current, autoAnswerInbound: checked }))}
+                  disabled={aiCallSettingsBusy}
+                  ariaLabel={t("VoLTE 来电自动接听")}
+                />
+              </label>
+              <Select
+                value={aiCallSettings.autoAnswerProvider || aiProvider}
+                onChange={(value) => setAICallSettings((current) => ({ ...current, autoAnswerProvider: value }))}
+                options={aiProviderOptions}
+                disabled={aiCallSettingsBusy}
+                placeholder={t("选择自动接听 provider")}
+              />
+              <Textarea
+                value={aiCallSettings.autoAnswerTask}
+                onChange={(event) => setAICallSettings((current) => ({ ...current, autoAnswerTask: event.target.value }))}
+                placeholder={t("自动接听时使用的任务说明")}
+                disabled={aiCallSettingsBusy}
+                rows={4}
+              />
+            </div>
+          </div>
+        </div>
+      </Modal>
       <QrSendModal open={!!qrPayload} payload={qrPayload} onClose={() => setQrPayload(null)} />
     </div>
   );
