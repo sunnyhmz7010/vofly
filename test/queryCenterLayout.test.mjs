@@ -9,4 +9,5 @@ test("query center keeps a fixed-height summary card and centered empty state", 
   assert.match(source, /query-center-empty-state/);
   assert.match(source, /items-center justify-center p-6/);
   assert.doesNotMatch(source, /items-end justify-center p-6/);
+  assert.doesNotMatch(source, /EmptyState title=\{t\("请选择左侧的卡或 Profile"\)\}/);
 });
