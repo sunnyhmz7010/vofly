@@ -1315,6 +1315,7 @@ export const EN_DICT: Record<string, string> = {
   "VoLTE 未就绪": "VoLTE not ready",
   "设备离线，无法读取或修改模组 IMS 配置。": "The device is offline; its modem IMS configuration cannot be read or changed.",
   "VoWiFi 通话": "VoWiFi Calls",
+  "通话设备": "Call device",
   "选择要拨号的设备": "Pick a device to dial from",
   "通过网页麦克风和扬声器进行 IMS 通话": "Place IMS calls using your browser microphone and speakers",
   "当前为基站直连（电路交换）通话，网页音频仅 VoWiFi IMS 通话可用":
@@ -1324,6 +1325,7 @@ export const EN_DICT: Record<string, string> = {
   "未注册 IMS": "IMS not registered",
   "拨号号码": "Dial number",
   "例如 +12025550123 或 *100#": "e.g. +12025550123 or *100#",
+  "输入或粘贴号码": "Enter or paste a number",
   "拨打": "Dial",
   "支持 +、数字、*、#；拨号请求不会自动挂断。":
     "Supports +, digits, *, and #; dial requests are not hung up automatically.",
@@ -1440,6 +1442,7 @@ export const EN_DICT: Record<string, string> = {
   "任务判定": "Task Verdict",
   "暂无任务判定": "No task verdict yet",
   "通话记录与录音": "Call history & recordings",
+  "最近通话": "Recent calls",
   "暂无通话记录": "No call records",
   "共 {count} 条记录": "{count} records in total",
 

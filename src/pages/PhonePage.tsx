@@ -1576,9 +1576,16 @@ export default function PhonePage() {
         </p>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <section className="space-y-4">
-          <div className="ui-card p-5">
+      <div className="phone-main-layout grid grid-cols-1 gap-4 xl:grid-cols-[minmax(360px,420px)_minmax(0,1fr)]">
+        <section className="phone-dialer-card ui-card flex min-h-[620px] flex-col p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">{t("通话设备")}</h3>
+            <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+              <StatusDot tone={transportPresentation.tone} />
+              {t(transportPresentation.text)}
+            </div>
+          </div>
+          <div>
             <label className="mb-2 block text-xs font-bold text-gray-500 dark:text-gray-400">{t("选择设备")}</label>
             <Select
               value={deviceId}
@@ -1586,42 +1593,67 @@ export default function PhonePage() {
               options={deviceOptions}
               placeholder={t("选择要拨号的设备")}
             />
-            <div className="mt-3 flex items-center justify-between">
-              <label className="text-xs font-bold text-gray-500 dark:text-gray-400">{t("拨号号码")}</label>
-              <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-                <StatusDot tone={transportPresentation.tone} />
-                {t(transportPresentation.text)}
-              </div>
-            </div>
-            <div className="mt-2 flex gap-2">
-              <Input
-                value={dialNumber}
-                onChange={(event) => {
-                  setDialNumber(event.target.value);
-                  setSelectedAIPreset(null);
-                }}
-                placeholder={t("例如 +12025550123 或 *100#")}
-                disabled={dialing || !deviceId || controlsLocked}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") void dial();
-                }}
-              />
-              <Button
-                variant="primary"
-                loading={dialing}
-                disabled={!deviceId || controlsLocked}
-                onClick={() => void dial()}
-                icon={<CallRegular />}
-              >
-                {t("拨打")}
-              </Button>
-            </div>
-            <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">{t("支持 +、数字、*、#；拨号请求不会自动挂断。")}</p>
           </div>
 
-          {loadError ? <p className="text-sm text-red-500">{loadError}</p> : null}
+          <div className="mt-5">
+            <label className="mb-2 block text-xs font-bold text-gray-500 dark:text-gray-400">{t("拨号号码")}</label>
+            <Input
+              value={dialNumber}
+              onChange={(event) => {
+                setDialNumber(event.target.value);
+                setSelectedAIPreset(null);
+              }}
+              placeholder={t("输入或粘贴号码")}
+              disabled={dialing || !deviceId || controlsLocked}
+              inputSize="large"
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void dial();
+              }}
+            />
+          </div>
 
-          <div className="ui-card p-5">
+          <div className="mt-6">
+            <div className="phone-dialpad grid grid-cols-3 gap-3" role="group" aria-label={t("拨号号码")}>
+              {DTMF_KEYS.map((key) => (
+                <button
+                  key={key.digit}
+                  type="button"
+                  disabled={dialing || !deviceId || controlsLocked}
+                  aria-label={key.letters ? `${key.digit}（${key.letters}）` : key.digit}
+                  onClick={() => {
+                    setDialNumber((current) => `${current}${key.digit}`.slice(0, 32));
+                    setSelectedAIPreset(null);
+                  }}
+                  className="flex h-14 flex-col items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 text-gray-900 transition hover:border-sky-200 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-gray-100 dark:hover:border-sky-500/50 dark:hover:bg-sky-500/10"
+                >
+                  <span className="font-mono text-xl leading-none">{key.digit}</span>
+                  <small className="mt-1 min-h-[12px] text-[9px] tracking-[0.14em] text-gray-400">
+                    {key.letters || "\u00a0"}
+                  </small>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {loadError ? <p className="mt-4 text-sm text-red-500">{loadError}</p> : null}
+
+          <div className="mt-auto flex flex-col items-center pt-6">
+            <Button
+              variant="primary"
+              loading={dialing}
+              disabled={!deviceId || controlsLocked}
+              onClick={() => void dial()}
+              icon={<CallRegular />}
+              className="min-w-36 justify-center"
+            >
+              {t("拨打")}
+            </Button>
+            <p className="mt-3 text-center text-xs text-gray-400 dark:text-gray-500">{t("支持 +、数字、*、#；拨号请求不会自动挂断。")}</p>
+          </div>
+        </section>
+
+        <section className="phone-side-stack flex min-h-[620px] flex-col gap-4">
+          <div className="ui-card flex min-h-[300px] flex-col p-5">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">{t("当前通话")}</h3>
               <Button variant="text" onClick={() => void refresh()}>
@@ -1707,64 +1739,64 @@ export default function PhonePage() {
                 ) : null}
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400 dark:border-white/10 dark:text-gray-500">
+              <div className="phone-empty-state flex flex-1 items-center justify-center rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400 dark:border-white/10 dark:text-gray-500">
                 {t("暂无进行中的通话")}
               </div>
             )}
           </div>
-        </section>
 
-        <section className="ui-card p-5">
-          <h3 className="mb-3 text-sm font-bold text-gray-900 dark:text-gray-100">{t("通话记录与录音")}</h3>
-          {records.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400 dark:border-white/10 dark:text-gray-500">
-              {t("暂无通话记录")}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {records.map((record) => (
-                <div key={record.callId} className="rounded-xl border border-gray-100 px-3 py-2.5 dark:border-white/5">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-gray-800 dark:text-gray-200">
-                        {t(callDirectionLabel(record.direction))} · {record.number || t("未知号码")}
+          <div className="ui-card flex min-h-[300px] flex-1 flex-col p-5">
+            <h3 className="mb-3 text-sm font-bold text-gray-900 dark:text-gray-100">{t("最近通话")}</h3>
+            {records.length === 0 ? (
+              <div className="phone-empty-state flex flex-1 items-center justify-center rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400 dark:border-white/10 dark:text-gray-500">
+                {t("暂无通话记录")}
+              </div>
+            ) : (
+              <div className="flex-1 space-y-2 overflow-auto">
+                {records.map((record) => (
+                  <div key={record.callId} className="rounded-xl border border-gray-100 px-3 py-2.5 dark:border-white/5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-gray-800 dark:text-gray-200">
+                          {t(callDirectionLabel(record.direction))} · {record.number || t("未知号码")}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {formatClock(record.startedAt)}
+                          {record.endedAt ? ` · ${formatDuration(record.startedAt, record.endedAt)}` : ""}
+                          {record.reason ? ` · ${record.sipCode ? `${record.sipCode} ` : ""}${record.reason}` : ""}
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-400">
-                        {formatClock(record.startedAt)}
-                        {record.endedAt ? ` · ${formatDuration(record.startedAt, record.endedAt)}` : ""}
-                        {record.reason ? ` · ${record.sipCode ? `${record.sipCode} ` : ""}${record.reason}` : ""}
-                      </div>
+                      <Tag type={stateBadge(record.state).type}>{stateBadge(record.state).text}</Tag>
                     </div>
-                    <Tag type={stateBadge(record.state).type}>{stateBadge(record.state).text}</Tag>
+                    {record.recordingPath ? (
+                      <div className="mt-2 space-y-2">
+                        <audio
+                          controls
+                          preload="none"
+                          className="h-8 w-full"
+                          src={`/api/call-recordings/${encodeURIComponent(record.callId)}`}
+                        />
+                        <Button
+                          size="small"
+                          plain
+                          variant="primary"
+                          loading={qrPreparingId === record.callId}
+                          disabled={!!qrPreparingId && qrPreparingId !== record.callId}
+                          onClick={() => void sendRecordingAsQr(record)}
+                          icon={<QrCode24Regular />}
+                        >
+                          {t("二维码发送")}
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
-                  {record.recordingPath ? (
-                    <div className="mt-2 space-y-2">
-                      <audio
-                        controls
-                        preload="none"
-                        className="h-8 w-full"
-                        src={`/api/call-recordings/${encodeURIComponent(record.callId)}`}
-                      />
-                      <Button
-                        size="small"
-                        plain
-                        variant="primary"
-                        loading={qrPreparingId === record.callId}
-                        disabled={!!qrPreparingId && qrPreparingId !== record.callId}
-                        onClick={() => void sendRecordingAsQr(record)}
-                        icon={<QrCode24Regular />}
-                      >
-                        {t("二维码发送")}
-                      </Button>
-                    </div>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          )}
-          {records.length > 0 ? (
-            <p className="mt-3 text-[11px] text-gray-400">{tf("共 {count} 条记录", { count: records.length })}</p>
-          ) : null}
+                ))}
+              </div>
+            )}
+            {records.length > 0 ? (
+              <p className="mt-3 text-[11px] text-gray-400">{tf("共 {count} 条记录", { count: records.length })}</p>
+            ) : null}
+          </div>
         </section>
       </div>
       <Modal

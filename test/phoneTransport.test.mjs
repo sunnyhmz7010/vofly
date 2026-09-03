@@ -80,3 +80,23 @@ test("phone page keeps AI controls out of the main body while the header dialog 
   assert.doesNotMatch(phonePage, /任务判定/);
   assert.doesNotMatch(phonePage, /学习热线情报/);
 });
+
+test("phone page uses the screenshot-style dialer layout with right-side call cards", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+  const dict = await source("src/lib/i18n-en.ts");
+
+  assert.match(phonePage, /className="phone-main-layout grid grid-cols-1 gap-4 xl:grid-cols-\[minmax\(360px,420px\)_minmax\(0,1fr\)\]"/);
+  assert.match(phonePage, /className="phone-dialer-card ui-card flex min-h-\[620px\] flex-col p-5"/);
+  assert.match(phonePage, /\{t\("通话设备"\)\}/);
+  assert.match(phonePage, /placeholder=\{t\("输入或粘贴号码"\)\}/);
+  assert.match(phonePage, /className="phone-dialpad grid grid-cols-3 gap-3"/);
+  assert.match(phonePage, /className="phone-side-stack flex min-h-\[620px\] flex-col gap-4"/);
+  assert.match(phonePage, /className="ui-card flex min-h-\[300px\] flex-col p-5"/);
+  assert.match(phonePage, /className="ui-card flex min-h-\[300px\] flex-1 flex-col p-5"/);
+  assert.match(phonePage, /className="phone-empty-state flex flex-1 items-center justify-center rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400 dark:border-white\/10 dark:text-gray-500"/);
+  assert.match(phonePage, /\{t\("最近通话"\)\}/);
+  assert.doesNotMatch(phonePage, /<h3 className="mb-3 text-sm font-bold text-gray-900 dark:text-gray-100">\{t\("通话记录与录音"\)\}<\/h3>/);
+  assert.match(dict, /"通话设备": "Call device"/);
+  assert.match(dict, /"输入或粘贴号码": "Enter or paste a number"/);
+  assert.match(dict, /"最近通话": "Recent calls"/);
+});
