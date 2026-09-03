@@ -2089,6 +2089,153 @@ export default function PhonePage() {
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-gray-50/70 p-4 text-sm dark:border-white/10 dark:bg-white/5">
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-bold text-gray-900 dark:text-gray-100">{t("AI 通话详情")}</div>
+                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">{t("查看最近通话的 AI 转写、时间线、摘要和任务核实结果。")}</p>
+              </div>
+              {records.length > 0 ? (
+                <span className="text-xs text-gray-400">{tf("共 {count} 条记录", { count: records.length })}</span>
+              ) : null}
+            </div>
+            {records.length === 0 ? (
+              <div className="flex min-h-32 items-center justify-center rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400 dark:border-white/10 dark:text-gray-500">
+                {t("暂无通话记录")}
+              </div>
+            ) : (
+              <div className="max-h-[520px] space-y-2 overflow-auto pr-1">
+                {records.map((record) => (
+                  <div key={record.callId} className="rounded-xl border border-gray-100 bg-white/70 px-3 py-2.5 dark:border-white/5 dark:bg-white/5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-gray-800 dark:text-gray-200">
+                          {t(callDirectionLabel(record.direction))} · {record.number || t("未知号码")}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {formatClock(record.startedAt)}
+                          {record.endedAt ? ` · ${formatDuration(record.startedAt, record.endedAt)}` : ""}
+                          {record.reason ? ` · ${record.sipCode ? `${record.sipCode} ` : ""}${record.reason}` : ""}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Tag type={stateBadge(record.state).type}>{stateBadge(record.state).text}</Tag>
+                        <Button
+                          size="small"
+                          plain
+                          variant="primary"
+                          loading={detailLoadingId === record.callId}
+                          disabled={!!detailLoadingId && detailLoadingId !== record.callId}
+                          onClick={() => void loadRecordDetail(record)}
+                        >
+                          {t("AI 通话详情")}
+                        </Button>
+                      </div>
+                    </div>
+                    {recordDetail?.record?.callId === record.callId ? (
+                      <div className="mt-3 rounded-lg border border-gray-100 bg-gray-50/80 p-3 text-xs dark:border-white/10 dark:bg-white/5">
+                        <div className="font-bold text-gray-600 dark:text-gray-300">{t("AI 转写")}</div>
+                        {recordDetail.events.filter((event) => event.type === "transcript" && event.text).length > 0 ? (
+                          <div className="mt-2 space-y-1">
+                            {recordDetail.events
+                              .filter((event) => event.type === "transcript" && event.text)
+                              .map((event, index) => (
+                                <p key={event.id ?? index} className="text-gray-500 dark:text-gray-400">
+                                  <span className="font-semibold">{event.role || "ai"}：</span>
+                                  {event.text}
+                                </p>
+                              ))}
+                          </div>
+                        ) : (
+                          <p className="mt-2 text-gray-400">{t("暂无 AI 转写")}</p>
+                        )}
+                        <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("AI 时间线")}</div>
+                        {recordDetail.events.filter((event) => event.type !== "transcript").length > 0 ? (
+                          <div className="mt-2 space-y-1">
+                            {recordDetail.events
+                              .filter((event) => event.type !== "transcript")
+                              .map((event, index) => (
+                                <p key={event.id ?? index} className="text-gray-500 dark:text-gray-400">
+                                  <span className="font-semibold">
+                                    {t(aiEventTypeLabel(event))}
+                                    {event.createdAt ? ` · ${formatClock(event.createdAt)}` : ""}：
+                                  </span>
+                                  {aiEventText(event)}
+                                </p>
+                              ))}
+                          </div>
+                        ) : (
+                          <p className="mt-2 text-gray-400">{t("暂无 AI 时间线事件")}</p>
+                        )}
+                        <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("AI 摘要")}</div>
+                        {aiSummaryText(recordDetail.summary) ? (
+                          <p className="mt-2 text-gray-500 dark:text-gray-400">{aiSummaryText(recordDetail.summary)}</p>
+                        ) : (
+                          <p className="mt-2 text-gray-400">{t("暂无 AI 摘要")}</p>
+                        )}
+                        {structuredSummaryFields.length > 0 ? (
+                          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {structuredSummaryFields.map((field) => (
+                              <div key={field.label} className="rounded-lg border border-gray-100 bg-white/70 px-3 py-2 dark:border-white/10 dark:bg-white/5">
+                                <div className="text-[11px] font-bold text-gray-400">{t(field.label)}</div>
+                                <div className="mt-1 text-gray-600 dark:text-gray-300">{t(field.value)}</div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                        <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("结果核实")}</div>
+                        {aiVerificationText(recordDetail.summary) ? (
+                          <p className="mt-2 text-gray-500 dark:text-gray-400">{aiVerificationText(recordDetail.summary)}</p>
+                        ) : (
+                          <p className="mt-2 text-gray-400">{t("暂无结果核实")}</p>
+                        )}
+                        <div className="mt-3 font-bold text-gray-600 dark:text-gray-300">{t("任务判定")}</div>
+                        {aiVerdictText(recordDetail.summary) ? (
+                          <p className="mt-2 text-gray-500 dark:text-gray-400">{aiVerdictText(recordDetail.summary)}</p>
+                        ) : (
+                          <p className="mt-2 text-gray-400">{t("暂无任务判定")}</p>
+                        )}
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                          <div className="font-bold text-gray-600 dark:text-gray-300">{t("热线情报学习")}</div>
+                          <Button
+                            size="small"
+                            plain
+                            variant="primary"
+                            loading={playbookLearningId === recordDetail.record.callId}
+                            disabled={!playbooksEnabled || (!!playbookLearningId && playbookLearningId !== recordDetail.record.callId)}
+                            onClick={() => void learnCallPlaybook(recordDetail.record.callId)}
+                          >
+                            {t("学习热线情报")}
+                          </Button>
+                        </div>
+                        {!playbooksEnabled ? (
+                          <p className="mt-2 text-gray-400">{t("未配置热线情报文件")}</p>
+                        ) : playbookLearningResult ? (
+                          <div className="mt-2 rounded-lg border border-cyan-100 bg-cyan-50/70 px-3 py-2 text-cyan-700 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:text-cyan-200">
+                            <p>{playbookLearningResult.ok ? t("已更新热线情报") : t("未学习到新情报")}</p>
+                            {playbookLearningResult.error ? <p className="mt-1 opacity-80">{playbookLearningResult.error}</p> : null}
+                            {playbookLearningResult.learned?.newRequiredInfo?.length ? (
+                              <p className="mt-1">
+                                {t("新增必采信息")}：
+                                {playbookLearningResult.learned?.newRequiredInfo?.map((item) => item.key).join("、")}
+                              </p>
+                            ) : null}
+                            {playbookLearningResult.learned?.ivrNotesUpdate ? (
+                              <p className="mt-1">
+                                {t("新增 IVR 记录")}：
+                                {profileText(playbookLearningResult.learned.ivrNotesUpdate)}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-gray-200 bg-gray-50/70 p-4 text-sm dark:border-white/10 dark:bg-white/5">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-bold text-gray-900 dark:text-gray-100">{t("AI 通话身份")}</div>

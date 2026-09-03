@@ -86,6 +86,13 @@ test("phone page keeps AI controls out of the main body while the header dialog 
   assert.match(dialog, /AI 接管/);
   assert.match(dialog, /批量队列/);
   assert.match(dialog, /AI 实时事件/);
+  assert.match(dialog, /AI 通话详情/);
+  assert.match(dialog, /AI 转写/);
+  assert.match(dialog, /AI 时间线/);
+  assert.match(dialog, /AI 摘要/);
+  assert.match(dialog, /结果核实/);
+  assert.match(dialog, /任务判定/);
+  assert.match(dialog, /学习热线情报/);
   assert.doesNotMatch(mainBody, /让 AI 接管当前来电/);
   assert.doesNotMatch(mainBody, /预设任务/);
   assert.doesNotMatch(mainBody, /本地预设管理/);

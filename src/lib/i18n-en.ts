@@ -1408,6 +1408,7 @@ export const EN_DICT: Record<string, string> = {
   "AI 实时事件": "AI Live Events",
   "等待 AI 转写或状态事件": "Waiting for AI transcript or status events",
   "AI 通话详情": "AI Call Details",
+  "查看最近通话的 AI 转写、时间线、摘要和任务核实结果。": "View AI transcripts, timelines, summaries, and task verification results for recent calls.",
   "AI 转写": "AI Transcript",
   "AI 时间线": "AI Timeline",
   "AI 摘要": "AI Summary",
