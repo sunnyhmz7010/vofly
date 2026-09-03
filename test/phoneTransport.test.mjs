@@ -148,3 +148,16 @@ test("phone page labels CallPilot AI event types instead of showing raw event na
   assert.match(dict, /"AI 音频抑制": "AI audio suppressed"/);
   assert.match(dict, /"目标记录": "Goal record"/);
 });
+
+test("phone page renders CallPilot AI event payloads as readable timeline text", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+
+  assert.match(phonePage, /event\.type === "triage_restriction_check"[\s\S]*payload\.status === "violation"[\s\S]*分诊越界/);
+  assert.match(phonePage, /event\.type === "triage_restriction_check"[\s\S]*payload\.status === "compliant"[\s\S]*未发现越界话术/);
+  assert.match(phonePage, /event\.type === "triage_restriction_check"[\s\S]*检查不可用/);
+  assert.match(phonePage, /event\.type === "dtmf_outcome"[\s\S]*payload\.digits[\s\S]*对端响应/);
+  assert.match(phonePage, /event\.type === "agent_audio_dropped"[\s\S]*已抑制 AI 音频[\s\S]*payload\.guard_ms/);
+  assert.match(phonePage, /event\.type === "task_goal"[\s\S]*return event\.text \|\| "目标记录";/);
+  assert.match(phonePage, /event\.type === "instruction_update"[\s\S]*return event\.text \|\| "任务更新";/);
+  assert.doesNotMatch(phonePage, /return event\.text \|\| event\.type;/);
+});

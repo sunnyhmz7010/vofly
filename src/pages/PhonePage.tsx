@@ -427,7 +427,37 @@ function aiEventText(event: AICallEvent) {
       return "tool_call";
     }
   }
-  return event.text || event.type;
+  if (event.type === "triage_restriction_check") {
+    try {
+      const payload = JSON.parse(event.payloadJson || "{}") as { status?: string; reason?: string; reason_code?: string; index?: number };
+      if (payload.status === "violation") {
+        return ["分诊越界", payload.reason_code, typeof payload.index === "number" ? `第 ${payload.index + 1} 句` : "", event.text].filter(Boolean).join(" · ");
+      }
+      if (payload.status === "compliant") return "未发现越界话术";
+      return ["检查不可用", payload.reason].filter(Boolean).join(" · ");
+    } catch {
+      return event.text || "分诊边界检查";
+    }
+  }
+  if (event.type === "dtmf_outcome") {
+    try {
+      const payload = JSON.parse(event.payloadJson || "{}") as { status?: string; digits?: string; peer_text?: string };
+      return [`DTMF ${payload.digits || ""}`.trim(), payload.status === "observed" ? "对端响应" : payload.status, payload.peer_text || event.text].filter(Boolean).join(" · ");
+    } catch {
+      return event.text || "按键结果";
+    }
+  }
+  if (event.type === "agent_audio_dropped") {
+    try {
+      const payload = JSON.parse(event.payloadJson || "{}") as { reason?: string; guard_ms?: number };
+      return ["已抑制 AI 音频", payload.reason, typeof payload.guard_ms === "number" ? `${payload.guard_ms}ms` : ""].filter(Boolean).join(" · ");
+    } catch {
+      return event.text || "AI 音频抑制";
+    }
+  }
+  if (event.type === "task_goal") return event.text || "目标记录";
+  if (event.type === "instruction_update") return event.text || "任务更新";
+  return event.text || aiEventTypeLabel(event);
 }
 
 function takeoverEventState(event: AICallEvent) {
