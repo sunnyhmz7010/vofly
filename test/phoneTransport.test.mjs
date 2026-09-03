@@ -9,8 +9,8 @@ async function source(path) {
 }
 
 function splitPhoneAIDialog(phonePage) {
-  const marker = "<Modal\n        open={aiCallDialogOpen}";
-  const start = phonePage.indexOf(marker);
+  const marker = phonePage.match(/<Modal\r?\n\s+open=\{aiCallDialogOpen\}/);
+  const start = marker?.index ?? -1;
   assert.notEqual(start, -1, "AI call modal marker is missing");
   const end = phonePage.indexOf("<QrSendModal", start);
   assert.notEqual(end, -1, "AI call modal end marker is missing");
@@ -156,6 +156,11 @@ test("phone page renders CallPilot AI event payloads as readable timeline text",
   assert.match(phonePage, /event\.type === "triage_restriction_check"[\s\S]*payload\.status === "compliant"[\s\S]*未发现越界话术/);
   assert.match(phonePage, /event\.type === "triage_restriction_check"[\s\S]*检查不可用/);
   assert.match(phonePage, /event\.type === "dtmf_outcome"[\s\S]*payload\.digits[\s\S]*对端响应/);
+  assert.match(phonePage, /event\.type === "dtmf_outcome"[\s\S]*payload\.menu_before[\s\S]*按键前/);
+  assert.match(phonePage, /event\.type === "dtmf_outcome"[\s\S]*payload\.remote_after[\s\S]*按键后/);
+  assert.match(phonePage, /event\.type === "dtmf_outcome"[\s\S]*payload\.latency_ms[\s\S]*延迟/);
+  assert.match(phonePage, /event\.type === "dtmf_outcome"[\s\S]*payload\.expired[\s\S]*未观察到对端响应/);
+  assert.match(phonePage, /payload\.status === "late"[\s\S]*响应超出观察窗/);
   assert.match(phonePage, /event\.type === "agent_audio_dropped"[\s\S]*已抑制 AI 音频[\s\S]*payload\.guard_ms/);
   assert.match(phonePage, /event\.type === "task_goal"[\s\S]*return event\.text \|\| "目标记录";/);
   assert.match(phonePage, /event\.type === "instruction_update"[\s\S]*return event\.text \|\| "任务更新";/);

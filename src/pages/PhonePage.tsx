@@ -441,8 +441,27 @@ function aiEventText(event: AICallEvent) {
   }
   if (event.type === "dtmf_outcome") {
     try {
-      const payload = JSON.parse(event.payloadJson || "{}") as { status?: string; digits?: string; peer_text?: string };
-      return [`DTMF ${payload.digits || ""}`.trim(), payload.status === "observed" ? "对端响应" : payload.status, payload.peer_text || event.text].filter(Boolean).join(" · ");
+      const payload = JSON.parse(event.payloadJson || "{}") as {
+        status?: string;
+        digits?: string;
+        peer_text?: string;
+        menu_before?: string;
+        remote_after?: string;
+        latency_ms?: number;
+        expired?: boolean;
+      };
+      const digitsText = `DTMF ${payload.digits || ""}`.trim();
+      const statusText = payload.expired ? "未观察到对端响应" : payload.status === "late" ? "响应超出观察窗" : payload.status === "observed" ? "对端响应" : payload.status;
+      const peerText = payload.remote_after || payload.peer_text || event.text;
+      return [
+        digitsText,
+        statusText,
+        typeof payload.latency_ms === "number" ? `延迟 ${payload.latency_ms}ms` : "",
+        payload.menu_before ? `按键前：${payload.menu_before}` : "",
+        peerText ? `按键后：${peerText}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
     } catch {
       return event.text || "按键结果";
     }
