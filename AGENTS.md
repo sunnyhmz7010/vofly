@@ -158,3 +158,16 @@ vofly/
 ## 上游同步
 
 本仓库从 [MengMengCode/VoCat](https://github.com/MengMengCode/VoCat) web 代码 fork 而来，需定期同步上游前端功能、UI 修复和安全补丁。
+
+### 同步方法
+
+1. `git fetch upstream` 后，以上方同步记录中最新一行核对到的 VoCat 提交为基线，列出其之后涉及 `web/` 的提交：`git log --oneline <上次核对点>..upstream/master -- web/`
+2. 只移植 `web/` 改动；上游路径 `web/src/...` 对应本仓库 `src/...`，需适配品牌与本地新增模块
+3. 与本仓库自有改动重叠的文件（如 `SmsPage.tsx`、`smsText.ts`、`types.ts`）做三方合并，跑 `npm test` + `npm run build` 后提交
+4. 完成后在下方同步记录表追加一行；后端仓（vofly-backend）的对应记录看其 AGENTS.md 同步表
+
+### 同步记录
+
+| 日期 | VoCat 提交 | 说明 | 本仓库 commit |
+|------|-----------|------|--------------|
+| 2026-09-03 | 核对至 96a1233（#117） | 基线为初始提交 e438c01（≈ VoCat f911515/#87 的 web 树）。核对 202f31f..96a1233：#114/#116/#117 均为纯后端提交，无 web 改动；da428ec（#102）的 web 部分与后端侧一致有意不移植。本次无代码改动 | — |
