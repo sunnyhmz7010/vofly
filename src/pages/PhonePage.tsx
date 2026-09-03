@@ -378,6 +378,13 @@ function aiEventTypeLabel(event: AICallEvent) {
   if (event.type === "takeover") return "转接状态";
   if (event.type === "transcript") return event.role || "ai";
   if (event.type === "tool_call") return "tool_call";
+  if (event.type === "triage_restriction_check") return "分诊边界检查";
+  if (event.type === "dtmf_outcome") return "按键结果";
+  if (event.type === "agent_audio_dropped") return "AI 音频抑制";
+  if (event.type === "instruction_update") return "任务更新";
+  if (event.type === "task_goal") return "目标记录";
+  if (event.type === "ended") return "通话结束";
+  if (event.type === "failed") return "通话失败";
   return event.type;
 }
 

@@ -131,3 +131,20 @@ test("phone page uses the screenshot-style dialer layout with right-side call ca
   assert.match(dict, /"输入或粘贴号码": "Enter or paste a number"/);
   assert.match(dict, /"最近通话": "Recent calls"/);
 });
+
+test("phone page labels CallPilot AI event types instead of showing raw event names", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+  const dict = await source("src/lib/i18n-en.ts");
+
+  assert.match(phonePage, /event\.type === "triage_restriction_check"\) return "分诊边界检查";/);
+  assert.match(phonePage, /event\.type === "dtmf_outcome"\) return "按键结果";/);
+  assert.match(phonePage, /event\.type === "agent_audio_dropped"\) return "AI 音频抑制";/);
+  assert.match(phonePage, /event\.type === "instruction_update"\) return "任务更新";/);
+  assert.match(phonePage, /event\.type === "task_goal"\) return "目标记录";/);
+  assert.match(phonePage, /event\.type === "ended"\) return "通话结束";/);
+  assert.match(phonePage, /event\.type === "failed"\) return "通话失败";/);
+  assert.match(dict, /"分诊边界检查": "Triage boundary check"/);
+  assert.match(dict, /"按键结果": "DTMF result"/);
+  assert.match(dict, /"AI 音频抑制": "AI audio suppressed"/);
+  assert.match(dict, /"目标记录": "Goal record"/);
+});
