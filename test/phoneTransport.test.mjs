@@ -8,6 +8,18 @@ async function source(path) {
   return readFile(new URL(path, root), "utf8");
 }
 
+function splitPhoneAIDialog(phonePage) {
+  const marker = "<Modal\n        open={aiCallDialogOpen}";
+  const start = phonePage.indexOf(marker);
+  assert.notEqual(start, -1, "AI call modal marker is missing");
+  const end = phonePage.indexOf("<QrSendModal", start);
+  assert.notEqual(end, -1, "AI call modal end marker is missing");
+  return {
+    mainBody: phonePage.slice(0, start),
+    dialog: phonePage.slice(start, end),
+  };
+}
+
 test('phone page presents "volte" as a registered cellular call transport with browser audio', async () => {
   const phonePage = await source("src/pages/PhonePage.tsx");
   const dict = await source("src/lib/i18n-en.ts");
@@ -59,26 +71,38 @@ test("phone page exposes AI call settings in a dialog from the header", async ()
 test("phone page keeps AI controls out of the main body while the header dialog remains", async () => {
   const phonePage = await source("src/pages/PhonePage.tsx");
   const dict = await source("src/lib/i18n-en.ts");
+  const { mainBody, dialog } = splitPhoneAIDialog(phonePage);
 
   assert.match(phonePage, /<Button variant="default" onClick=\{\(\) => setAICallDialogOpen\(true\)\}>\s*\{t\("AI 通话"\)\}\s*<\/Button>/s);
   assert.match(phonePage, /<Modal[\s\S]*title=\{t\("AI 通话设置"\)\}/);
-  assert.doesNotMatch(phonePage, /让 AI 接管当前来电/);
-  assert.doesNotMatch(phonePage, /预设任务/);
-  assert.doesNotMatch(phonePage, /本地预设管理/);
-  assert.doesNotMatch(phonePage, /任务目标/);
-  assert.doesNotMatch(phonePage, /AI 建单助手/);
-  assert.doesNotMatch(phonePage, /AI 外呼/);
-  assert.doesNotMatch(phonePage, /AI 批量外呼/);
-  assert.doesNotMatch(phonePage, /AI 接管/);
-  assert.doesNotMatch(phonePage, /批量队列/);
-  assert.doesNotMatch(phonePage, /AI 实时事件/);
-  assert.doesNotMatch(phonePage, /AI 通话详情/);
-  assert.doesNotMatch(phonePage, /AI 转写/);
-  assert.doesNotMatch(phonePage, /AI 时间线/);
-  assert.doesNotMatch(phonePage, /AI 摘要/);
-  assert.doesNotMatch(phonePage, /结果核实/);
-  assert.doesNotMatch(phonePage, /任务判定/);
-  assert.doesNotMatch(phonePage, /学习热线情报/);
+  assert.match(dialog, /className="ai-call-control-panel/);
+  assert.match(dialog, /让 AI 接管当前来电/);
+  assert.match(dialog, /预设任务/);
+  assert.match(dialog, /本地预设管理/);
+  assert.match(dialog, /任务目标/);
+  assert.match(dialog, /AI 建单助手/);
+  assert.match(dialog, /AI 外呼/);
+  assert.match(dialog, /AI 批量外呼/);
+  assert.match(dialog, /AI 接管/);
+  assert.match(dialog, /批量队列/);
+  assert.match(dialog, /AI 实时事件/);
+  assert.doesNotMatch(mainBody, /让 AI 接管当前来电/);
+  assert.doesNotMatch(mainBody, /预设任务/);
+  assert.doesNotMatch(mainBody, /本地预设管理/);
+  assert.doesNotMatch(mainBody, /任务目标/);
+  assert.doesNotMatch(mainBody, /AI 建单助手/);
+  assert.doesNotMatch(mainBody, /AI 外呼/);
+  assert.doesNotMatch(mainBody, /AI 批量外呼/);
+  assert.doesNotMatch(mainBody, /AI 接管/);
+  assert.doesNotMatch(mainBody, /批量队列/);
+  assert.doesNotMatch(mainBody, /AI 实时事件/);
+  assert.doesNotMatch(mainBody, /AI 通话详情/);
+  assert.doesNotMatch(mainBody, /AI 转写/);
+  assert.doesNotMatch(mainBody, /AI 时间线/);
+  assert.doesNotMatch(mainBody, /AI 摘要/);
+  assert.doesNotMatch(mainBody, /结果核实/);
+  assert.doesNotMatch(mainBody, /任务判定/);
+  assert.doesNotMatch(mainBody, /学习热线情报/);
 });
 
 test("phone page uses the screenshot-style dialer layout with right-side call cards", async () => {
