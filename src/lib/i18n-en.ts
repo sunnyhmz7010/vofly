@@ -1427,6 +1427,7 @@ export const EN_DICT: Record<string, string> = {
   "分诊边界检查": "Triage boundary check",
   "按键结果": "DTMF result",
   "动态场景": "Dynamic scenario",
+  "延迟指标": "Latency metric",
   "AI 音频抑制": "AI audio suppressed",
   "任务更新": "Task update",
   "目标记录": "Goal record",

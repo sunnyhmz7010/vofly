@@ -381,6 +381,7 @@ function aiEventTypeLabel(event: AICallEvent) {
   if (event.type === "triage_restriction_check") return "分诊边界检查";
   if (event.type === "dtmf_outcome") return "按键结果";
   if (event.type === "prompt_gen") return "动态场景";
+  if (event.type === "latency") return "延迟指标";
   if (event.type === "agent_audio_dropped") return "AI 音频抑制";
   if (event.type === "instruction_update") return "任务更新";
   if (event.type === "task_goal") return "目标记录";
@@ -487,6 +488,19 @@ function aiEventText(event: AICallEvent) {
       return ["未使用动态场景", payload.error].filter(Boolean).join(" · ");
     } catch {
       return event.text || "动态场景";
+    }
+  }
+  if (event.type === "latency") {
+    try {
+      const payload = JSON.parse(event.payloadJson || "{}") as {
+        stage?: string;
+        ms?: number;
+      };
+      const stageText = payload.stage === "first_audio_delta" ? "provider 首音频" : payload.stage;
+      const msText = typeof payload.ms === "number" ? `${Math.round(payload.ms)}ms` : "";
+      return [stageText, msText].filter(Boolean).join(" · ") || "延迟指标";
+    } catch {
+      return event.text || "延迟指标";
     }
   }
   if (event.type === "agent_audio_dropped") {
