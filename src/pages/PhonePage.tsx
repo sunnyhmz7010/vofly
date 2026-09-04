@@ -382,6 +382,9 @@ function aiEventTypeLabel(event: AICallEvent) {
   if (event.type === "dtmf_outcome") return "按键结果";
   if (event.type === "prompt_gen") return "动态场景";
   if (event.type === "latency") return "延迟指标";
+  if (event.type === "wrap_up_judge") return "收尾裁判";
+  if (event.type === "hold_started") return "排队等待";
+  if (event.type === "hold_ended") return "等待结束";
   if (event.type === "agent_audio_dropped") return "AI 音频抑制";
   if (event.type === "instruction_update") return "任务更新";
   if (event.type === "task_goal") return "目标记录";
@@ -501,6 +504,39 @@ function aiEventText(event: AICallEvent) {
       return [stageText, msText].filter(Boolean).join(" · ") || "延迟指标";
     } catch {
       return event.text || "延迟指标";
+    }
+  }
+  if (event.type === "wrap_up_judge") {
+    try {
+      const payload = JSON.parse(event.payloadJson || "{}") as {
+        ok?: boolean;
+        decision?: string;
+        reason?: string;
+        error?: string;
+      };
+      const decisionText =
+        payload.decision === "wrap_up" ? "准备收尾" :
+          payload.decision === "on_hold" ? "排队等待" :
+            payload.decision === "continue" ? "继续通话" :
+              payload.decision;
+      return [decisionText, payload.reason, payload.ok === false ? payload.error : ""].filter(Boolean).join(" · ") || "收尾裁判";
+    } catch {
+      return event.text || "收尾裁判";
+    }
+  }
+  if (event.type === "hold_started") return event.text || "进入排队等待";
+  if (event.type === "hold_ended") {
+    try {
+      const payload = JSON.parse(event.payloadJson || "{}") as { seconds?: number };
+      return [
+        "等待结束",
+        typeof payload.seconds === "number" ? `${Math.round(payload.seconds)} 秒` : "",
+        event.text,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    } catch {
+      return event.text || "等待结束";
     }
   }
   if (event.type === "agent_audio_dropped") {

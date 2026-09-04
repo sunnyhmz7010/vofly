@@ -140,6 +140,9 @@ test("phone page labels CallPilot AI event types instead of showing raw event na
   assert.match(phonePage, /event\.type === "dtmf_outcome"\) return "按键结果";/);
   assert.match(phonePage, /event\.type === "prompt_gen"\) return "动态场景";/);
   assert.match(phonePage, /event\.type === "latency"\) return "延迟指标";/);
+  assert.match(phonePage, /event\.type === "wrap_up_judge"\) return "收尾裁判";/);
+  assert.match(phonePage, /event\.type === "hold_started"\) return "排队等待";/);
+  assert.match(phonePage, /event\.type === "hold_ended"\) return "等待结束";/);
   assert.match(phonePage, /event\.type === "agent_audio_dropped"\) return "AI 音频抑制";/);
   assert.match(phonePage, /event\.type === "instruction_update"\) return "任务更新";/);
   assert.match(phonePage, /event\.type === "task_goal"\) return "目标记录";/);
@@ -149,6 +152,9 @@ test("phone page labels CallPilot AI event types instead of showing raw event na
   assert.match(dict, /"按键结果": "DTMF result"/);
   assert.match(dict, /"动态场景": "Dynamic scenario"/);
   assert.match(dict, /"延迟指标": "Latency metric"/);
+  assert.match(dict, /"收尾裁判": "Wrap-up judge"/);
+  assert.match(dict, /"排队等待": "On hold"/);
+  assert.match(dict, /"等待结束": "Hold ended"/);
   assert.match(dict, /"AI 音频抑制": "AI audio suppressed"/);
   assert.match(dict, /"目标记录": "Goal record"/);
 });
@@ -172,6 +178,8 @@ test("phone page renders CallPilot AI event payloads as readable timeline text",
   assert.match(phonePage, /event\.type === "prompt_gen"[\s\S]*payload\.error/);
   assert.match(phonePage, /event\.type === "latency"[\s\S]*payload\.stage[\s\S]*provider 首音频/);
   assert.match(phonePage, /event\.type === "latency"[\s\S]*payload\.ms[\s\S]*ms/);
+  assert.match(phonePage, /event\.type === "wrap_up_judge"[\s\S]*payload\.decision[\s\S]*payload\.reason/);
+  assert.match(phonePage, /event\.type === "hold_ended"[\s\S]*payload\.seconds[\s\S]*秒/);
   assert.match(phonePage, /event\.type === "agent_audio_dropped"[\s\S]*已抑制 AI 音频[\s\S]*payload\.guard_ms/);
   assert.match(phonePage, /event\.type === "task_goal"[\s\S]*return event\.text \|\| "目标记录";/);
   assert.match(phonePage, /event\.type === "instruction_update"[\s\S]*return event\.text \|\| "任务更新";/);
