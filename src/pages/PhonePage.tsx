@@ -244,6 +244,7 @@ interface AICallMetricsCall {
   config?: AICallMetricsConfig;
   callLimits?: AICallMetricsCallLimits;
   hasTaskGoal?: boolean;
+  bargeInFallback?: boolean;
   latency?: Record<string, AICallMetricSamples>;
   hangupLatencyMs?: number;
   dtmf?: { actions?: number; outcomes?: Record<string, number> };
@@ -257,6 +258,7 @@ interface AICallMetricsReport {
     callsAnalyzed?: number;
     latency?: Record<string, AICallMetricSamples>;
     configCombos?: Record<string, number>;
+    bargeInFallbackCalls?: number;
     hangupLatencyMs?: AICallMetricSamples;
     verdicts?: {
       total?: number;
@@ -2419,6 +2421,10 @@ export default function PhonePage() {
                     <div className="rounded-lg bg-white/70 p-2 dark:bg-white/10">
                       <div className="text-[11px] text-violet-500 dark:text-violet-200">{t("有任务目标")}</div>
                       <div className="mt-1 font-semibold">{aiCallsWithTaskGoal}/{aiMetrics?.summary?.callsAnalyzed || 0}</div>
+                    </div>
+                    <div className="rounded-lg bg-white/70 p-2 dark:bg-white/10">
+                      <div className="text-[11px] text-violet-500 dark:text-violet-200">{t("打断自激回退")}</div>
+                      <div className="mt-1 text-base font-bold">{aiMetrics?.summary?.bargeInFallbackCalls || 0}</div>
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-violet-700 dark:text-violet-200">

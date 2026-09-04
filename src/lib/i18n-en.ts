@@ -1049,6 +1049,7 @@ export const EN_DICT: Record<string, string> = {
   "挂断延迟": "Hangup latency",
   "通话限制": "Call limits",
   "有任务目标": "Has task goal",
+  "打断自激回退": "Barge-in fallback",
   "无上限": "No limit",
   "无收尾裁判": "No wrap-up judge",
   "已标注": "Labelled",

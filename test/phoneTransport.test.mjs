@@ -203,6 +203,7 @@ test("phone page keeps AI metrics and review labels inside the AI dialog", async
   assert.match(dialog, /挂断延迟/);
   assert.match(dialog, /通话限制/);
   assert.match(dialog, /有任务目标/);
+  assert.match(dialog, /打断自激回退/);
   assert.match(dialog, /标为正确/);
   assert.match(dialog, /标为错误/);
   assert.match(dialog, /看不出来/);
@@ -215,6 +216,7 @@ test("phone page keeps AI metrics and review labels inside the AI dialog", async
   assert.match(dict, /"挂断延迟": "Hangup latency"/);
   assert.match(dict, /"通话限制": "Call limits"/);
   assert.match(dict, /"有任务目标": "Has task goal"/);
+  assert.match(dict, /"打断自激回退": "Barge-in fallback"/);
   assert.match(dict, /"标为正确": "Mark correct"/);
   assert.match(dict, /"标为错误": "Mark wrong"/);
   assert.match(dict, /"看不出来": "Unsure"/);
