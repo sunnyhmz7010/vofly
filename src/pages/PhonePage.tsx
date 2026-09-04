@@ -380,6 +380,7 @@ function aiEventTypeLabel(event: AICallEvent) {
   if (event.type === "tool_call") return "tool_call";
   if (event.type === "triage_restriction_check") return "分诊边界检查";
   if (event.type === "dtmf_outcome") return "按键结果";
+  if (event.type === "prompt_gen") return "动态场景";
   if (event.type === "agent_audio_dropped") return "AI 音频抑制";
   if (event.type === "instruction_update") return "任务更新";
   if (event.type === "task_goal") return "目标记录";
@@ -464,6 +465,28 @@ function aiEventText(event: AICallEvent) {
         .join(" · ");
     } catch {
       return event.text || "按键结果";
+    }
+  }
+  if (event.type === "prompt_gen") {
+    try {
+      const payload = JSON.parse(event.payloadJson || "{}") as {
+        ok?: boolean;
+        scenario?: string;
+        opening?: string;
+        error?: string;
+      };
+      if (payload.ok) {
+        return [
+          "已生成动态场景",
+          payload.scenario ? `场景：${payload.scenario}` : "",
+          payload.opening ? `开场：${payload.opening}` : "",
+        ]
+          .filter(Boolean)
+          .join(" · ");
+      }
+      return ["未使用动态场景", payload.error].filter(Boolean).join(" · ");
+    } catch {
+      return event.text || "动态场景";
     }
   }
   if (event.type === "agent_audio_dropped") {
