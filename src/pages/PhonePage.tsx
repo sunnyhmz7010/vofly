@@ -193,6 +193,62 @@ interface CallRecordDetail {
   summary?: AICallSummary;
 }
 
+interface AICallMetricSamples {
+  n: number;
+  median: number;
+  p90: number;
+  max: number;
+  values?: number[];
+}
+
+interface AICallMetricsVerdict {
+  conclusion?: string;
+  attribution?: string;
+  confidence?: number;
+  needsReview?: boolean;
+  reviewReason?: string;
+  hardEvidence?: boolean;
+}
+
+interface AICallReviewLabel {
+  callId: string;
+  label: "correct" | "wrong" | "unsure" | string;
+  note?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface AICallMetricsCall {
+  callId: string;
+  deviceId: string;
+  number?: string;
+  direction: string;
+  state: string;
+  startedAt?: string;
+  durationS?: number;
+  holdSeconds?: number;
+  latency?: Record<string, AICallMetricSamples>;
+  dtmf?: { actions?: number; outcomes?: Record<string, number> };
+  termination?: { kind?: string; reason?: string };
+  verdict?: AICallMetricsVerdict;
+  reviewLabel?: AICallReviewLabel;
+}
+
+interface AICallMetricsReport {
+  summary?: {
+    callsAnalyzed?: number;
+    latency?: Record<string, AICallMetricSamples>;
+    verdicts?: {
+      total?: number;
+      needsReview?: number;
+      labels?: Record<string, number>;
+    };
+    holdSeconds?: AICallMetricSamples;
+  };
+  calls?: AICallMetricsCall[];
+  review?: AICallMetricsCall[];
+}
+
 const SAMPLE_RATE = 8000;
 
 function callTransportPresentation(transport: CallsPayload["transport"]): { text: string; tone: StatusTone; webAudioReady: boolean } {
@@ -316,6 +372,37 @@ function aiStructuredSummaryFields(summary?: AICallSummary) {
     return fields;
   } catch {
     return [];
+  }
+}
+
+function formatAICallMetricMs(samples?: AICallMetricSamples) {
+  if (!samples || samples.n <= 0) return "暂无样本";
+  return `p50 ${Math.round(samples.median)}ms · p90 ${Math.round(samples.p90)}ms`;
+}
+
+function formatAICallHoldSeconds(samples?: AICallMetricSamples) {
+  if (!samples || samples.n <= 0) return "暂无样本";
+  return `${Math.round(samples.median)} 秒`;
+}
+
+function aiMetricByKey(metrics: Record<string, AICallMetricSamples> | undefined, ...keys: string[]) {
+  if (!metrics) return undefined;
+  for (const key of keys) {
+    if (metrics[key]) return metrics[key];
+  }
+  return undefined;
+}
+
+function aiReviewLabelText(label?: string) {
+  switch (label) {
+    case "correct":
+      return "正确";
+    case "wrong":
+      return "判定错误";
+    case "unsure":
+      return "看不出来";
+    default:
+      return label || "";
   }
 }
 
@@ -859,6 +946,9 @@ export default function PhonePage() {
   const [aiBatchQueue, setAIBatchQueue] = useState<AIBatchQueueStatus>({ pendingNumbers: [], active: false });
   const [aiSessions, setAISessions] = useState<AICallSession[]>([]);
   const [aiCallEvents, setAICallEvents] = useState<AICallEvent[]>([]);
+  const [aiMetrics, setAICallMetrics] = useState<AICallMetricsReport | null>(null);
+  const [aiMetricsBusy, setAICallMetricsBusy] = useState(false);
+  const [reviewLabelBusy, setReviewLabelBusy] = useState("");
   const [aiBusy, setAIBusy] = useState(false);
   const [pageRefreshing, setPageRefreshing] = useState(false);
   const [mediaConnected, setMediaConnected] = useState(false);
@@ -1011,6 +1101,18 @@ export default function PhonePage() {
       // 队列状态只增强批量外呼可见性，失败时不阻塞通话控制。
     }
   }, [deviceId]);
+
+  const loadAICallMetrics = useCallback(async () => {
+    setAICallMetricsBusy(true);
+    try {
+      const res = await api<{ data: AICallMetricsReport }>("/ai-call-metrics?limit=100");
+      setAICallMetrics(camelize<AICallMetricsReport>(res.data || {}));
+    } catch {
+      setAICallMetrics(null);
+    } finally {
+      setAICallMetricsBusy(false);
+    }
+  }, []);
 
   const loadAIProviders = useCallback(async () => {
     try {
@@ -1278,7 +1380,8 @@ export default function PhonePage() {
     void loadAICallSettings();
     void loadAIPresets();
     void loadAIPlaybooks();
-  }, [loadDevices, loadAIProviders, loadAIPresets]);
+    void loadAICallMetrics();
+  }, [loadDevices, loadAIProviders, loadAIPresets, loadAICallMetrics]);
 
   function applyAIPreset(presetID: string) {
     const preset = aiPresets.find((item) => item.id === presetID);
@@ -1344,6 +1447,10 @@ export default function PhonePage() {
   const aiBatchPendingNumbers = aiBatchQueue.pendingNumbers || [];
   const structuredSummaryFields = useMemo(() => aiStructuredSummaryFields(recordDetail?.summary), [recordDetail?.summary]);
   const pendingOwnerTakeover = useMemo(() => hasPendingOwnerTakeover(aiCallEvents), [aiCallEvents]);
+  const aiReviewQueue = aiMetrics?.review || [];
+  const aiVerdictSummary = aiMetrics?.summary?.verdicts;
+  const aiFirstAudioMetric = aiMetricByKey(aiMetrics?.summary?.latency, "firstAudioDeltaMs", "first_audio_delta_ms");
+  const aiHoldMetric = aiMetrics?.summary?.holdSeconds;
   const transport = callsPayload?.transport || "";
   const transportPresentation = callTransportPresentation(transport);
   const webAudioReady = transportPresentation.webAudioReady;
@@ -1470,6 +1577,7 @@ export default function PhonePage() {
       await refresh();
       await loadAISessions();
       await loadRecords();
+      await loadAICallMetrics();
     } catch (error) {
       release();
       window.alert(apiMessage(error));
@@ -1493,6 +1601,7 @@ export default function PhonePage() {
       await loadAISessions();
       await loadAIBatchQueue();
       await loadRecords();
+      await loadAICallMetrics();
     } catch (error) {
       release();
       window.alert(apiMessage(error));
@@ -1545,6 +1654,7 @@ export default function PhonePage() {
       await loadAISessions();
       await loadAIBatchQueue();
       await loadRecords();
+      await loadAICallMetrics();
     } catch (error) {
       window.alert(apiMessage(error));
     } finally {
@@ -1585,6 +1695,22 @@ export default function PhonePage() {
       window.alert(apiMessage(error));
     } finally {
       setAIBusy(false);
+    }
+  }
+
+  async function markAICallReview(callId: string, label: "correct" | "wrong" | "unsure") {
+    if (!callId || reviewLabelBusy) return;
+    setReviewLabelBusy(callId);
+    try {
+      await api("/ai-call-metrics/review-labels", {
+        method: "POST",
+        body: { call_id: callId, label },
+      });
+      await loadAICallMetrics();
+    } catch (error) {
+      window.alert(apiMessage(error));
+    } finally {
+      setReviewLabelBusy("");
     }
   }
 
@@ -1670,13 +1796,13 @@ export default function PhonePage() {
   const selectedAIPlaybook = matchingAIPlaybook(dialNumber);
   const refreshAll = useCallback(async () => {
     if (!deviceId) return;
-    setPageRefreshing(true);
+      setPageRefreshing(true);
     try {
-      await Promise.all([refresh(), loadRecords(), loadAISessions(), loadAIBatchQueue()]);
+      await Promise.all([refresh(), loadRecords(), loadAISessions(), loadAIBatchQueue(), loadAICallMetrics()]);
     } finally {
       setPageRefreshing(false);
     }
-  }, [deviceId, refresh, loadRecords, loadAISessions, loadAIBatchQueue]);
+  }, [deviceId, refresh, loadRecords, loadAISessions, loadAIBatchQueue, loadAICallMetrics]);
 
   return (
     <div className="phone-page mx-auto w-full max-w-[1500px]">
@@ -2212,6 +2338,71 @@ export default function PhonePage() {
                   ) : (
                     <p className="mt-2 text-sky-500/80 dark:text-sky-300/80">{t("等待 AI 转写或状态事件")}</p>
                   )}
+                </div>
+
+                <div className="rounded-lg border border-violet-200 bg-violet-50/70 p-3 text-xs text-violet-900 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-100">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold">{t("AI 通话指标")}</span>
+                    <Button size="small" plain loading={aiMetricsBusy} onClick={() => void loadAICallMetrics()}>
+                      {t("刷新指标")}
+                    </Button>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div className="rounded-lg bg-white/70 p-2 dark:bg-white/10">
+                      <div className="text-[11px] text-violet-500 dark:text-violet-200">{t("已分析通话")}</div>
+                      <div className="mt-1 text-base font-bold">{aiMetrics?.summary?.callsAnalyzed || 0}</div>
+                    </div>
+                    <div className="rounded-lg bg-white/70 p-2 dark:bg-white/10">
+                      <div className="text-[11px] text-violet-500 dark:text-violet-200">{t("待复核")}</div>
+                      <div className="mt-1 text-base font-bold">{aiReviewQueue.length}</div>
+                    </div>
+                    <div className="rounded-lg bg-white/70 p-2 dark:bg-white/10">
+                      <div className="text-[11px] text-violet-500 dark:text-violet-200">{t("首音频延迟")}</div>
+                      <div className="mt-1 font-semibold">{formatAICallMetricMs(aiFirstAudioMetric)}</div>
+                    </div>
+                    <div className="rounded-lg bg-white/70 p-2 dark:bg-white/10">
+                      <div className="text-[11px] text-violet-500 dark:text-violet-200">{t("排队等待")}</div>
+                      <div className="mt-1 font-semibold">{formatAICallHoldSeconds(aiHoldMetric)}</div>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-violet-700 dark:text-violet-200">
+                    <span>{t("已标注")}：{Object.values(aiVerdictSummary?.labels || {}).reduce((total, count) => total + count, 0)}</span>
+                    <span>{t("需复核判定")}：{aiVerdictSummary?.needsReview || 0}</span>
+                  </div>
+                  {aiReviewQueue.length > 0 ? (
+                    <div className="mt-3 space-y-2">
+                      {aiReviewQueue.slice(0, 5).map((call) => (
+                        <div key={call.callId} className="rounded-lg bg-white/80 p-2 dark:bg-white/10">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="font-semibold">{call.number || call.callId}</span>
+                            <span>{call.verdict?.conclusion || t("未知")} · {call.verdict?.reviewReason || t("待复核")}</span>
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Button size="small" plain variant="primary" loading={reviewLabelBusy === call.callId} onClick={() => void markAICallReview(call.callId, "correct")}>
+                              {t("标为正确")}
+                            </Button>
+                            <Button size="small" plain variant="danger" loading={reviewLabelBusy === call.callId} onClick={() => void markAICallReview(call.callId, "wrong")}>
+                              {t("标为错误")}
+                            </Button>
+                            <Button size="small" plain loading={reviewLabelBusy === call.callId} onClick={() => void markAICallReview(call.callId, "unsure")}>
+                              {t("看不出来")}
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-violet-500/80 dark:text-violet-200/80">{t("暂无待复核通话")}</p>
+                  )}
+                  {aiMetrics?.calls?.some((call) => call.reviewLabel) ? (
+                    <div className="mt-3 space-y-1">
+                      {aiMetrics.calls.filter((call) => call.reviewLabel).slice(0, 3).map((call) => (
+                        <p key={call.callId} className="text-violet-600 dark:text-violet-200">
+                          {call.number || call.callId} · {t("已标注")}：{t(aiReviewLabelText(call.reviewLabel?.label))}
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>

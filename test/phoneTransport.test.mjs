@@ -185,3 +185,29 @@ test("phone page renders CallPilot AI event payloads as readable timeline text",
   assert.match(phonePage, /event\.type === "instruction_update"[\s\S]*return event\.text \|\| "任务更新";/);
   assert.doesNotMatch(phonePage, /return event\.text \|\| event\.type;/);
 });
+
+test("phone page keeps AI metrics and review labels inside the AI dialog", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+  const dict = await source("src/lib/i18n-en.ts");
+  const { mainBody, dialog } = splitPhoneAIDialog(phonePage);
+
+  assert.match(phonePage, /interface AICallMetricsReport/);
+  assert.match(phonePage, /const \[aiMetrics, setAICallMetrics\] = useState<AICallMetricsReport \| null>\(null\);/);
+  assert.match(phonePage, /api<\{ data: AICallMetricsReport \}>\("\/ai-call-metrics\?limit=100"\)/);
+  assert.match(phonePage, /markAICallReview\(call\.callId, "correct"\)/);
+  assert.match(phonePage, /markAICallReview\(call\.callId, "wrong"\)/);
+  assert.match(phonePage, /markAICallReview\(call\.callId, "unsure"\)/);
+  assert.match(dialog, /AI 通话指标/);
+  assert.match(dialog, /待复核/);
+  assert.match(dialog, /标为正确/);
+  assert.match(dialog, /标为错误/);
+  assert.match(dialog, /看不出来/);
+  assert.doesNotMatch(mainBody, /AI 通话指标/);
+  assert.doesNotMatch(mainBody, /待复核/);
+
+  assert.match(dict, /"AI 通话指标": "AI call metrics"/);
+  assert.match(dict, /"待复核": "Needs review"/);
+  assert.match(dict, /"标为正确": "Mark correct"/);
+  assert.match(dict, /"标为错误": "Mark wrong"/);
+  assert.match(dict, /"看不出来": "Unsure"/);
+});
