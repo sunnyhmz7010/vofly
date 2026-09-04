@@ -199,6 +199,10 @@ test("phone page keeps AI metrics and review labels inside the AI dialog", async
   assert.match(phonePage, /markAICallReview\(call\.callId, "unsure"\)/);
   assert.match(dialog, /AI 通话指标/);
   assert.match(dialog, /待复核/);
+  assert.match(dialog, /配置组合/);
+  assert.match(dialog, /挂断延迟/);
+  assert.match(dialog, /通话限制/);
+  assert.match(dialog, /有任务目标/);
   assert.match(dialog, /标为正确/);
   assert.match(dialog, /标为错误/);
   assert.match(dialog, /看不出来/);
@@ -207,6 +211,10 @@ test("phone page keeps AI metrics and review labels inside the AI dialog", async
 
   assert.match(dict, /"AI 通话指标": "AI call metrics"/);
   assert.match(dict, /"待复核": "Needs review"/);
+  assert.match(dict, /"配置组合": "Config combos"/);
+  assert.match(dict, /"挂断延迟": "Hangup latency"/);
+  assert.match(dict, /"通话限制": "Call limits"/);
+  assert.match(dict, /"有任务目标": "Has task goal"/);
   assert.match(dict, /"标为正确": "Mark correct"/);
   assert.match(dict, /"标为错误": "Mark wrong"/);
   assert.match(dict, /"看不出来": "Unsure"/);

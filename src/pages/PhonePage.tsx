@@ -218,6 +218,20 @@ interface AICallReviewLabel {
   updatedAt?: string;
 }
 
+interface AICallMetricsConfig {
+  provider?: string;
+  openingMode?: string;
+  dtmfSpokenFollowup?: boolean;
+  resultVerification?: string;
+  maxCallSeconds?: number;
+  wrapUpJudgeEnabled?: boolean;
+}
+
+interface AICallMetricsCallLimits {
+  maxCallSeconds?: number;
+  wrapUpJudge?: boolean;
+}
+
 interface AICallMetricsCall {
   callId: string;
   deviceId: string;
@@ -227,7 +241,11 @@ interface AICallMetricsCall {
   startedAt?: string;
   durationS?: number;
   holdSeconds?: number;
+  config?: AICallMetricsConfig;
+  callLimits?: AICallMetricsCallLimits;
+  hasTaskGoal?: boolean;
   latency?: Record<string, AICallMetricSamples>;
+  hangupLatencyMs?: number;
   dtmf?: { actions?: number; outcomes?: Record<string, number> };
   termination?: { kind?: string; reason?: string };
   verdict?: AICallMetricsVerdict;
@@ -238,6 +256,8 @@ interface AICallMetricsReport {
   summary?: {
     callsAnalyzed?: number;
     latency?: Record<string, AICallMetricSamples>;
+    configCombos?: Record<string, number>;
+    hangupLatencyMs?: AICallMetricSamples;
     verdicts?: {
       total?: number;
       needsReview?: number;
@@ -383,6 +403,19 @@ function formatAICallMetricMs(samples?: AICallMetricSamples) {
 function formatAICallHoldSeconds(samples?: AICallMetricSamples) {
   if (!samples || samples.n <= 0) return "暂无样本";
   return `${Math.round(samples.median)} 秒`;
+}
+
+function formatAICallConfigCombo(combos?: Record<string, number>) {
+  const top = Object.entries(combos || {}).sort((left, right) => right[1] - left[1])[0];
+  if (!top) return "暂无样本";
+  return `${top[0]} · ${top[1]}`;
+}
+
+function formatAICallLimits(call: AICallMetricsCall | undefined, translate: (value: string) => string) {
+  const limits = call?.callLimits;
+  if (!limits) return translate("暂无样本");
+  const maxSeconds = limits.maxCallSeconds && limits.maxCallSeconds > 0 ? `${limits.maxCallSeconds}s` : translate("无上限");
+  return `${maxSeconds} · ${limits.wrapUpJudge ? translate("收尾裁判") : translate("无收尾裁判")}`;
 }
 
 function aiMetricByKey(metrics: Record<string, AICallMetricSamples> | undefined, ...keys: string[]) {
@@ -1451,6 +1484,9 @@ export default function PhonePage() {
   const aiVerdictSummary = aiMetrics?.summary?.verdicts;
   const aiFirstAudioMetric = aiMetricByKey(aiMetrics?.summary?.latency, "firstAudioDeltaMs", "first_audio_delta_ms");
   const aiHoldMetric = aiMetrics?.summary?.holdSeconds;
+  const aiHangupMetric = aiMetrics?.summary?.hangupLatencyMs;
+  const latestAIMetricCall = aiMetrics?.calls?.[0];
+  const aiCallsWithTaskGoal = aiMetrics?.calls?.filter((call) => call.hasTaskGoal).length || 0;
   const transport = callsPayload?.transport || "";
   const transportPresentation = callTransportPresentation(transport);
   const webAudioReady = transportPresentation.webAudioReady;
@@ -2363,6 +2399,26 @@ export default function PhonePage() {
                     <div className="rounded-lg bg-white/70 p-2 dark:bg-white/10">
                       <div className="text-[11px] text-violet-500 dark:text-violet-200">{t("排队等待")}</div>
                       <div className="mt-1 font-semibold">{formatAICallHoldSeconds(aiHoldMetric)}</div>
+                    </div>
+                    <div className="rounded-lg bg-white/70 p-2 dark:bg-white/10">
+                      <div className="text-[11px] text-violet-500 dark:text-violet-200">{t("配置组合")}</div>
+                      <div className="mt-1 truncate font-semibold" title={formatAICallConfigCombo(aiMetrics?.summary?.configCombos)}>
+                        {formatAICallConfigCombo(aiMetrics?.summary?.configCombos)}
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-white/70 p-2 dark:bg-white/10">
+                      <div className="text-[11px] text-violet-500 dark:text-violet-200">{t("挂断延迟")}</div>
+                      <div className="mt-1 font-semibold">{formatAICallMetricMs(aiHangupMetric)}</div>
+                    </div>
+                    <div className="rounded-lg bg-white/70 p-2 dark:bg-white/10">
+                      <div className="text-[11px] text-violet-500 dark:text-violet-200">{t("通话限制")}</div>
+                      <div className="mt-1 truncate font-semibold" title={formatAICallLimits(latestAIMetricCall, t)}>
+                        {formatAICallLimits(latestAIMetricCall, t)}
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-white/70 p-2 dark:bg-white/10">
+                      <div className="text-[11px] text-violet-500 dark:text-violet-200">{t("有任务目标")}</div>
+                      <div className="mt-1 font-semibold">{aiCallsWithTaskGoal}/{aiMetrics?.summary?.callsAnalyzed || 0}</div>
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-violet-700 dark:text-violet-200">
