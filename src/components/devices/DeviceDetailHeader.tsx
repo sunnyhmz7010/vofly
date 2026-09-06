@@ -55,7 +55,7 @@ export function DeviceDetailHeader(props: DeviceDetailHeaderProps) {
           {!props.modemControlOnly ? <Button onClick={props.onOpenCall} className="ui-glass-border !border-0" icon={<CallRegular />}>
             {t("通话")}
           </Button> : null}
-          <Button variant="danger" loading={props.deletingDevice} onClick={props.onDeleteDevice} className="ui-glass-border !border-0 hover:!text-red-600" icon={<DeleteRegular />}>
+          <Button variant="danger" loading={props.deletingDevice} onClick={props.onDeleteDevice} className="!border-0" icon={<DeleteRegular />}>
             {t("删除设备")}
           </Button>
         </div>
