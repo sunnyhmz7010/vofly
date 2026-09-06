@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ArrowLeftRegular, BookRegular } from "@fluentui/react-icons";
-import { EmptyState, PageHeader } from "../components/ui";
-import { KNOWLEDGE_ARTICLES, knowledgeArticleBlocks } from "../lib/knowledgeArticles";
+import { EmptyState, Markdown, PageHeader } from "../components/ui";
+import { KNOWLEDGE_ARTICLES } from "../lib/knowledgeArticles";
 import { useI18n } from "../lib/i18n";
 import { cx } from "../lib/utils";
 
@@ -112,20 +112,8 @@ export default function KnowledgeBasePage() {
                     </div>
                   </div>
                   <div className="min-h-0 flex-1 overflow-auto p-5">
-                    <div className="mx-auto max-w-3xl space-y-4">
-                      {knowledgeArticleBlocks(article.content).map((block, index) =>
-                        block.kind === "list" ? (
-                          <ul key={index} className="list-inside list-disc space-y-1.5 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                            {block.items.map((item, itemIndex) => (
-                              <li key={itemIndex}>{item}</li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p key={index} className="whitespace-pre-wrap text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                            {block.items[0]}
-                          </p>
-                        ),
-                      )}
+                    <div className="mx-auto max-w-3xl">
+                      <Markdown content={article.content} />
                     </div>
                   </div>
                 </>

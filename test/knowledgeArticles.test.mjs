@@ -8,7 +8,7 @@ const compiled = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.ES2022, target: ts.ScriptTarget.ES2022 },
 });
 const moduleURL = `data:text/javascript;base64,${Buffer.from(compiled.outputText).toString("base64")}`;
-const { KNOWLEDGE_ARTICLES, knowledgeArticleBlocks } = await import(moduleURL);
+const { KNOWLEDGE_ARTICLES } = await import(moduleURL);
 
 test("knowledge base articles are complete and unique", () => {
   assert.ok(KNOWLEDGE_ARTICLES.length >= 5, "knowledge base should ship several articles");
@@ -27,20 +27,4 @@ test("knowledge base covers the split features and new task types", () => {
   for (const keyword of ["余额自动查询", "续费提醒", "余额变动历史", "自动任务", "VoWiFi", "USB SIM 读卡器"]) {
     assert.ok(combined.includes(keyword), `knowledge base should mention ${keyword}`);
   }
-});
-
-test("knowledge article blocks split paragraphs and dash lists", () => {
-  const blocks = knowledgeArticleBlocks("第一段。\n\n- 甲\n- 乙\n\n第二段。");
-  assert.deepEqual(
-    blocks.map((block) => [block.kind, block.items]),
-    [
-      ["paragraph", ["第一段。"]],
-      ["list", ["甲", "乙"]],
-      ["paragraph", ["第二段。"]],
-    ],
-  );
-
-  // 空内容与纯空行返回空块列表
-  assert.deepEqual(knowledgeArticleBlocks(""), []);
-  assert.deepEqual(knowledgeArticleBlocks("\n\n  \n"), []);
 });

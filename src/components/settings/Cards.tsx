@@ -7,7 +7,9 @@ import {
 } from "@fluentui/react-icons";
 import type { SystemInfo } from "../../types";
 import { useI18n } from "../../lib/i18n";
+import { formatVersionLabel } from "../shell/versionFormat";
 import { Button } from "../ui/Button";
+import { Markdown } from "../ui/Markdown";
 import { FieldRow, PasswordInput } from "./controls";
 
 export interface PasswordForm {
@@ -161,10 +163,14 @@ export function SystemInfoCard({
         {updateInfo?.hasUpdate ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/20 dark:bg-amber-500/10">
             <div className="mb-2 flex items-center gap-2 text-[13px] font-bold text-amber-800 dark:text-amber-200">
-              <AlertRegular /> {t("发现新版本:")} {updateInfo.latestVersion}
+              <AlertRegular /> {t("发现新版本:")} {formatVersionLabel(updateInfo.latestVersion || "")}
             </div>
-            <div className="mb-4 max-h-32 overflow-y-auto whitespace-pre-wrap pr-2 text-xs text-amber-700 dark:text-amber-300/80">
-              {updateInfo.releaseNote || t("暂无更新说明")}
+            <div className="mb-4 max-h-32 overflow-y-auto pr-2 text-xs text-amber-700 dark:text-amber-300/80">
+              {updateInfo.releaseNote ? (
+                <Markdown content={updateInfo.releaseNote} className="text-xs text-amber-700 dark:text-amber-300/80" />
+              ) : (
+                t("暂无更新说明")
+              )}
             </div>
             <Button variant="warning" loading={applyingUpdate} onClick={onApplyUpdate} className="w-full !border-0">
               {t("立即更新并重启")}

@@ -19,6 +19,7 @@ export { StatusDot } from "./StatusDot";
 export type { StatusTone } from "./StatusDot";
 export { PageHeader } from "./PageHeader";
 export { EmptyState } from "./EmptyState";
+export { Markdown } from "./Markdown";
 export { ErrorState } from "./ErrorState";
 export { ListSkeleton } from "./ListSkeleton";
 export { RefreshButton } from "./RefreshButton";

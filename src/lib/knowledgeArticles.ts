@@ -1,5 +1,5 @@
-// 知识库内置文章：标题 + 正文，纯前端静态数据，更新内容需随版本发布。
-// 正文用空行分段；以 "- " 开头的行会渲染为列表项。
+// 知识库内置文章：标题 + 正文（Markdown 安全子集，经 ui/Markdown 渲染），
+// 纯前端静态数据，更新内容需随版本发布。
 
 export interface KnowledgeArticle {
   id: string;
@@ -99,21 +99,3 @@ USB SIM 读卡器设备仅支持 VoWiFi 环境下的短信和通话任务。`,
   },
 ];
 
-// knowledgeArticleBlocks 把正文拆成渲染块：段落或列表。
-export interface KnowledgeArticleBlock {
-  kind: "paragraph" | "list";
-  items: string[];
-}
-
-export function knowledgeArticleBlocks(content: string): KnowledgeArticleBlock[] {
-  const blocks: KnowledgeArticleBlock[] = [];
-  for (const chunk of content.split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean)) {
-    const lines = chunk.split("\n").map((line) => line.trim()).filter(Boolean);
-    if (lines.length > 0 && lines.every((line) => line.startsWith("- "))) {
-      blocks.push({ kind: "list", items: lines.map((line) => line.slice(2).trim()) });
-    } else {
-      blocks.push({ kind: "paragraph", items: [lines.join("\n")] });
-    }
-  }
-  return blocks;
-}

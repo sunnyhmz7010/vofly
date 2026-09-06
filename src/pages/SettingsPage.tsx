@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { AlertRegular, CheckmarkRegular } from "@fluentui/react-icons";
 import { api, apiMessage, getSecuritySettings, updateSecuritySettings } from "../api";
 import type { DeveloperSettings, HTTPSSettings, NotificationSettings, SecuritySettings, SystemInfo } from "../types";
-import { Button, PageHeader, confirmDialog, message } from "../components/ui";
+import { Button, Markdown, PageHeader, confirmDialog, message } from "../components/ui";
+import { formatVersionLabel } from "../components/shell/versionFormat";
 import { CardDecor, CardIcon, CardTitle, SecurityCard, SystemInfoCard } from "../components/settings/Cards";
 import type { PasswordForm, UpdateInfo } from "../components/settings/Cards";
 import { NetworkAccessCard } from "../components/settings/NetworkAccessCard";
@@ -386,13 +387,11 @@ export default function SettingsPage() {
       <div>
         <div>
             {lang === "zh"
-              ? `最新版本：${updateInfo.latestVersion}，确定要现在更新并重启服务吗？`
-              : `Latest version: ${updateInfo.latestVersion}. Update and restart the service now?`}
+              ? `最新版本：${formatVersionLabel(updateInfo.latestVersion || "")}，确定要现在更新并重启服务吗？`
+              : `Latest version: ${formatVersionLabel(updateInfo.latestVersion || "")}. Update and restart the service now?`}
           </div>
         {updateInfo.releaseNote ? (
-          <pre className="mt-2 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-md bg-black/5 p-2 text-xs dark:bg-white/10">
-            {updateInfo.releaseNote}
-          </pre>
+          <Markdown content={updateInfo.releaseNote} className="mt-2 max-h-48 overflow-y-auto rounded-md bg-black/5 p-2 text-xs dark:bg-white/10" />
         ) : null}
       </div>,
       t("应用更新"),
