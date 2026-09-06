@@ -1,4 +1,4 @@
-import { ArrowSyncRegular, PowerRegular, ChatRegular, CallRegular } from "@fluentui/react-icons";
+import { ArrowSyncRegular, PowerRegular, ChatRegular, CallRegular, DeleteRegular } from "@fluentui/react-icons";
 import { Button } from "../ui";
 import type { DeviceDetail } from "./types";
 import { useI18n } from "../../lib/i18n";
@@ -9,11 +9,13 @@ export interface DeviceDetailHeaderProps {
 	device: DeviceDetail;
   rebooting: boolean;
   reconnectingVoWiFi: boolean;
+  deletingDevice: boolean;
 	onCopyText: (text: string) => void;
   onReconnectVowifi: () => void;
   onRebootModem: () => void;
   onOpenSms: () => void;
   onOpenCall: () => void;
+  onDeleteDevice: () => void;
 	wifiCallingOnly?: boolean;
 	modemControlOnly?: boolean;
 }
@@ -53,6 +55,9 @@ export function DeviceDetailHeader(props: DeviceDetailHeaderProps) {
           {!props.modemControlOnly ? <Button onClick={props.onOpenCall} className="ui-glass-border !border-0" icon={<CallRegular />}>
             {t("通话")}
           </Button> : null}
+          <Button variant="danger" loading={props.deletingDevice} onClick={props.onDeleteDevice} className="ui-glass-border !border-0 hover:!text-red-600" icon={<DeleteRegular />}>
+            {t("删除设备")}
+          </Button>
         </div>
       </div>
     </div>

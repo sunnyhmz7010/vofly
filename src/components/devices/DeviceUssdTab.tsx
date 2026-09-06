@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { CallRegular } from "@fluentui/react-icons";
 import { api } from "../../api";
 import { Button, Input } from "../ui";
 import { UssdLogEntry, type UssdLogItem } from "./UssdLogEntry";
@@ -91,27 +90,18 @@ export function DeviceUssdTab({ deviceId }: { deviceId: string }) {
 
   return (
     <div>
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-          <CallRegular className="text-[22px]" />
+      {inSession ? (
+        <div className="mb-4 flex items-center justify-end gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-600 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+            {t("多轮会话中")}
+          </span>
+          <Button variant="warning" size="small" plain onClick={cancelSession} disabled={loading}>
+            {t("取消会话")}
+          </Button>
         </div>
-        <div className="flex-1">
-          <div className="text-lg font-bold text-gray-900 dark:text-white">{t("USSD 交互终端")}</div>
-          <div className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{t("发送 USSD 代码 (如 *100#) 并等待网络菜单响应")}</div>
-        </div>
-        {inSession ? (
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-600 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-              {t("多轮会话中")}
-            </span>
-            <Button variant="warning" size="small" plain onClick={cancelSession} disabled={loading}>
-              {t("取消会话")}
-            </Button>
-          </div>
-        ) : null}
-      </div>
-      <div className="ui-panel-muted relative mt-4 flex h-[320px] flex-col gap-3 overflow-auto rounded-xl border border-gray-100 p-4 dark:border-white/10">
+      ) : null}
+      <div className="ui-panel-muted relative flex h-[320px] flex-col gap-3 overflow-auto rounded-xl border border-gray-100 p-4 dark:border-white/10">
         {log.length === 0 && !loading ? (
           <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400">{t("暂无 USSD 会话记录")}</div>
         ) : null}

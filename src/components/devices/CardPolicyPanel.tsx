@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRightRegular, CardUiRegular } from "@fluentui/react-icons";
+import { ArrowRightRegular } from "@fluentui/react-icons";
 import { Button, Input, message } from "../ui";
 import { PolicySwitchCard } from "./PolicySwitchCard";
 import { CardPolicyAPN } from "./CardPolicyAPN";
@@ -95,15 +95,6 @@ export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolic
 
   return (
     <div>
-      <div className="mb-4 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-          <CardUiRegular className="text-[22px]" />
-        </div>
-        <div>
-          <div className="text-lg font-bold text-gray-900 dark:text-white">{t("卡策略")}</div>
-		  <div className="text-xs text-gray-500 dark:text-gray-400">{wifiCallingOnly ? t("USB SIM 读卡器仅用于 WiFi Calling，策略跟随 ICCID 保存") : t("VoWiFi / 飞行模式 / 漫游数据开关跟着 SIM 卡走，切换即时生效")}</div>
-        </div>
-      </div>
       {!iccid ? (
         <div className="ui-panel-muted p-4 text-center text-sm text-gray-500 dark:text-gray-400">{t("设备尚未识别到 SIM 卡 ICCID，策略不可操作")}</div>
       ) : null}

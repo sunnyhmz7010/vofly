@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { WindowConsoleRegular, WarningRegular } from "@fluentui/react-icons";
+import { WarningRegular } from "@fluentui/react-icons";
 import { api } from "../../api";
 import { Button, Input, Select, Switch } from "../ui";
 import { AT_COMMAND_GROUPS } from "./atCommands";
@@ -56,18 +56,9 @@ export function DeviceAtTab({ deviceId, backendMode, atPort, running }: DeviceAt
 
   return (
     <div>
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-          <WindowConsoleRegular className="text-[22px]" />
-        </div>
-        <div>
-          <div className="text-lg font-bold text-gray-900 dark:text-white">{t("AT 终端")}</div>
-          <div className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{t("发送 AT 指令并查看回显（多行响应会完整返回）")}</div>
-        </div>
-      </div>
       {usable ? (
         <>
-          <div className="ui-panel-muted relative mt-4 flex h-[320px] flex-col gap-3 overflow-auto rounded-xl border border-gray-100 p-4 dark:border-white/10">
+          <div className="ui-panel-muted relative flex h-[320px] flex-col gap-3 overflow-auto rounded-xl border border-gray-100 p-4 dark:border-white/10">
             {log.length === 0 && !sending ? (
               <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400">{t("暂无 AT 会话记录")}</div>
             ) : null}
@@ -130,7 +121,7 @@ export function DeviceAtTab({ deviceId, backendMode, atPort, running }: DeviceAt
           </div>
         </>
       ) : (
-        <div className="mt-4 flex flex-col items-center justify-center rounded-xl border border-orange-100 bg-orange-50 p-8 dark:border-orange-900/50 dark:bg-orange-900/20">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-orange-100 bg-orange-50 p-8 dark:border-orange-900/50 dark:bg-orange-900/20">
           <WarningRegular className="mb-4 text-[48px] text-orange-400" />
           <div className="text-lg font-bold text-orange-700 dark:text-orange-400">{unavailableTitle}</div>
           <div className="mt-2 max-w-md text-center text-sm text-orange-600 dark:text-orange-300">{unavailableDesc}</div>

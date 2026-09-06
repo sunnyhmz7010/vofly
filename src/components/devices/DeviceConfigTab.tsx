@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { SettingsRegular, DeleteRegular, SaveRegular } from "@fluentui/react-icons";
+import { SaveRegular } from "@fluentui/react-icons";
 import { Button, Input, Select, Tooltip } from "../ui";
 import { api } from "../../api";
 import { isDeviceOnline, isQmiControl } from "./shared";
@@ -13,9 +13,7 @@ export interface DeviceConfigTabProps {
   editConfig: DeviceConfig | null;
   deviceStatus: DeviceDetail | null;
   saving: boolean;
-  deleting: boolean;
   onSave: () => void;
-  onDelete: () => void;
   onEditConfig: (next: DeviceConfig) => void;
 }
 
@@ -28,7 +26,7 @@ function Field({ label, children }: { label: ReactNode; children: ReactNode }) {
   );
 }
 
-export function DeviceConfigTab({ editConfig, deviceStatus, saving, deleting, onSave, onDelete, onEditConfig }: DeviceConfigTabProps) {
+export function DeviceConfigTab({ editConfig, deviceStatus, saving, onSave, onEditConfig }: DeviceConfigTabProps) {
   const { t } = useI18n();
   const controlDevice = deviceStatus?.controlDevice || editConfig?.controlDevice;
   const interfaceName = deviceStatus?.interface || editConfig?.interface;
@@ -99,24 +97,10 @@ export function DeviceConfigTab({ editConfig, deviceStatus, saving, deleting, on
 
   return (
     <div>
-      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-            <SettingsRegular className="text-[22px]" />
-          </div>
-          <div>
-            <div className="text-lg font-bold text-gray-900 dark:text-white">{t("设备配置")}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">{t("配置存储在数据库中，部分字段可能需要重启生效")}</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="danger" loading={deleting} onClick={onDelete} className="!border-0" icon={<DeleteRegular />}>
-            {t("删除设备")}
-          </Button>
-          <Button variant="primary" loading={saving} onClick={onSave} className="!border-0" icon={<SaveRegular />}>
-            {t("保存配置")}
-          </Button>
-        </div>
+      <div className="mb-4 flex items-center justify-end">
+        <Button variant="primary" loading={saving} onClick={onSave} className="!border-0" icon={<SaveRegular />}>
+          {t("保存配置")}
+        </Button>
       </div>
       {editConfig ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -192,9 +176,7 @@ export function DeviceConfigTab({ editConfig, deviceStatus, saving, deleting, on
             ) : null}
           </div>
           {supportsCellularIMS ? (
-            <div className="lg:col-span-2">
-              <CellularIMSConfigCard deviceId={editConfig.id} deviceOnline={deviceOnline} />
-            </div>
+            <CellularIMSConfigCard deviceId={editConfig.id} deviceOnline={deviceOnline} />
           ) : null}
         </div>
       ) : null}

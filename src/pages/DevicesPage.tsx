@@ -749,11 +749,13 @@ export default function DevicesPage() {
 				device={detail}
                 rebooting={rebooting}
                 reconnectingVoWiFi={reconnectingVoWiFi}
+                deletingDevice={deleting}
                 onCopyText={handleCopyText}
                 onReconnectVowifi={handleReconnectVoWiFi}
                 onRebootModem={handleRebootModem}
                 onOpenSms={handleOpenSms}
                 onOpenCall={handleOpenCall}
+                onDeleteDevice={handleDeleteDevice}
 				wifiCallingOnly={isReader}
 				modemControlOnly={isNative410}
               />
@@ -779,7 +781,7 @@ export default function DevicesPage() {
                   ) : null}
                   {activeTab === "ussd" ? <DeviceUssdTab deviceId={detail.id} /> : null}
                   {activeTab === "config" ? (
-                    <DeviceConfigTab editConfig={editConfig} deviceStatus={detail} saving={saving} deleting={deleting} onSave={handleSaveConfig} onDelete={handleDeleteDevice} onEditConfig={setEditConfig} />
+                    <DeviceConfigTab editConfig={editConfig} deviceStatus={detail} saving={saving} onSave={handleSaveConfig} onEditConfig={setEditConfig} />
                   ) : null}
                   {activeTab === "card" ? (
                     <CardPolicyPanel deviceId={detail.id} iccid={detail.modem?.iccid} policy={cardPolicy} deviceOnline={detailOnline} onPolicyChanged={handlePolicyChanged} onToggleRoamingData={handleToggleRoamingData} onOpenEsim={() => handleTabChange("esim")} wifiCallingOnly={isReader} />

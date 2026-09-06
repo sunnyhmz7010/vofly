@@ -64,7 +64,7 @@ export default function KnowledgeBasePage() {
                 isDesktop && "border-r border-gray-100 dark:border-white/10",
               )}
             >
-              <div className="border-b border-gray-100 p-4 dark:border-white/10">
+              <div className="flex h-16 items-center border-b border-gray-100 px-4 dark:border-white/10">
                 <div className="text-xs font-bold uppercase tracking-wider text-gray-500">{t("文章")}</div>
               </div>
               <div className="space-y-1 overflow-auto p-3">
@@ -91,22 +91,20 @@ export default function KnowledgeBasePage() {
             <div className="flex min-h-0 flex-col">
               {article ? (
                 <>
-                  <div className="border-b border-gray-100 p-4 dark:border-white/10">
-                    <div className="flex items-center gap-3">
-                      {!isDesktop ? (
-                        <button
-                          type="button"
-                          aria-label={t("返回")}
-                          onClick={() => selectArticle("")}
-                          className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-black/5 hover:text-gray-700 dark:hover:bg-white/10 dark:hover:text-gray-200"
-                        >
-                          <ArrowLeftRegular className="h-4 w-4" />
-                        </button>
-                      ) : null}
-                      <h2 className="min-w-0 truncate text-base font-bold text-gray-900 dark:text-gray-100">
-                        {article.title}
-                      </h2>
-                    </div>
+                  <div className="flex h-16 items-center gap-3 border-b border-gray-100 px-4 dark:border-white/10">
+                    {!isDesktop ? (
+                      <button
+                        type="button"
+                        aria-label={t("返回")}
+                        onClick={() => selectArticle("")}
+                        className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-black/5 hover:text-gray-700 dark:hover:bg-white/10 dark:hover:text-gray-200"
+                      >
+                        <ArrowLeftRegular className="h-4 w-4" />
+                      </button>
+                    ) : null}
+                    <h2 className="min-w-0 truncate text-base font-bold text-gray-900 dark:text-gray-100">
+                      {article.title}
+                    </h2>
                   </div>
                   <div className="min-h-0 flex-1 overflow-auto p-5">
                     <div className="mx-auto max-w-3xl">
