@@ -113,7 +113,7 @@ export function ThreadPanel(props: ThreadPanelProps) {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-col">
-      <div className="flex items-center justify-between gap-3 border-b border-gray-100 p-4 dark:border-white/10">
+      <div className="flex h-16 items-center justify-between gap-3 border-b border-gray-100 px-4 dark:border-white/10">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             {isMobile && activeThread ? (

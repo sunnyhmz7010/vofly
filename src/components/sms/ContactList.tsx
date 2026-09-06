@@ -51,18 +51,25 @@ export function ContactList(props: ContactListProps) {
 
   return (
     <div className={cx("flex min-h-0 min-w-0 flex-col", isDesktop && "border-r border-gray-100 dark:border-white/10")}>
-      <div className="border-b border-gray-100 p-4 dark:border-white/10">
-        <div className="space-y-3">
-          {isMobile && (
+      <div className={cx("border-b border-gray-100 dark:border-white/10", isDesktop ? "flex h-16 items-center px-4" : "p-4")}>
+        {isMobile ? (
+          <div className="w-full space-y-3">
             <Select value={selectedDevice} onChange={onSelectDevice} options={deviceOptions} placeholder={t("选择设备")} />
-          )}
+            <Input
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder={t("搜索联系人/内容")}
+              prefix={<SearchRegular />}
+            />
+          </div>
+        ) : (
           <Input
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={t("搜索联系人/内容")}
             prefix={<SearchRegular />}
           />
-        </div>
+        )}
       </div>
       {loading && contacts.length === 0 ? (
         <ListSkeleton rows={10} />

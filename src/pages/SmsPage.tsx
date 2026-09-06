@@ -622,7 +622,7 @@ export default function SmsPage() {
           <div className="flex items-center gap-2">
             <RefreshButton loading={contactsLoading} onClick={refreshAll} />
             <Button variant="primary" onClick={openNewSms} className="font-bold !border-0" icon={<AddRegular />}>
-              {t("发送测试短信")}
+              {t("发送短信")}
             </Button>
           </div>
         }
@@ -658,7 +658,7 @@ export default function SmsPage() {
         <div className="sms-main-layout">
           {isDesktop ? (
             <div className="flex flex-col border-r border-gray-100 dark:border-white/10">
-              <div className="border-b border-gray-100 p-4 dark:border-white/10">
+              <div className="flex h-16 items-center border-b border-gray-100 px-4 dark:border-white/10">
                 <div className="text-xs font-bold uppercase tracking-wider text-gray-500">{t("设备")}</div>
               </div>
               <div className="space-y-1 overflow-auto p-3">

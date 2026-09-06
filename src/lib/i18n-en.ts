@@ -691,7 +691,6 @@ export const EN_DICT: Record<string, string> = {
 
   // ---- 短信检测 ----
   短信功能检测: "SMS Function Test",
-  发送测试短信: "Send Test SMS",
   全部设备: "All Devices",
   暂无可用设备: "No devices available",
   "发送失败：": "Send failed: ",
@@ -709,7 +708,6 @@ export const EN_DICT: Record<string, string> = {
   操作: "Actions",
   "搜索联系人/内容": "Search contacts/content",
   暂无会话: "No conversations",
-  "等待设备收到测试短信，或点击“发送测试短信”": 'Wait for a test message, or click "Send Test SMS"',
   发送短信: "Send Message",
   发送设备: "Sending Device",
   目标号码: "Recipient Number",
