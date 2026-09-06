@@ -144,7 +144,7 @@ export function DeviceConfigTab({ editConfig, deviceStatus, saving, onSave, onEd
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-bold text-gray-800 dark:text-gray-100">{t("设备运行模式")}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
+                <div className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
                   {isMbim
                     ? t("MBIM 负责数据会话；AT 负责 SIM/eSIM、射频、短信、通话和终端指令")
                     : isQmi

@@ -85,7 +85,7 @@ export function CellularIMSConfigCard({ deviceId, deviceOnline }: CellularIMSCon
   };
 
   return (
-    <div className="ui-panel-muted space-y-3 p-4">
+    <div className="ui-panel-muted space-y-2 p-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="text-sm font-bold text-gray-800 dark:text-gray-100">{t("蜂窝 IMS 模组配置")}</div>
