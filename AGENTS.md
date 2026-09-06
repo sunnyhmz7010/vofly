@@ -88,7 +88,7 @@ vofly/
 
 ### 路由与页面
 
-- 认证内路由：`/`（仪表盘）、`/devices/*`、`/phone`（通话）、`/sms`、`/proxy`、`/export-proxy`（条件显示）、`/knowledge`（知识库，旧 `/query-center` 与 `/commands` 保留兼容跳转）、`/automatic-tasks`、`/extensions/:pluginId/:contributionId`、`/logs`、`/settings`；独立路由 `/login`、`/qr-receive`（免登录离线扫码接收页）。
+- 认证内路由：`/`（仪表盘）、`/devices/*`、`/phone`（通话）、`/sms`、`/proxy`、`/export-proxy`（条件显示）、`/knowledge`（知识库）、`/automatic-tasks`、`/extensions/:pluginId/:contributionId`、`/logs`、`/settings`；独立路由 `/login`、`/qr-receive`（免登录离线扫码接收页）。
 - 新增页面：`pages/` 建组件 → `App.tsx` 注册路由 → `AuthenticatedShell.tsx` 导航表加条目（label 写中文）→ `i18n-en.ts` 补词条。侧边栏顺序有守卫测试锁定（短信在通话之前）。
 
 ### 样式与主题

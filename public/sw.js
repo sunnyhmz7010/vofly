@@ -2,7 +2,7 @@
 // 仅服务 /qr-receive 扫码场景：应用外壳 + 构建产物采用缓存优先，后台静默更新；
 // 其余请求一律直连网络。更新 CACHE_VERSION 可强制刷新旧缓存。
 
-const CACHE_VERSION = 'vofly-qr-receive-v3'
+const CACHE_VERSION = 'vofly-qr-receive-v4'
 const SHELL_URLS = ['/', '/index.html', '/favicon-32.png']
 
 self.addEventListener('install', (event) => {

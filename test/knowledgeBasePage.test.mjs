@@ -26,9 +26,8 @@ test("knowledge base replaces the query center route and navigation", async () =
   const shell = await source("src/components/shell/AuthenticatedShell.tsx");
 
   assert.match(app, /path="knowledge" element=\{<KnowledgeBasePage \/>\}/);
-  // 旧入口保留兼容跳转
-  assert.match(app, /path="query-center" element=\{<Navigate to="\/knowledge" replace \/>\}/);
-  assert.match(app, /path="commands" element=\{<Navigate to="\/knowledge" replace \/>\}/);
+  // 不保留旧入口兼容跳转，全新安装直接使用新路由
+  assert.doesNotMatch(app, /query-center|"commands"/);
   assert.doesNotMatch(app, /QueryCenterPage/);
   assert.match(shell, /\{ to: "\/knowledge", label: "知识库", icon: BookRegular \}/);
   assert.doesNotMatch(shell, /query-center|查询中心/);

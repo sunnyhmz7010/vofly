@@ -88,9 +88,6 @@ function AppRoot() {
           <Route path="export-proxy" element={<ExportProxyPage />} />
           <Route path="sms" element={<SmsPage />} />
           <Route path="knowledge" element={<KnowledgeBasePage />} />
-          {/* 查询中心已重构为知识库，旧入口只保留兼容跳转 */}
-          <Route path="query-center" element={<Navigate to="/knowledge" replace />} />
-          <Route path="commands" element={<Navigate to="/knowledge" replace />} />
           <Route path="automatic-tasks" element={<AutomaticTasksPage />} />
           <Route path="extensions/:pluginId/:contributionId" element={<ExtensionPage />} />
           <Route path="logs" element={<LogsPage />} />
