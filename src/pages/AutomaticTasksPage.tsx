@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AddRegular,
+  CalendarClockRegular,
   DeleteRegular,
   EditRegular,
   PlayRegular,
@@ -161,6 +162,7 @@ export default function AutomaticTasksPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<TaskForm>(() => emptyForm());
   const [saving, setSaving] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [busy, setBusy] = useState(0);
   // Refs mirror the runs page/pageSize so the 5s poll reloads the page the user
   // is actually looking at instead of snapping back to page 1 on every tick.
@@ -282,6 +284,16 @@ export default function AutomaticTasksPage() {
   const deviceByID = useMemo(() => new Map(devices.map((device) => [device.id, device])), [devices]);
   const taskByID = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
 
+  const previewRuns = useMemo(() => {
+    const interval = Math.floor(Number(form.intervalDays));
+    if (!form.startDate || !form.runTime || !Number.isFinite(interval) || interval < 1) return null;
+    const [year, month, day] = form.startDate.split("-").map(Number);
+    const [hour, minute] = form.runTime.split(":").map(Number);
+    const first = new Date(year, month - 1, day, hour, minute);
+    if (Number.isNaN(first.getTime())) return null;
+    return Array.from({ length: 5 }, (_, index) => new Date(year, month - 1, day + index * interval, hour, minute));
+  }, [form.startDate, form.runTime, form.intervalDays]);
+
   function edit(task?: AutomaticTask) {
     const deviceId = task?.deviceId || devices[0]?.id || "";
     const selectedDevice = devices.find((device) => device.id === deviceId);
@@ -307,6 +319,7 @@ export default function AutomaticTasksPage() {
 	  next = { ...next, taskType: next.taskType === "public_ip" || next.taskType === "cellular_attach" ? "sms" : next.taskType, environment: "vowifi" };
 	}
     setForm(next);
+    setShowPreview(false);
     setOpen(true);
     void loadProfiles(deviceId, next.profileIccid, currentDeviceICCID(selectedDevice));
   }
@@ -540,15 +553,33 @@ export default function AutomaticTasksPage() {
           {form.taskType === "call" ? <div><label className={fieldLabel}>{t("自动挂断")}</label><Input type="number" min={1} max={600} value={form.durationSeconds} suffix="s" onChange={(event) => setForm({ ...form, durationSeconds: Number(event.target.value) })} /></div> : null}
           {form.taskType === "sms" ? <div className="md:col-span-2"><label className={fieldLabel}>{t("短信内容")}</label><Textarea rows={4} value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} /></div> : null}
            {form.taskType === "public_ip" ? <div className="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">{t("该任务固定使用基站直连和自动选网；执行时会开启漫游数据，并通过模块接口访问 ipinfo.io。")}</div> : null}
-           {form.taskType === "cellular_attach" ? <div className="md:col-span-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300">{t("该任务固定使用基站直连和自动选网；执行时只连接基站，不开启漫游流量。")}</div> : null}
+           {form.taskType === "cellular_attach" ? <div className="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">{t("该任务固定使用基站直连和自动选网；执行时只连接基站，不开启漫游流量。")}</div> : null}
 
           <div><label className={fieldLabel}>{t("首次执行日期")}</label><Input type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} /></div>
           <div><label className={fieldLabel}>{t("执行时间")}</label><Input type="time" value={form.runTime} onChange={(event) => setForm({ ...form, runTime: event.target.value })} /></div>
-          <div><label className={fieldLabel}>{t("执行周期")}</label><Input type="number" min={1} max={365} value={form.intervalDays} suffix={t("天")} onChange={(event) => setForm({ ...form, intervalDays: Number(event.target.value) })} /></div>
+          <div>
+            <label className={fieldLabel}>{t("执行周期")}</label>
+            <div className="flex gap-2">
+              <Input className="min-w-0 flex-1" type="number" min={1} max={365} value={form.intervalDays} prefix={t("每")} suffix={t("天")} onChange={(event) => setForm({ ...form, intervalDays: Number(event.target.value) })} />
+              <Button icon={<CalendarClockRegular />} onClick={() => setShowPreview((current) => !current)}>{showPreview ? t("收起") : t("预览")}</Button>
+            </div>
+          </div>
           <div><label className={fieldLabel}>{t("任务失败重试次数")}</label><Select value={String(form.retryCount)} onChange={(value) => setForm({ ...form, retryCount: Number(value) })} options={Array.from({ length: 11 }, (_, count) => ({ value: String(count), label: t("{count} 次").replace("{count}", String(count)) }))} /></div>
           <div className="flex items-center justify-between rounded-lg border border-gray-200 p-3 dark:border-white/10"><div><div className="text-sm font-semibold">{t("启用任务")}</div><div className="text-xs text-gray-400">{t("停用后不会进入执行队列")}</div></div><Switch checked={form.enabled} onChange={(enabled) => setForm({ ...form, enabled })} /></div>
           <div className="flex items-center justify-between rounded-lg border border-gray-200 p-3 dark:border-white/10"><div><div className="text-sm font-semibold">{t("完成后推送通知")}</div><div className="text-xs text-gray-400">{t("发送到全部已配置并启用的通知渠道")}</div></div><Switch checked={form.notify} onChange={(notify) => setForm({ ...form, notify })} /></div>
         </div>
+        {showPreview ? (
+          <div className="mt-4 rounded-lg border border-gray-200 p-3 dark:border-white/10">
+            <div className="mb-1.5 text-sm font-semibold">{t("近 5 次执行时间")}</div>
+            {previewRuns ? (
+              <ol className="list-inside list-decimal space-y-0.5 text-sm text-gray-600 dark:text-gray-300">
+                {previewRuns.map((date) => <li key={date.getTime()}>{formatDateTime(date.toISOString())}</li>)}
+              </ol>
+            ) : (
+              <div className="text-sm text-gray-400">{t("请填写有效的首次执行日期、执行时间和执行周期")}</div>
+            )}
+          </div>
+        ) : null}
         <div className="mt-5 flex justify-end gap-2"><Button onClick={closeEditor}>{t("取消")}</Button><Button variant="primary" loading={saving} onClick={() => void save()}>{t("保存")}</Button></div>
       </Modal>
     </div>
