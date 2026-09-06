@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   BoardRegular,
+  BookRegular,
   CallRegular,
   DocumentTextRegular,
   GlobeRegular,
@@ -10,7 +11,6 @@ import {
   PanelLeftContractRegular,
   PanelLeftExpandRegular,
   RouterRegular,
-  SearchRegular,
   SettingsRegular,
   SignOutRegular,
 } from "@fluentui/react-icons";
@@ -32,7 +32,7 @@ const NAV = [
   { to: "/sms", label: "短信", icon: MailRegular },
   { to: "/phone", label: "通话", icon: CallRegular },
   { to: "/proxy", label: "代理管理", icon: GlobeRegular },
-  { to: "/query-center", label: "查询中心", icon: SearchRegular },
+  { to: "/knowledge", label: "知识库", icon: BookRegular },
   { to: "/automatic-tasks", label: "自动任务", icon: SendClockRegular },
   { to: "/logs", label: "实时日志", icon: DocumentTextRegular },
   { to: "/settings", label: "系统设置", icon: SettingsRegular },

@@ -1,0 +1,119 @@
+// 知识库内置文章：标题 + 正文，纯前端静态数据，更新内容需随版本发布。
+// 正文用空行分段；以 "- " 开头的行会渲染为列表项。
+
+export interface KnowledgeArticle {
+  id: string;
+  title: string;
+  content: string;
+}
+
+export const KNOWLEDGE_ARTICLES: KnowledgeArticle[] = [
+  {
+    id: "automatic-tasks",
+    title: "自动任务类型说明",
+    content: `自动任务按设备排队周期执行，执行前会校验目标 SIM / eSIM Profile，失败可按配置重试并推送通知。
+
+当前支持六种任务类型：
+- 发送短信：通过 VoWiFi 或基站直连向指定号码发送短信，适合保号与套餐操作。
+- 拨打电话并自动挂断：拨打指定号码并在设定秒数后自动挂断。
+- 开启漫游流量并获取一次公网 IP：固定使用基站直连与自动选网，执行时开启漫游数据并通过模块接口访问 ipinfo.io。
+- 仅连接基站：固定使用基站直连，只驻网不开启漫游流量。
+- 余额自动查询：到期后自动切换到目标卡并执行一次余额查询，完成后保持目标卡激活并恢复其网络策略；查询结果异步写入余额变动历史。
+- 续费提醒：到期后仅发送续费/保号提醒通知，不执行查询，也不切换 Profile。
+
+执行环境分 VoWiFi 与基站直连两种；余额类任务固定使用基站直连。执行周期以「每 N 天 + 首次执行时间」表达，保存前可用预览确认近 5 次执行时间。
+
+USB SIM 读卡器设备仅支持 VoWiFi 环境下的短信和通话任务。`,
+  },
+  {
+    id: "balance-history",
+    title: "余额查询与余额变动历史",
+    content: `余额查询通过运营商规则发起：系统按当前卡识别运营商（IMSI 离线解析），匹配内置或自定义的 USSD / 短信查询规则后发送查询指令，并等待回复解析余额。
+
+余额查询的两个入口：
+- 自动任务「余额自动查询」：按周期自动切卡查询，执行记录见自动任务页的「最近执行记录」。
+- 失败的任务会记录错误原因（设备离线、规则缺失、查询进行中等）。
+
+查询结果统一写入「余额变动历史」（自动任务页第三个列表框），包含每次查询的状态、解析金额、币种以及与上一次的增减变化。等待运营商回复的查询会显示「等待回复」，超时未回复的记录标记为「已超时」。`,
+  },
+  {
+    id: "esim-profiles",
+    title: "eSIM Profile 管理",
+    content: `设备详情页的 eSIM 标签页管理 eUICC 芯片与 Profile：
+- 下载：通过 LPA 流程从运营商 SMDP/SMDS 服务器下载 Profile，下载地址支持二维码或手输激活码。
+- 切换：切换目标 Profile 时会短暂进入飞行模式并在完成后自动恢复网络；被切换出去的 Profile 保持已安装状态。
+- 删除：删除前请确认该 Profile 不再需要，删除操作不可恢复。
+
+系统用 ICCID + eUICC 的 ISD-R AID（芯片级标识）唯一区分同一 ICCID 下载在多颗芯片上的 Profile；自动任务与余额查询按同样的键定位目标卡。设备当前激活卡未出现在 eSIM 清单中时（实体 SIM 设备），按实体卡处理。`,
+  },
+  {
+    id: "card-policy",
+    title: "卡策略与漫游",
+    content: `每张卡可以保存独立的网络策略（按 ICCID 记忆），在设备切换到该卡后自动应用：
+- 漫游数据：开启后建立蜂窝数据连接。
+- VoWiFi：开启后优先通过 IMS 注册 VoWiFi，用于短信与通话。
+- 飞行模式：保持无线电关闭。
+
+三项策略互斥：漫游数据、VoWiFi 与飞行模式不能同时开启，界面会按互斥规则禁用冲突项。自动任务与余额查询执行时会临时套用所需策略（如基站直连），完成后恢复目标卡保存的策略，不会破坏你的既有设置。`,
+  },
+  {
+    id: "execution-environments",
+    title: "VoWiFi 与基站直连",
+    content: `自动任务的两种执行环境决定了短信、通话走哪条通道：
+- VoWiFi：通过 IMS 在 WiFi 网络上收发短信与通话，不消耗漫游流量，适合保号短信与来电。要求模块已配置可用的 IMS 与 WiFi 环境。
+- 基站直连：开启蜂窝无线电并注册运营商网络（漫游注册可能需要数分钟），适合需要真实蜂窝环境的任务，如获取漫游公网 IP、仅连接基站、余额自动查询。
+
+获取漫游公网 IP 的任务会短暂建立数据连接，查询完成后按卡策略恢复原网络状态。`,
+  },
+  {
+    id: "proxy",
+    title: "代理管理与设备绑定",
+    content: `代理管理页维护上游代理（含认证、地区）与设备绑定：
+- 上游代理：添加 SOCKS/HTTP 上游，支持按地区与运营商过滤出口。
+- 设备绑定：将 eSIM Profile 绑定到上游代理，绑定后该卡的代理流量走指定上游。
+- 国家规则：按国家/地区维度配置出口规则。
+- 导出代理：将已绑定的设备以代理端点的形式导出给下游使用。
+
+代理端口按设备配置；修改绑定后代理会自动重载，无需手动重启。`,
+  },
+  {
+    id: "usb-sim-reader",
+    title: "USB SIM 读卡器",
+    content: `USB SIM 读卡器（pcsc 通道）用于读卡与卡管理操作：
+- 仅支持 VoWiFi 环境下的发送短信与拨打电话任务；获取公网 IP、仅连接基站、余额自动查询、续费提醒等需要蜂窝无线电的任务不可用。
+- 读卡器没有独立无线电，短信与通话依赖绑定的 VoWiFi 通道。
+- eSIM 传输通道为 pcsc 时，Profile 管理操作同样通过读卡器完成。
+
+在自动任务编辑里为读卡器设备选择不支持的类型时，系统会自动回退到短信任务并提示限制。`,
+  },
+  {
+    id: "notifications",
+    title: "通知渠道",
+    content: `系统设置页可配置多个通知渠道：Telegram、QQ、企业微信（应用与机器人）、飞书（应用与机器人）、邮件、Webhook、Bark、PushPlus、MeoW 等。
+
+- 任务完成通知：自动任务执行成功或失败后推送到全部已启用渠道；每个任务可单独关闭。
+- 交互式渠道（微信、企业微信机器人、QQ、飞书机器人）通过扫码绑定向导完成连接。
+- 单个渠道发送失败只记录日志，不影响其他渠道的推送。
+
+所有通知使用统一分发边界：新增渠道类型无需在任务侧单独配置。`,
+  },
+];
+
+// knowledgeArticleBlocks 把正文拆成渲染块：段落或列表。
+export interface KnowledgeArticleBlock {
+  kind: "paragraph" | "list";
+  items: string[];
+}
+
+export function knowledgeArticleBlocks(content: string): KnowledgeArticleBlock[] {
+  const blocks: KnowledgeArticleBlock[] = [];
+  for (const chunk of content.split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean)) {
+    const lines = chunk.split("\n").map((line) => line.trim()).filter(Boolean);
+    if (lines.length > 0 && lines.every((line) => line.startsWith("- "))) {
+      blocks.push({ kind: "list", items: lines.map((line) => line.slice(2).trim()) });
+    } else {
+      blocks.push({ kind: "paragraph", items: [lines.join("\n")] });
+    }
+  }
+  return blocks;
+}

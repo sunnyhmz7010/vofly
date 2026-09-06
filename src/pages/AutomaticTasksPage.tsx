@@ -8,7 +8,7 @@ import {
   SendClockRegular,
 } from "@fluentui/react-icons";
 import { api, apiMessage } from "../api";
-import type { DeviceListItem, DevicesResponse } from "../types";
+import type { BalanceQuery, DeviceListItem, DevicesResponse } from "../types";
 import type { EsimProfileGroup } from "../components/devices/types";
 import {
   Button,
@@ -35,6 +35,7 @@ import {
   createAutomaticTaskProfileRequestGuard,
   selectAutomaticTaskProfileOption,
 } from "../lib/automaticTaskProfiles";
+import { balanceChangeText, balanceStateTag } from "../lib/balancePresentation";
 
 type TaskType = AutomaticTaskType;
 type TaskEnvironment = AutomaticTaskEnvironment;
@@ -136,6 +137,11 @@ function emptyForm(deviceId = ""): TaskForm {
   };
 }
 
+// USB SIM 读卡器没有独立无线电，仅支持 VoWiFi 短信与通话任务。
+function taskTypeSupportedOnReader(taskType: TaskType) {
+  return taskType === "sms" || taskType === "call";
+}
+
 function formatDateTime(value?: string) {
   if (!value || value.startsWith("0001-")) return "--";
   const date = new Date(value);
@@ -155,6 +161,7 @@ export default function AutomaticTasksPage() {
   const [runsTotal, setRunsTotal] = useState(0);
   const [runsPage, setRunsPage] = useState(1);
   const [runsPageSize, setRunsPageSize] = useState(20);
+  const [balanceHistory, setBalanceHistory] = useState<BalanceQuery[]>([]);
   const [devices, setDevices] = useState<DeviceListItem[]>([]);
   const [profiles, setProfiles] = useState<ProfileOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -214,15 +221,27 @@ export default function AutomaticTasksPage() {
     [fetchRuns],
   );
 
+  // 全局余额变动历史：来自全部设备的余额查询记录，最近 20 条。
+  const fetchBalanceHistory = useCallback(async () => {
+    try {
+      const list = await api<BalanceQuery[]>("/query-center/balance-queries?limit=20");
+      setBalanceHistory(Array.isArray(list) ? list : []);
+    } catch (error) {
+      message.error(apiMessage(error));
+    }
+  }, []);
+
   useEffect(() => {
     void load(true);
     void reloadRuns();
+    void fetchBalanceHistory();
     const timer = window.setInterval(() => {
       void load();
       void reloadRuns();
+      void fetchBalanceHistory();
     }, 5000);
     return () => window.clearInterval(timer);
-  }, [load, reloadRuns]);
+  }, [load, reloadRuns, fetchBalanceHistory]);
 
   useEffect(() => () => profileRequestGuardRef.current.invalidate(), []);
 
@@ -316,7 +335,7 @@ export default function AutomaticTasksPage() {
       durationSeconds: task.payload?.durationSeconds || 30,
     } : emptyForm(deviceId);
 	if (selectedDevice?.deviceType === "usb_sim_reader") {
-	  next = { ...next, taskType: next.taskType === "public_ip" || next.taskType === "cellular_attach" ? "sms" : next.taskType, environment: "vowifi" };
+	  next = { ...next, taskType: taskTypeSupportedOnReader(next.taskType) ? next.taskType : "sms", environment: "vowifi" };
 	}
     setForm(next);
     setShowPreview(false);
@@ -329,7 +348,7 @@ export default function AutomaticTasksPage() {
 	const reader = selectedDevice?.deviceType === "usb_sim_reader";
     setForm((current) => ({
 	  ...current, deviceId, profileIccid: "", profileAid: "",
-	  taskType: reader && (current.taskType === "public_ip" || current.taskType === "cellular_attach") ? "sms" : current.taskType,
+	  taskType: reader && !taskTypeSupportedOnReader(current.taskType) ? "sms" : current.taskType,
 	  environment: reader ? "vowifi" : current.environment,
 	}));
     void loadProfiles(deviceId, "", currentDeviceICCID(selectedDevice));
@@ -341,7 +360,7 @@ export default function AutomaticTasksPage() {
   }
 
   function chooseTaskType(taskType: TaskType) {
-	if (deviceByID.get(form.deviceId)?.deviceType === "usb_sim_reader" && (taskType === "public_ip" || taskType === "cellular_attach")) return;
+	if (deviceByID.get(form.deviceId)?.deviceType === "usb_sim_reader" && !taskTypeSupportedOnReader(taskType)) return;
     setForm((current) => ({
       ...current,
       taskType,
@@ -354,7 +373,7 @@ export default function AutomaticTasksPage() {
     if (!form.deviceId) return message.warning(t("请选择设备"));
     if (!form.profileIccid) return message.warning(t("请选择 SIM 卡或 eSIM Profile"));
 	const taskEnvironment = normalizeAutomaticTaskEnvironment(form.taskType, form.environment);
-	if (deviceByID.get(form.deviceId)?.deviceType === "usb_sim_reader" && (taskEnvironment !== "vowifi" || form.taskType === "public_ip" || form.taskType === "cellular_attach")) {
+	if (deviceByID.get(form.deviceId)?.deviceType === "usb_sim_reader" && (taskEnvironment !== "vowifi" || !taskTypeSupportedOnReader(form.taskType))) {
 	  return message.warning(t("USB SIM读卡器仅支持VoWiFi短信和通话任务"));
 	}
 	if (automaticTaskNeedsPhone(form.taskType) && !form.phone.trim()) return message.warning(t("请输入号码"));
@@ -436,7 +455,7 @@ export default function AutomaticTasksPage() {
     }
   }
 
-  const taskTypeLabel = (value: TaskType) => ({ sms: t("发送短信"), call: t("拨打电话并自动挂断"), public_ip: t("获取漫游公网 IP"), cellular_attach: t("仅连接基站") })[value];
+  const taskTypeLabel = (value: TaskType) => ({ sms: t("发送短信"), call: t("拨打电话并自动挂断"), public_ip: t("获取漫游公网 IP"), cellular_attach: t("仅连接基站"), balance_query: t("余额自动查询"), renewal_reminder: t("续费提醒") })[value];
   const environmentLabel = (value: TaskEnvironment) => value === "vowifi" ? "VoWiFi" : t("基站直连");
 	const selectedTaskDeviceIsReader = deviceByID.get(form.deviceId)?.deviceType === "usb_sim_reader";
 	const taskTypeOptions = [
@@ -445,11 +464,14 @@ export default function AutomaticTasksPage() {
 	  ...(!selectedTaskDeviceIsReader ? [
 	    { value: "public_ip", label: t("开启漫游流量并获取一次公网 IP") },
 	    { value: "cellular_attach", label: t("仅连接基站（不开启漫游流量）") },
+	    { value: "balance_query", label: t("余额自动查询") },
+	    { value: "renewal_reminder", label: t("续费提醒") },
 	  ] : []),
 	];
 	const environmentOptions = selectedTaskDeviceIsReader
 	  ? [{ value: "vowifi", label: "VoWiFi" }]
 	  : [{ value: "vowifi", label: "VoWiFi" }, { value: "cellular", label: t("基站直连（自动选网）") }];
+	const environmentSelectDisabled = form.taskType === "public_ip" || form.taskType === "cellular_attach" || form.taskType === "balance_query" || form.taskType === "renewal_reminder" || selectedTaskDeviceIsReader;
 
   return (
     <div className="mx-auto max-w-7xl">
@@ -540,13 +562,39 @@ export default function AutomaticTasksPage() {
         ) : null}
       </div>
 
+      <div className="ui-card mt-5 overflow-hidden">
+        <div className="border-b border-gray-100 px-5 py-4 dark:border-white/10"><h3 className="font-bold">{t("余额变动历史")}</h3></div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[860px] text-left text-sm">
+            <thead className="bg-gray-50/70 text-xs text-gray-500 dark:bg-white/[0.025]"><tr><th className="px-4 py-3">{t("时间")}</th><th className="px-4 py-3">{t("设备")}</th><th className="px-4 py-3">{t("卡")}</th><th className="px-4 py-3">{t("余额")}</th><th className="px-4 py-3">{t("变化")}</th><th className="px-4 py-3">{t("状态")}</th></tr></thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-white/10">
+              {balanceHistory.map((item) => {
+                const tag = balanceStateTag(item.state);
+                const change = balanceChangeText(item, t);
+                return (
+                  <tr key={item.id}>
+                    <td className="px-4 py-3 text-xs">{formatDateTime(item.completedAt || item.startedAt)}</td>
+                    <td className="px-4 py-3">{deviceByID.get(item.deviceId)?.name || item.deviceId}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-gray-400">…{item.iccid.slice(-8)}</td>
+                    <td className="px-4 py-3">{item.amount ? `${item.amount} ${item.currency || ""}` : item.summary || item.error || "--"}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{change || "--"}</td>
+                    <td className="px-4 py-3"><Tag type={tag.type}>{t(tag.text)}</Tag></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {!balanceHistory.length ? <div className="p-8 text-center text-sm text-gray-400">{t("暂无余额变动记录")}</div> : null}
+      </div>
+
       <Modal open={open} onClose={closeEditor} title={form.id ? t("编辑自动任务") : t("添加自动任务")} width="max-w-3xl">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2"><label className={fieldLabel}>{t("任务名称")}</label><Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder={t("例如：每日短信保活")} /></div>
           <div><label className={fieldLabel}>{t("设备")}</label><Select value={form.deviceId} onChange={chooseDevice} options={devices.map((device) => ({ value: device.id, label: `${device.name || device.id} (${device.id})` }))} /></div>
           <div><label className={fieldLabel}>{t("SIM / Profile")}</label><Select value={form.profileIccid} onChange={chooseProfile} disabled={profileLoading || !form.deviceId} placeholder={profileLoading ? t("读取 Profile 中...") : t("请选择 SIM / Profile")} options={profiles.map((profile) => ({ value: profile.iccid, label: profile.label }))} /></div>
           <div><label className={fieldLabel}>{t("任务类型")}</label><Select value={form.taskType} onChange={(value) => chooseTaskType(value as TaskType)} options={taskTypeOptions} /></div>
-           <div><label className={fieldLabel}>{t("执行环境")}</label><Select value={form.environment} onChange={(value) => setForm({ ...form, environment: value as TaskEnvironment })} disabled={form.taskType === "public_ip" || form.taskType === "cellular_attach" || selectedTaskDeviceIsReader} options={environmentOptions} /></div>
+           <div><label className={fieldLabel}>{t("执行环境")}</label><Select value={form.environment} onChange={(value) => setForm({ ...form, environment: value as TaskEnvironment })} disabled={environmentSelectDisabled} options={environmentOptions} /></div>
 		  {selectedTaskDeviceIsReader ? <div className="md:col-span-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300">{t("USB SIM读卡器仅支持VoWiFi短信和通话任务")}</div> : null}
 
            {automaticTaskNeedsPhone(form.taskType) ? <div><label className={fieldLabel}>{t("号码")}</label><Input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} placeholder="+447700900123" /></div> : null}
@@ -554,6 +602,8 @@ export default function AutomaticTasksPage() {
           {form.taskType === "sms" ? <div className="md:col-span-2"><label className={fieldLabel}>{t("短信内容")}</label><Textarea rows={4} value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} /></div> : null}
            {form.taskType === "public_ip" ? <div className="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">{t("该任务固定使用基站直连和自动选网；执行时会开启漫游数据，并通过模块接口访问 ipinfo.io。")}</div> : null}
            {form.taskType === "cellular_attach" ? <div className="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">{t("该任务固定使用基站直连和自动选网；执行时只连接基站，不开启漫游流量。")}</div> : null}
+           {form.taskType === "balance_query" ? <div className="md:col-span-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300">{t("到期后自动切换到目标卡并执行一次余额查询，完成后保持目标卡激活并恢复其网络策略。查询结果异步写入余额变动历史。")}</div> : null}
+           {form.taskType === "renewal_reminder" ? <div className="md:col-span-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300">{t("到期后仅发送续费/保号提醒通知，不执行查询，也不切换 Profile。")}</div> : null}
 
           <div><label className={fieldLabel}>{t("首次执行日期")}</label><Input type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} /></div>
           <div><label className={fieldLabel}>{t("执行时间")}</label><Input type="time" value={form.runTime} onChange={(event) => setForm({ ...form, runTime: event.target.value })} /></div>
