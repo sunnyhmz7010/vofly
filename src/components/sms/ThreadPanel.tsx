@@ -17,6 +17,7 @@ export interface ThreadPanelProps {
   isMobile: boolean;
   isDesktop: boolean;
   selectedDevice: string;
+  deviceLabel: string;
   activeThread: SmsThread | null;
   canLoadMore: boolean;
   loadingMore: boolean;
@@ -73,6 +74,7 @@ export function ThreadPanel(props: ThreadPanelProps) {
     isMobile,
     isDesktop,
     selectedDevice,
+    deviceLabel,
     activeThread,
     canLoadMore,
     loadingMore,
@@ -97,12 +99,11 @@ export function ThreadPanel(props: ThreadPanelProps) {
     onMsgPointerEnd,
   } = props;
 
-  const subtitle =
-    selectedDevice === "all"
-      ? activeThread && (activeThread.localPhone || activeThread.lastDeviceName)
-        ? tf("本机：{phone}", { phone: activeThread.localPhone || activeThread.lastDeviceName })
-        : t("全部设备")
-      : tf("设备：{device}", { device: selectedDevice });
+  const subtitle = activeThread?.localPhone
+    ? tf("接收号码：{phone}", { phone: activeThread.localPhone })
+    : selectedDevice === "all"
+      ? t("全部设备")
+      : tf("设备：{device}", { device: deviceLabel });
 
   function onComposerKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {

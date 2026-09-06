@@ -713,6 +713,7 @@ export default function SmsPage() {
               isMobile={isMobile}
               isDesktop={isDesktop}
               selectedDevice={selectedDevice}
+              deviceLabel={devices.find((d) => d.id === selectedDevice)?.name || selectedDevice}
               activeThread={activeThread}
               canLoadMore={!!activeThread && hasMore}
               loadingMore={loadingMore}

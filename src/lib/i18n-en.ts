@@ -1260,7 +1260,7 @@ export const EN_DICT: Record<string, string> = {
   "已锁定网络 {plmn}": "Locked to network {plmn}",
   "{items} 未就绪": "{items} not ready",
   "国家规则 — {name}": "Country Rules — {name}",
-  "本机：{phone}": "Local: {phone}",
+  "接收号码：{phone}": "Receiving number: {phone}",
   "设备：{device}": "Device: {device}",
   "确定删除实例 {id}？": "Delete instance {id}?",
   "确定对设备 {id} 执行 IP 轮换？": "Rotate the IP of device {id}?",
