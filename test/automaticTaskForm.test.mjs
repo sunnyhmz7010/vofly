@@ -13,9 +13,14 @@ const { normalizeAutomaticTaskEnvironment, automaticTaskNeedsPhone } = await imp
 test("cellular automatic task types always use the direct cellular environment", () => {
   assert.equal(normalizeAutomaticTaskEnvironment("public_ip", "vowifi"), "cellular");
   assert.equal(normalizeAutomaticTaskEnvironment("cellular_attach", "vowifi"), "cellular");
-  assert.equal(normalizeAutomaticTaskEnvironment("balance_query", "vowifi"), "cellular");
-  assert.equal(normalizeAutomaticTaskEnvironment("renewal_reminder", "vowifi"), "cellular");
   assert.equal(normalizeAutomaticTaskEnvironment("sms", "vowifi"), "vowifi");
+});
+
+test("balance and reminder tasks never declare a radio environment", () => {
+  assert.equal(normalizeAutomaticTaskEnvironment("balance_query", "cellular"), "none");
+  assert.equal(normalizeAutomaticTaskEnvironment("balance_query", "vowifi"), "none");
+  assert.equal(normalizeAutomaticTaskEnvironment("renewal_reminder", "cellular"), "none");
+  assert.equal(normalizeAutomaticTaskEnvironment("renewal_reminder", "vowifi"), "none");
 });
 
 test("cellular attach tasks do not require a phone payload", () => {

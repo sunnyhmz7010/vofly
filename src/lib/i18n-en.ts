@@ -1506,9 +1506,12 @@ export const EN_DICT: Record<string, string> = {
   "暂无余额变动记录": "No balance change records yet",
   "余额自动查询": "Balance auto query",
   "续费提醒": "Renewal reminder",
-  "到期后自动切换到目标卡并执行一次余额查询，完成后保持目标卡激活并恢复其网络策略。查询结果异步写入余额变动历史。":
-    "When due, switches to the target card and runs one balance query; the target card stays active and its saved network policy is restored afterwards. Results are written to the balance change history asynchronously.",
-  "到期后仅发送续费/保号提醒通知，不执行查询，也不切换 Profile。": "When due, only a renewal reminder is sent; no query runs and no Profile is switched.",
+  "该任务不涉及执行环境；到期后自动切换到目标卡并执行一次余额查询，完成后保持目标卡激活并恢复其网络策略。查询方式由内置运营商规则库决定，结果异步写入余额变动历史。":
+    "This task does not involve a radio environment. When due, it switches to the target card and runs one balance query; the target card stays active and its saved network policy is restored afterwards. The query method comes from the built-in carrier rule set, and results are written to the balance change history asynchronously.",
+  "该任务不涉及执行环境；到期后仅发送续费/保号提醒通知，不执行查询，也不切换 Profile。提醒内容会作为通知结果推送到渠道。": "This task does not involve a radio environment. When due, only a renewal reminder is sent; no query runs and no Profile is switched. The reminder content is delivered as the notification result.",
+  "不涉及": "N/A",
+  "提醒内容": "Reminder content",
+  "留空使用默认提醒文案；填写后作为通知结果发送": "Leave empty for the default reminder text; when filled, it is sent as the notification result",
   "余额": "Balance",
   "知识库": "Knowledge base",
   "文章": "Articles",

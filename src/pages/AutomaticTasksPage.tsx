@@ -463,7 +463,7 @@ export default function AutomaticTasksPage() {
   }
 
   const taskTypeLabel = (value: TaskType) => ({ sms: t("发送短信"), call: t("拨打电话并自动挂断"), public_ip: t("获取漫游公网 IP"), cellular_attach: t("仅连接基站"), balance_query: t("余额自动查询"), renewal_reminder: t("续费提醒") })[value];
-  const environmentLabel = (value: TaskEnvironment) => value === "vowifi" ? "VoWiFi" : t("基站直连");
+  const environmentLabel = (value: TaskEnvironment) => value === "vowifi" ? "VoWiFi" : value === "none" ? t("不涉及") : t("基站直连");
 	const selectedTaskDeviceIsReader = deviceByID.get(form.deviceId)?.deviceType === "usb_sim_reader";
 	const taskTypeOptions = [
 	  { value: "sms", label: t("发送短信") },
@@ -477,7 +477,9 @@ export default function AutomaticTasksPage() {
 	];
 	const environmentOptions = selectedTaskDeviceIsReader
 	  ? [{ value: "vowifi", label: "VoWiFi" }]
-	  : [{ value: "vowifi", label: "VoWiFi" }, { value: "cellular", label: t("基站直连（自动选网）") }];
+	  : form.taskType === "balance_query" || form.taskType === "renewal_reminder"
+	    ? [{ value: "none", label: t("不涉及") }]
+	    : [{ value: "vowifi", label: "VoWiFi" }, { value: "cellular", label: t("基站直连（自动选网）") }];
 	const environmentSelectDisabled = form.taskType === "public_ip" || form.taskType === "cellular_attach" || form.taskType === "balance_query" || form.taskType === "renewal_reminder" || selectedTaskDeviceIsReader;
 
   return (
@@ -514,7 +516,7 @@ export default function AutomaticTasksPage() {
                     <div className="mt-1 font-mono text-xs text-gray-400">…{task.profileIccid.slice(-8)}</div>
                   </td>
                   <td className="px-4 py-3">{taskTypeLabel(task.taskType)}</td>
-                  <td className="px-4 py-3"><Tag type={task.environment === "vowifi" ? "primary" : "warning"}>{environmentLabel(task.environment)}</Tag></td>
+                   <td className="px-4 py-3"><Tag type={task.environment === "vowifi" ? "primary" : task.environment === "none" ? "info" : "warning"}>{environmentLabel(task.environment)}</Tag></td>
                   <td className="px-4 py-3">{t("每 {days} 天").replace("{days}", String(task.intervalDays))} · {task.runTime}</td>
                   <td className="px-4 py-3 text-xs">{formatDateTime(task.nextRunAt)}</td>
                   <td className="px-4 py-3">
@@ -609,8 +611,9 @@ export default function AutomaticTasksPage() {
           {form.taskType === "sms" ? <div className="md:col-span-2"><label className={fieldLabel}>{t("短信内容")}</label><Textarea rows={4} value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} /></div> : null}
            {form.taskType === "public_ip" ? <div className="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">{t("该任务固定使用基站直连和自动选网；执行时会开启漫游数据，并通过模块接口访问 ipinfo.io。")}</div> : null}
            {form.taskType === "cellular_attach" ? <div className="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">{t("该任务固定使用基站直连和自动选网；执行时只连接基站，不开启漫游流量。")}</div> : null}
-           {form.taskType === "balance_query" ? <div className="md:col-span-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300">{t("到期后自动切换到目标卡并执行一次余额查询，完成后保持目标卡激活并恢复其网络策略。查询结果异步写入余额变动历史。")}</div> : null}
-           {form.taskType === "renewal_reminder" ? <div className="md:col-span-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300">{t("到期后仅发送续费/保号提醒通知，不执行查询，也不切换 Profile。")}</div> : null}
+           {form.taskType === "balance_query" ? <div className="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">{t("该任务不涉及执行环境；到期后自动切换到目标卡并执行一次余额查询，完成后保持目标卡激活并恢复其网络策略。查询方式由内置运营商规则库决定，结果异步写入余额变动历史。")}</div> : null}
+           {form.taskType === "renewal_reminder" ? <div className="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">{t("该任务不涉及执行环境；到期后仅发送续费/保号提醒通知，不执行查询，也不切换 Profile。提醒内容会作为通知结果推送到渠道。")}</div> : null}
+           {form.taskType === "renewal_reminder" ? <div className="md:col-span-2"><label className={fieldLabel}>{t("提醒内容")}</label><Textarea rows={4} value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} placeholder={t("留空使用默认提醒文案；填写后作为通知结果发送")} /></div> : null}
 
           <div><label className={fieldLabel}>{t("首次执行日期")}</label><Input type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} /></div>
           <div><label className={fieldLabel}>{t("执行时间")}</label><Input type="time" value={form.runTime} onChange={(event) => setForm({ ...form, runTime: event.target.value })} /></div>
