@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ArrowLeftRegular, BookRegular } from "@fluentui/react-icons";
+import { ArrowLeftRegular } from "@fluentui/react-icons";
 import { EmptyState, Markdown, PageHeader } from "../components/ui";
 import { KNOWLEDGE_ARTICLES } from "../lib/knowledgeArticles";
 import { useI18n } from "../lib/i18n";
@@ -74,16 +74,13 @@ export default function KnowledgeBasePage() {
                     type="button"
                     onClick={() => selectArticle(item.id)}
                     className={cx(
-                      "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all",
+                      "w-full truncate rounded-xl border px-3 py-2.5 text-left text-sm font-bold transition-all",
                       item.id === selectedId
-                        ? "border-indigo-200 bg-indigo-50/70 dark:border-indigo-500/30 dark:bg-indigo-500/10"
-                        : "border-transparent hover:bg-gray-50/60 dark:hover:bg-white/5",
+                        ? "border-indigo-200 bg-indigo-50/70 text-gray-900 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-gray-100"
+                        : "border-transparent text-gray-800 hover:bg-gray-50/60 dark:text-gray-100 dark:hover:bg-white/5",
                     )}
                   >
-                    <BookRegular className="h-4 w-4 shrink-0 text-gray-400" />
-                    <span className="min-w-0 truncate text-sm font-bold text-gray-800 dark:text-gray-100">
-                      {item.title}
-                    </span>
+                    {item.title}
                   </button>
                 ))}
               </div>

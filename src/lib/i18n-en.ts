@@ -1520,4 +1520,6 @@ export const EN_DICT: Record<string, string> = {
   "知识库": "Knowledge base",
   "文章": "Articles",
   "请选择左侧的知识库文章": "Select an article on the left to read it",
+  "执行周期必须是 1-365 的整数": "Interval must be an integer between 1 and 365 days",
+  "自动挂断秒数必须是 1-600 的整数": "Auto hang-up seconds must be an integer between 1 and 600",
 };

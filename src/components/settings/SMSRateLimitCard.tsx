@@ -14,10 +14,11 @@ export function SMSRateLimitCard({
   onSave,
 }: {
   value: DeveloperSettings | null;
-  limit: number;
+  // limit 保存原始输入串：允许清空编辑，合法性在保存时校验。
+  limit: string;
   loading: boolean;
   saving: boolean;
-  onLimitChange: (limit: number) => void;
+  onLimitChange: (limit: string) => void;
   onSave: () => void;
 }) {
   const { lang } = useI18n();
@@ -38,9 +39,9 @@ export function SMSRateLimitCard({
           type="number"
           min={1}
           max={value?.maxSmsHourlyLimit ?? 20}
-          value={Number.isFinite(limit) ? limit : ""}
+          value={limit}
           disabled={loading || saving}
-          onChange={(event) => onLimitChange(Number(event.target.value))}
+          onChange={(event) => onLimitChange(event.target.value)}
           suffix={zh ? "条 / 小时" : "messages / hour"}
         />
         <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">

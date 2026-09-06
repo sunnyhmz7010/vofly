@@ -12,7 +12,8 @@ interface ExportProxyConfig {
   interface: string;
   mode: "http" | "socks5";
   listenHost: string;
-  listenPort: number;
+  // 端口保存原始输入串，合法性在提交时校验后转为数字。
+  listenPort: string;
   enabled: boolean;
   authEnabled: boolean;
   username: string;
@@ -33,7 +34,7 @@ const emptyConfig = (): ExportProxyConfig => ({
   interface: "",
   mode: "socks5",
   listenHost: "0.0.0.0",
-  listenPort: 1080,
+  listenPort: "1080",
   enabled: true,
   authEnabled: false,
   username: "",
@@ -82,7 +83,7 @@ export default function ExportProxyPage() {
 
   const edit = (config?: ExportProxyConfig) => {
     if (config) {
-      setForm({ ...config, password: "" });
+      setForm({ ...config, password: "", listenPort: String(config.listenPort) });
     } else {
       const first = devices[0];
       setForm({ ...emptyConfig(), deviceId: first?.id || "", interface: first?.interface || "" });
@@ -97,15 +98,17 @@ export default function ExportProxyPage() {
 
   const save = async () => {
     if (!form.deviceId) return message.warning(t("请选择设备"));
-    if (!form.listenPort || form.listenPort < 1 || form.listenPort > 65535) return message.warning(t("请输入有效端口"));
+    const listenPort = Number(form.listenPort);
+    if (!Number.isInteger(listenPort) || listenPort < 1 || listenPort > 65535) return message.warning(t("请输入有效端口"));
     if (form.authEnabled && !form.username.trim()) return message.warning(t("启用认证后必须填写用户名"));
     setSaving(true);
     try {
+      const body = { ...form, listenPort };
       if (form.id) {
-        await api(`/export-proxies/${encodeURIComponent(form.id)}`, { method: "PUT", body: form });
+        await api(`/export-proxies/${encodeURIComponent(form.id)}`, { method: "PUT", body });
         message.success(t("导出代理已更新"));
       } else {
-        await api("/export-proxies", { method: "POST", body: form });
+        await api("/export-proxies", { method: "POST", body });
         message.success(t("导出代理已创建"));
       }
       setOpen(false);
@@ -225,7 +228,7 @@ export default function ExportProxyPage() {
           <label className="space-y-1.5 text-sm"><span>{t("网络接口")}</span><Input value={form.interface} readOnly disabled /></label>
           <label className="space-y-1.5 text-sm"><span>{t("协议")}</span><Select value={form.mode} onChange={(value) => setForm({ ...form, mode: value as "http" | "socks5" })} options={[{ value: "socks5", label: "SOCKS5" }, { value: "http", label: "HTTP" }]} /></label>
           <label className="space-y-1.5 text-sm"><span>{t("监听地址")}</span><Input value={form.listenHost} onChange={(event) => setForm({ ...form, listenHost: event.target.value })} /></label>
-          <label className="space-y-1.5 text-sm"><span>{t("端口")}</span><Input type="number" min={1} max={65535} value={form.listenPort} onChange={(event) => setForm({ ...form, listenPort: Number(event.target.value) })} /></label>
+          <label className="space-y-1.5 text-sm"><span>{t("端口")}</span><Input type="number" min={1} max={65535} value={form.listenPort} onChange={(event) => setForm({ ...form, listenPort: event.target.value })} /></label>
           <div className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 dark:border-white/10"><span className="text-sm">{t("代理认证")}</span><Switch checked={form.authEnabled} onChange={(authEnabled) => setForm({ ...form, authEnabled })} /></div>
           <div className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 dark:border-white/10"><span className="text-sm">{t("保存后立即启用")}</span><Switch checked={form.enabled} onChange={(enabled) => setForm({ ...form, enabled })} /></div>
           {form.authEnabled ? <>

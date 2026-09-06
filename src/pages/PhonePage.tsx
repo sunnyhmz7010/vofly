@@ -1947,12 +1947,7 @@ export default function PhonePage() {
 
         <section className="phone-side-stack flex min-h-[620px] flex-col gap-4">
           <div className="ui-card flex min-h-[300px] flex-col p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">{t("当前通话")}</h3>
-              <Button variant="text" onClick={() => void refresh()}>
-                {t("刷新")}
-              </Button>
-            </div>
+            <h3 className="mb-3 text-sm font-bold text-gray-900 dark:text-gray-100">{t("当前通话")}</h3>
             {recentDialFailure ? (
               <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200">
                 <div className="font-bold">{t("最近一次拨号失败")}</div>

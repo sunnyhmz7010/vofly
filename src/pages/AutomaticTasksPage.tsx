@@ -89,14 +89,15 @@ interface TaskForm {
   profileAid: string;
   taskType: TaskType;
   environment: TaskEnvironment;
-  intervalDays: number;
+  // 数值字段保存原始输入串：空值允许自由编辑，合法性在提交时统一校验。
+  intervalDays: string;
   startDate: string;
   runTime: string;
   retryCount: number;
   notify: boolean;
   phone: string;
   message: string;
-  durationSeconds: number;
+  durationSeconds: string;
 }
 
 interface ProfileOption {
@@ -126,14 +127,14 @@ function emptyForm(deviceId = ""): TaskForm {
     profileAid: "",
     taskType: "sms",
     environment: "vowifi",
-    intervalDays: 1,
+    intervalDays: "1",
     startDate: localDate(),
     runTime: localTime(),
     retryCount: 1,
     notify: true,
     phone: "",
     message: "",
-    durationSeconds: 30,
+    durationSeconds: "30",
   };
 }
 
@@ -325,14 +326,14 @@ export default function AutomaticTasksPage() {
       profileAid: task.profileAid || "",
       taskType: task.taskType,
       environment: normalizeAutomaticTaskEnvironment(task.taskType, task.environment),
-      intervalDays: task.intervalDays,
+      intervalDays: String(task.intervalDays),
       startDate: task.startDate,
       runTime: task.runTime,
       retryCount: task.retryCount,
       notify: task.notify,
       phone: task.payload?.phone || "",
       message: task.payload?.message || "",
-      durationSeconds: task.payload?.durationSeconds || 30,
+      durationSeconds: String(task.payload?.durationSeconds || 30),
     } : emptyForm(deviceId);
 	if (selectedDevice?.deviceType === "usb_sim_reader") {
 	  next = { ...next, taskType: taskTypeSupportedOnReader(next.taskType) ? next.taskType : "sms", environment: "vowifi" };
@@ -378,6 +379,12 @@ export default function AutomaticTasksPage() {
 	}
 	if (automaticTaskNeedsPhone(form.taskType) && !form.phone.trim()) return message.warning(t("请输入号码"));
     if (form.taskType === "sms" && !form.message.trim()) return message.warning(t("请输入短信内容"));
+    const intervalDays = Number(form.intervalDays);
+    if (!Number.isInteger(intervalDays) || intervalDays < 1 || intervalDays > 365) return message.warning(t("执行周期必须是 1-365 的整数"));
+    if (form.taskType === "call") {
+      const durationSeconds = Number(form.durationSeconds);
+      if (!Number.isInteger(durationSeconds) || durationSeconds < 1 || durationSeconds > 600) return message.warning(t("自动挂断秒数必须是 1-600 的整数"));
+    }
     setSaving(true);
     try {
       const body = {
@@ -388,7 +395,7 @@ export default function AutomaticTasksPage() {
         profileAid: form.profileAid,
         taskType: form.taskType,
         environment: taskEnvironment,
-        intervalDays: Number(form.intervalDays),
+        intervalDays,
         startDate: form.startDate,
         runTime: form.runTime,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -598,7 +605,7 @@ export default function AutomaticTasksPage() {
 		  {selectedTaskDeviceIsReader ? <div className="md:col-span-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-700 dark:border-sky-500/20 dark:bg-sky-500/10 dark:text-sky-300">{t("USB SIM读卡器仅支持VoWiFi短信和通话任务")}</div> : null}
 
            {automaticTaskNeedsPhone(form.taskType) ? <div><label className={fieldLabel}>{t("号码")}</label><Input value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} placeholder="+447700900123" /></div> : null}
-          {form.taskType === "call" ? <div><label className={fieldLabel}>{t("自动挂断")}</label><Input type="number" min={1} max={600} value={form.durationSeconds} suffix="s" onChange={(event) => setForm({ ...form, durationSeconds: Number(event.target.value) })} /></div> : null}
+          {form.taskType === "call" ? <div><label className={fieldLabel}>{t("自动挂断")}</label><Input type="number" min={1} max={600} value={form.durationSeconds} suffix="s" onChange={(event) => setForm({ ...form, durationSeconds: event.target.value })} /></div> : null}
           {form.taskType === "sms" ? <div className="md:col-span-2"><label className={fieldLabel}>{t("短信内容")}</label><Textarea rows={4} value={form.message} onChange={(event) => setForm({ ...form, message: event.target.value })} /></div> : null}
            {form.taskType === "public_ip" ? <div className="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">{t("该任务固定使用基站直连和自动选网；执行时会开启漫游数据，并通过模块接口访问 ipinfo.io。")}</div> : null}
            {form.taskType === "cellular_attach" ? <div className="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">{t("该任务固定使用基站直连和自动选网；执行时只连接基站，不开启漫游流量。")}</div> : null}
@@ -610,7 +617,7 @@ export default function AutomaticTasksPage() {
           <div>
             <label className={fieldLabel}>{t("执行周期")}</label>
             <div className="flex gap-2">
-              <Input className="min-w-0 flex-1" type="number" min={1} max={365} value={form.intervalDays} prefix={t("每")} suffix={t("天")} onChange={(event) => setForm({ ...form, intervalDays: Number(event.target.value) })} />
+              <Input className="min-w-0 flex-1" type="number" min={1} max={365} value={form.intervalDays} prefix={t("每")} suffix={t("天")} onChange={(event) => setForm({ ...form, intervalDays: event.target.value })} />
               <Button icon={<CalendarClockRegular />} onClick={() => setShowPreview((current) => !current)}>{showPreview ? t("收起") : t("预览")}</Button>
             </div>
           </div>

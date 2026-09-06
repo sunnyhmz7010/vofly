@@ -78,7 +78,8 @@ export default function SettingsPage() {
   const [loadingHTTPS, setLoadingHTTPS] = useState(false);
   const [savingHTTPS, setSavingHTTPS] = useState(false);
   const [developerSettings, setDeveloperSettings] = useState<DeveloperSettings | null>(null);
-  const [smsHourlyLimit, setSMSHourlyLimit] = useState(10);
+  // 保存原始输入串：允许清空编辑，合法性在保存时校验。
+  const [smsHourlyLimit, setSMSHourlyLimit] = useState("10");
   const [loadingDeveloper, setLoadingDeveloper] = useState(false);
   const [savingSMSLimit, setSavingSMSLimit] = useState(false);
 
@@ -144,7 +145,7 @@ export default function SettingsPage() {
     try {
       const data = await api<DeveloperSettings>("/settings/developer");
       setDeveloperSettings(data);
-      setSMSHourlyLimit(data.smsHourlyLimit);
+      setSMSHourlyLimit(String(data.smsHourlyLimit));
     } catch (error) {
       message.error(apiMessage(error) || (lang === "zh" ? "开发者配置加载失败" : "Failed to load developer settings"));
     } finally {
@@ -179,15 +180,16 @@ export default function SettingsPage() {
 
   const onSaveSMSHourlyLimit = useCallback(async () => {
     const maximum = developerSettings?.maxSmsHourlyLimit ?? 20;
-    if (!Number.isInteger(smsHourlyLimit) || smsHourlyLimit < 1 || smsHourlyLimit > maximum) {
+    const limit = Number(smsHourlyLimit);
+    if (!Number.isInteger(limit) || limit < 1 || limit > maximum) {
       message.error(lang === "zh" ? `短信发送限制必须是 1 到 ${maximum} 的整数` : `SMS limit must be an integer between 1 and ${maximum}`);
       return;
     }
     setSavingSMSLimit(true);
     try {
-      const data = await api<DeveloperSettings>("/settings/developer", { method: "PUT", body: { smsHourlyLimit } });
+      const data = await api<DeveloperSettings>("/settings/developer", { method: "PUT", body: { smsHourlyLimit: limit } });
       setDeveloperSettings(data);
-      setSMSHourlyLimit(data.smsHourlyLimit);
+      setSMSHourlyLimit(String(data.smsHourlyLimit));
       message.success(lang === "zh" ? "短信发送速率限制已保存" : "SMS rate limit saved");
     } catch (error) {
       message.error(apiMessage(error) || (lang === "zh" ? "短信发送速率限制保存失败" : "Failed to save SMS rate limit"));
