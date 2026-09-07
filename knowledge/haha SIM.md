@@ -52,4 +52,8 @@
 
 # 续费链接
 
-# 保号方式
+1. 通过3HK官网充值：官网充值支持Visa、Master、银联、支付宝、微信支付HK，最低充值金额为10港币。充值地址：[https://www.three.com.hk/3Care/chi/prepay/payonline1.jsp](https://www.three.com.hk/3Care/chi/prepay/payonline1.jsp)
+
+2. 通过“haha TRAVEL” APP充值：官方客户端支持在线充值和电子增值码（类似于充值卡密）两种充值方式，在线充值支持Visa、Master、GooglePay、支付宝HK，最低充值金额为20港币。
+
+账户余额上限为200港币。
