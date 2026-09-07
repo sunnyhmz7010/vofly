@@ -57,3 +57,7 @@
 2. 通过“haha TRAVEL” APP充值：官方客户端支持在线充值和电子增值码（类似于充值卡密）两种充值方式，在线充值支持Visa、Master、GooglePay、支付宝HK，最低充值金额为20港币。
 
 账户余额上限为200港币。
+
+# 宣传图
+
+<img width="1200" height="6245" alt="image" src="https://github.com/user-attachments/assets/203d4dc1-af1f-460d-b9b1-a6f8fc3b3384" />
