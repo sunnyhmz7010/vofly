@@ -74,6 +74,7 @@ interface AICallProvider {
   configured: boolean;
   supported: boolean;
   experimental?: boolean;
+  toolCalling?: boolean;
 }
 
 interface AICallSettings {
@@ -1015,9 +1016,14 @@ export default function PhonePage() {
         .filter((provider) => provider.supported && provider.configured)
         .map((provider) => ({
           value: provider.name,
-          label: provider.experimental ? `${provider.label}（实验）` : provider.label,
+          label:
+            provider.experimental && provider.toolCalling === false
+              ? `${provider.label}（${t("实验")}，${t("无工具调用")}）`
+              : provider.experimental
+                ? `${provider.label}（${t("实验")}）`
+                : provider.label,
         })),
-    [aiProviders],
+    [aiProviders, t],
   );
   const aiPresetOptions = useMemo(
     () => [
@@ -2302,7 +2308,16 @@ export default function PhonePage() {
                   />
                 </label>
 
-                <Select value={aiProvider} onChange={setAIProvider} options={aiProviderOptions} />
+                <div>
+                  <Select value={aiProvider} onChange={setAIProvider} options={aiProviderOptions} />
+                  {aiProviders.some(
+                    (provider) => provider.name === aiProvider && provider.experimental && provider.toolCalling === false,
+                  ) ? (
+                    <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-300">
+                      {t("实验")} · {t("无工具调用")}
+                    </p>
+                  ) : null}
+                </div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                   <Button variant="primary" loading={aiBusy} disabled={controlsLocked || !deviceId || !validDialNumber(dialNumber)} onClick={() => void startAICall()}>
                     {t("AI 外呼")}

@@ -112,6 +112,20 @@ test("phone page keeps AI controls out of the main body while the header dialog 
   assert.doesNotMatch(mainBody, /学习热线情报/);
 });
 
+test("phone page marks Doubao realtime as experimental without tool calling", async () => {
+  const phonePage = await source("src/pages/PhonePage.tsx");
+  const dict = await source("src/lib/i18n-en.ts");
+  const { mainBody, dialog } = splitPhoneAIDialog(phonePage);
+
+  assert.match(phonePage, /toolCalling\?: boolean/);
+  assert.match(phonePage, /provider\.experimental && provider\.toolCalling === false/);
+  assert.match(dialog, /无工具调用/);
+	assert.match(dialog, /options=\{aiProviderOptions\}/);
+	assert.doesNotMatch(mainBody, /options=\{aiProviderOptions\}/);
+  assert.match(dict, /"实验": "Experimental"/);
+  assert.match(dict, /"无工具调用": "No tool calling"/);
+});
+
 test("phone page uses the screenshot-style dialer layout with right-side call cards", async () => {
   const phonePage = await source("src/pages/PhonePage.tsx");
   const dict = await source("src/lib/i18n-en.ts");
