@@ -3,6 +3,7 @@ import { ArrowRightRegular } from "@fluentui/react-icons";
 import { Button, Input, message } from "../ui";
 import { PolicySwitchCard } from "./PolicySwitchCard";
 import { CardPolicyAPN } from "./CardPolicyAPN";
+import { CardPolicyMBN } from "./CardPolicyMBN";
 import { useCardPolicyToggles } from "./useCardPolicyToggles";
 import { enableVoWiFi, disableVoWiFi, setFlightMode, updateCardPolicy } from "./deviceActions";
 import type { CardPolicy } from "../../types";
@@ -180,6 +181,12 @@ export function CardPolicyPanel({ deviceId, iccid, policy, deviceOnline, onPolic
 			  onToggle={(value) => void toggleRoamingData(value)}
 			/> : null}
 		  </div>}
+		  {!wifiCallingOnly ? <CardPolicyMBN
+            iccid={iccid}
+            policy={currentPolicy}
+            disabled={!iccid}
+            onSaved={onPolicyChanged}
+		  /> : null}
 		  {!wifiCallingOnly ? <CardPolicyAPN
             deviceId={deviceId}
             iccid={iccid}

@@ -1520,4 +1520,27 @@ export const EN_DICT: Record<string, string> = {
   "请选择左侧的知识库文章": "Select an article on the left to read it",
   "执行周期必须是 1-365 的整数": "Interval must be an integer between 1 and 365 days",
   "自动挂断秒数必须是 1-600 的整数": "Auto hang-up seconds must be an integer between 1 and 600",
+  "自动清理模组短信存储": "Automatically clear modem SMS storage",
+  "入库成功后删除模组 SM/ME 副本，网页记录保留。关闭后模组存储可能在存满时无法接收新短信。":
+    "Delete the modem SM/ME copy after a successful import while keeping the web record. When disabled, the modem mailbox may fill up and stop receiving SMS.",
+  "短信存储设置加载失败": "Failed to load SMS storage settings",
+  "已开启模组短信自动清理": "Modem SMS auto-clear enabled",
+  "已关闭模组短信自动清理": "Modem SMS auto-clear disabled",
+  "短信存储设置保存失败": "Failed to save SMS storage settings",
+  "VoWiFi MTU 兼容模式": "VoWiFi MTU compatibility mode",
+  "默认关闭。遇到 MTU 不足导致的 VoWiFi 注册或连接问题时可尝试开启，保存后请重连 VoWiFi。":
+    "Disabled by default. Enable it when MTU limits cause VoWiFi registration or connection issues, then reconnect VoWiFi.",
+  "VoWiFi 兼容设置加载失败": "Failed to load VoWiFi compatibility settings",
+  "设置已保存，请重连 VoWiFi 后生效": "Settings saved; reconnect VoWiFi to apply them",
+  "VoWiFi 兼容设置保存失败": "Failed to save VoWiFi compatibility settings",
+  "MBN 配置": "MBN profile",
+  "自动（按卡的 HPLMN 选择）": "Automatic (select by the card HPLMN)",
+  "强制中国联通 OpenMkt": "Force China Unicom OpenMkt",
+  "强制中国移动 VoLTE": "Force China Mobile VoLTE",
+  "强制中国电信 OpenMkt": "Force China Telecom OpenMkt",
+  "已保存强制 MBN；正在使用的卡更改后模组可能会重启": "Forced MBN saved; the modem may reboot when changing the active card",
+  "已恢复自动选择 MBN": "Automatic MBN selection restored",
+  "保存 MBN 失败": "Failed to save MBN profile",
+  "海外卡可按运营商指定 MBN；正在使用的卡更改后模组可能会重启。":
+    "For overseas cards, select the carrier MBN; changing the active card may reboot the modem.",
 };

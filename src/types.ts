@@ -284,6 +284,7 @@ export interface CardPolicy {
   apn?: string;
   ipVersion?: string;
   customPhoneNumber?: string;
+  mbnProfile?: string;
   source?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -508,6 +509,14 @@ export interface DeveloperSettings {
   smsHourlyLimit: number;
   defaultSmsHourlyLimit: number;
   maxSmsHourlyLimit: number;
+}
+
+export interface SMSSettings {
+  autoClearModemStorage: boolean;
+}
+
+export interface VoWiFiSettings {
+  mtuCompatibility: boolean;
 }
 
 export type Notice = {
