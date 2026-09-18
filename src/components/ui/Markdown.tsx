@@ -17,6 +17,40 @@ function isSafeHref(url: string): boolean {
   }
 }
 
+type MarkdownImage = {
+  src: string;
+  alt: string;
+  width?: number;
+  height?: number;
+};
+
+function parseImageTag(line: string): MarkdownImage | null {
+  const match = /^\s*<img\b([^>]*)\/?>\s*$/i.exec(line);
+  if (!match) return null;
+
+  const attributes: Record<string, string> = {};
+  const attributePattern = /([A-Za-z_:][A-Za-z0-9:._-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
+  for (const attribute of match[1].matchAll(attributePattern)) {
+    attributes[attribute[1].toLowerCase()] = attribute[2] ?? attribute[3] ?? "";
+  }
+
+  const src = attributes.src || "";
+  if (!isSafeHref(src)) return null;
+
+  const dimension = (value: string | undefined): number | undefined => {
+    if (!value || !/^\d+$/.test(value)) return undefined;
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
+  };
+
+  return {
+    src,
+    alt: attributes.alt || "",
+    width: dimension(attributes.width),
+    height: dimension(attributes.height),
+  };
+}
+
 function renderInline(text: string, keyPrefix: string): ReactNode[] {
   const nodes: ReactNode[] = [];
   let cursor = 0;
@@ -129,6 +163,23 @@ export function Markdown({ content, className }: { content: string; className?: 
     if (/^```/.test(line.trim())) {
       flushAll();
       code = { lang: line.trim().slice(3).trim(), lines: [] };
+      continue;
+    }
+    const image = parseImageTag(line);
+    if (image) {
+      flushAll();
+      blocks.push(
+        <img
+          key={`img-${blockKey++}`}
+          src={image.src}
+          alt={image.alt}
+          width={image.width}
+          height={image.height}
+          loading="lazy"
+          decoding="async"
+          className="h-auto max-w-full rounded-lg"
+        />,
+      );
       continue;
     }
     const heading = /^(#{1,4})\s+(.*)$/.exec(line);

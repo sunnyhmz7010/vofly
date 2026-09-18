@@ -6,7 +6,7 @@ import test from "node:test";
 // 唯一边界，用源码守卫锁定安全约束与能力范围。
 const source = await readFile(new URL("../src/components/ui/Markdown.tsx", import.meta.url), "utf8");
 
-test("markdown renderer never injects raw HTML", () => {
+test("markdown renderer never injects arbitrary raw HTML", () => {
   assert.ok(!source.includes("dangerouslySetInnerHTML"), "must not use dangerouslySetInnerHTML");
   assert.ok(!source.includes("innerHTML"), "must not touch innerHTML");
 });
@@ -17,8 +17,8 @@ test("markdown renderer whitelists http(s) links only", () => {
 });
 
 test("markdown renderer covers release notes and knowledge base needs", () => {
-  // 标题、列表、代码块、加粗、行内代码、链接均在能力范围内
-  const snippets = ["renderInline", 'startsWith("**")', "list-decimal", "list-disc", "<code>"];
+  // 标题、列表、代码块、加粗、行内代码、链接和文章宣传图均在能力范围内
+  const snippets = ["renderInline", "parseImageTag", 'startsWith("**")', "list-decimal", "list-disc", "<code>", 'loading="lazy"'];
   for (const snippet of snippets) {
     assert.ok(source.includes(snippet), `markdown renderer should support ${snippet}`);
   }
