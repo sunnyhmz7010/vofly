@@ -31,6 +31,7 @@ const NAV = [
   { to: "/devices", label: "设备管理", icon: RouterRegular },
   { to: "/sms", label: "短信", icon: MailRegular },
   { to: "/phone", label: "通话", icon: CallRegular },
+  { to: "/telephony", label: "电话助手", icon: CallRegular },
   { to: "/proxy", label: "代理管理", icon: GlobeRegular },
   { to: "/knowledge", label: "知识库", icon: BookRegular },
   { to: "/automatic-tasks", label: "自动任务", icon: SendClockRegular },
