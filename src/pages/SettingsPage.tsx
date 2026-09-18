@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AlertRegular, CheckmarkRegular } from "@fluentui/react-icons";
 import { api, apiMessage, getSecuritySettings, updateSecuritySettings } from "../api";
-import type { DeveloperSettings, HTTPSSettings, NotificationSettings, SecuritySettings, SystemInfo } from "../types";
+import type { DeveloperSettings, HTTPSSettings, NotificationSettings, SecuritySettings, SMSSettings, SystemInfo, VoWiFiSettings } from "../types";
 import { Button, Markdown, PageHeader, confirmDialog, message } from "../components/ui";
 import { formatVersionLabel } from "../components/shell/versionFormat";
 import { CardDecor, CardIcon, CardTitle, SecurityCard, SystemInfoCard } from "../components/settings/Cards";
@@ -28,6 +28,8 @@ import { BarkTab, EmailTab, LarkTab, MeoWTab, WebhookTab, WecomTab } from "../co
 import { PluginsCard } from "../components/settings/PluginsCard";
 import { HTTPSCard } from "../components/settings/HTTPSCard";
 import { SMSRateLimitCard } from "../components/settings/SMSRateLimitCard";
+import { SMSAutoClearCard } from "../components/settings/SMSAutoClearCard";
+import { VoWiFiMTUCard } from "../components/settings/VoWiFiMTUCard";
 
 const EMPTY_PASSWORD: PasswordForm = { currentSecret: "", newSecret: "", confirmSecret: "" };
 
@@ -82,6 +84,12 @@ export default function SettingsPage() {
   const [smsHourlyLimit, setSMSHourlyLimit] = useState("10");
   const [loadingDeveloper, setLoadingDeveloper] = useState(false);
   const [savingSMSLimit, setSavingSMSLimit] = useState(false);
+  const [smsSettings, setSMSSettings] = useState<SMSSettings | null>(null);
+  const [loadingSMSSettings, setLoadingSMSSettings] = useState(false);
+  const [savingSMSSettings, setSavingSMSSettings] = useState(false);
+  const [vowifiSettings, setVoWiFiSettings] = useState<VoWiFiSettings | null>(null);
+  const [loadingVoWiFiSettings, setLoadingVoWiFiSettings] = useState(false);
+  const [savingVoWiFiSettings, setSavingVoWiFiSettings] = useState(false);
 
   const updateChannel = useCallback(<K extends keyof NotifyForms>(key: K, patch: Partial<NotifyForms[K]>) => {
     setForms((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
@@ -153,6 +161,28 @@ export default function SettingsPage() {
     }
   }, [lang]);
 
+  const fetchSMSSettings = useCallback(async () => {
+    setLoadingSMSSettings(true);
+    try {
+      setSMSSettings(await api<SMSSettings>("/settings/sms"));
+    } catch (error) {
+      message.error(apiMessage(error) || t("短信存储设置加载失败"));
+    } finally {
+      setLoadingSMSSettings(false);
+    }
+  }, [t]);
+
+  const fetchVoWiFiSettings = useCallback(async () => {
+    setLoadingVoWiFiSettings(true);
+    try {
+      setVoWiFiSettings(await api<VoWiFiSettings>("/settings/vowifi"));
+    } catch (error) {
+      message.error(apiMessage(error) || t("VoWiFi 兼容设置加载失败"));
+    } finally {
+      setLoadingVoWiFiSettings(false);
+    }
+  }, [t]);
+
   useEffect(() => {
     void fetchSystemInfo();
     void fetchNotifications();
@@ -162,7 +192,9 @@ export default function SettingsPage() {
   useEffect(() => {
     void fetchHTTPS();
     void fetchDeveloperSettings();
-  }, [fetchHTTPS, fetchDeveloperSettings]);
+    void fetchSMSSettings();
+    void fetchVoWiFiSettings();
+  }, [fetchHTTPS, fetchDeveloperSettings, fetchSMSSettings, fetchVoWiFiSettings]);
 
   const onToggleHTTPS = useCallback(async (enabled: boolean) => {
     setSavingHTTPS(true);
@@ -197,6 +229,38 @@ export default function SettingsPage() {
       setSavingSMSLimit(false);
     }
   }, [developerSettings, smsHourlyLimit, lang]);
+
+  const onToggleSMSAutoClear = useCallback(async (enabled: boolean) => {
+    setSavingSMSSettings(true);
+    try {
+      const data = await api<SMSSettings>("/settings/sms", {
+        method: "PUT",
+        body: { autoClearModemStorage: enabled },
+      });
+      setSMSSettings(data);
+      message.success(enabled ? t("已开启模组短信自动清理") : t("已关闭模组短信自动清理"));
+    } catch (error) {
+      message.error(apiMessage(error) || t("短信存储设置保存失败"));
+    } finally {
+      setSavingSMSSettings(false);
+    }
+  }, [t]);
+
+  const onToggleVoWiFiMTU = useCallback(async (enabled: boolean) => {
+    setSavingVoWiFiSettings(true);
+    try {
+      const data = await api<VoWiFiSettings>("/settings/vowifi", {
+        method: "PUT",
+        body: { mtuCompatibility: enabled },
+      });
+      setVoWiFiSettings(data);
+      message.success(t("设置已保存，请重连 VoWiFi 后生效"));
+    } catch (error) {
+      message.error(apiMessage(error) || t("VoWiFi 兼容设置保存失败"));
+    } finally {
+      setSavingVoWiFiSettings(false);
+    }
+  }, [t]);
 
   const onSaveSecurity = useCallback(async () => {
     setSavingSecurity(true);
@@ -464,6 +528,21 @@ export default function SettingsPage() {
           saving={savingSecurity}
           onChange={(patch) => setSecurity((prev) => ({ ...prev, ...patch }))}
           onSave={onSaveSecurity}
+        />
+
+        <VoWiFiMTUCard
+          enabled={vowifiSettings?.mtuCompatibility === true}
+          loading={loadingVoWiFiSettings}
+          saving={savingVoWiFiSettings}
+          ready={vowifiSettings !== null}
+          onToggle={onToggleVoWiFiMTU}
+        />
+        <SMSAutoClearCard
+          enabled={smsSettings?.autoClearModemStorage !== false}
+          loading={loadingSMSSettings}
+          saving={savingSMSSettings}
+          ready={smsSettings !== null}
+          onToggle={onToggleSMSAutoClear}
         />
 
         <HTTPSCard
