@@ -10,6 +10,7 @@ export const EN_DICT: Record<string, string> = {
 	"机主称谓": "Owner name",
 	"AI 人设称谓": "AI persona",
 	"AI 通话设置": "AI call settings",
+	"电话助手": "Phone assistant",
 	"实验": "Experimental",
 	"无工具调用": "No tool calling",
 	"自动接听": "Auto-answer",

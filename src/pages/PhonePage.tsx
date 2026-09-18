@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { CallRegular, MicRegular, QrCode24Regular, Speaker0Regular } from "@fluentui/react-icons";
+import { CallRegular, MicRegular, QrCode24Regular, SettingsRegular, Speaker0Regular } from "@fluentui/react-icons";
 import { ApiError, api, apiMessage, camelize } from "../api";
 import { QrSendModal, type QrSendPayload } from "../components/QrSendModal";
 import { Button, Input, Modal, PageHeader, RefreshButton, Select, StatusDot, Switch, Textarea, type StatusTone, Tag } from "../components/ui";
 import { tf, useI18n } from "../lib/i18n";
 import { usePhoneControlLease } from "../lib/phoneLease";
 import { requestedPhoneDeviceId } from "../lib/phoneNavigation";
+import TelephonyPage from "./TelephonyPage";
 
 // 独立通话页：跨设备拨号、当前通话、持久化通话记录与录音回放。
 // 后端契约：/devices、/devices/{id}/calls、/devices/{id}/calls/{dial|answer|hangup}、
@@ -961,6 +962,7 @@ export default function PhonePage() {
   });
   const [aiCallSettingsBusy, setAICallSettingsBusy] = useState(false);
   const [aiCallDialogOpen, setAICallDialogOpen] = useState(false);
+  const [telephonyDialogOpen, setTelephonyDialogOpen] = useState(false);
   const [aiPresets, setAIPresets] = useState<AICallPreset[]>([]);
   const [selectedAIPreset, setSelectedAIPreset] = useState<AICallPreset | null>(null);
   const [aiScenarioBusy, setAIScenarioBusy] = useState(false);
@@ -1857,6 +1859,9 @@ export default function PhonePage() {
             <Button variant="default" onClick={() => setAICallDialogOpen(true)}>
               {t("AI 通话")}
             </Button>
+            <Button variant="default" icon={<SettingsRegular />} onClick={() => setTelephonyDialogOpen(true)}>
+              {t("电话助手")}
+            </Button>
             <RefreshButton loading={pageRefreshing} onClick={() => void refreshAll()} />
           </div>
         }
@@ -2685,6 +2690,15 @@ export default function PhonePage() {
             </div>
           </div>
         </div>
+      </Modal>
+      <Modal
+        open={telephonyDialogOpen}
+        onClose={() => setTelephonyDialogOpen(false)}
+        title={t("电话助手")}
+        width="max-w-7xl"
+        bodyClassName="px-4 pb-4 sm:px-6 sm:pb-6"
+      >
+        <TelephonyPage />
       </Modal>
       <QrSendModal open={!!qrPayload} payload={qrPayload} onClose={() => setQrPayload(null)} />
     </div>

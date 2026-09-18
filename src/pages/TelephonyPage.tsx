@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { AddRegular, CallRegular, DeleteRegular, DismissRegular, SaveRegular, SettingsRegular } from "@fluentui/react-icons";
+import { AddRegular, DeleteRegular, DismissRegular, SaveRegular } from "@fluentui/react-icons";
 import { api, apiMessage } from "../api";
 import { Button, Input, PageHeader, Switch, Tag, Textarea, message } from "../components/ui";
 import { useI18n } from "../lib/i18n";
@@ -58,31 +58,42 @@ export default function TelephonyPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [draftRule, setDraftRule] = useState<Rule | null>(null);
   const [saving, setSaving] = useState(false);
-  const [outbound, setOutbound] = useState({ deviceId: "", number: "", provider: "fake", task: "" });
-
-  const load = useCallback(async () => {
+  const loadConfig = useCallback(async () => {
     try {
-      const [telephony, deviceData, callData, messageData, sessionData] = await Promise.all([
+      const [telephony, deviceData] = await Promise.all([
         api<Config>("/telephony/config"),
         api<{ devices?: Device[] }>("/devices"),
-        api<{ calls?: Array<Record<string, unknown>> }>("/telephony/calls?limit=30"),
-        api<{ messages?: MessageItem[] }>("/telephony/voicemail/messages"),
-        api<Session[]>("/telephony/ai/sessions"),
       ]);
       setConfig(telephony);
       setRules(telephony.rules || []);
       setContacts(telephony.contacts || []);
       setDevices(deviceData.devices || []);
-      setCalls(callData.calls || []);
-      setMessages(messageData.messages || []);
-      setSessions(sessionData || []);
-      setOutbound((current) => ({ ...current, deviceId: current.deviceId || deviceData.devices?.[0]?.id || "" }));
     } catch (error) {
       message.error(apiMessage(error));
     }
   }, []);
 
-  useEffect(() => { void load(); const timer = window.setInterval(() => void load(), 8000); return () => window.clearInterval(timer); }, [load]);
+  const loadLive = useCallback(async () => {
+    try {
+      const [callData, messageData, sessionData] = await Promise.all([
+        api<{ calls?: Array<Record<string, unknown>> }>("/telephony/calls?limit=30"),
+        api<{ messages?: MessageItem[] }>("/telephony/voicemail/messages"),
+        api<Session[]>("/telephony/ai/sessions"),
+      ]);
+      setCalls(callData.calls || []);
+      setMessages(messageData.messages || []);
+      setSessions(sessionData || []);
+    } catch (error) {
+      message.error(apiMessage(error));
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadConfig();
+    void loadLive();
+    const timer = window.setInterval(() => void loadLive(), 8000);
+    return () => window.clearInterval(timer);
+  }, [loadConfig, loadLive]);
 
   async function saveRules() {
     if (!config) return;
@@ -90,28 +101,14 @@ export default function TelephonyPage() {
     try {
       await api("/telephony/rules", { method: "PUT", body: { rules, fallback: config.fallback } });
       message.success(t("规则已保存"));
-      await load();
+      await loadConfig();
     } catch (error) { message.error(apiMessage(error)); } finally { setSaving(false); }
   }
 
   async function saveConfigPart(path: string, body: unknown, success: string) {
     setSaving(true);
-    try { await api(path, { method: "PUT", body }); message.success(t(success)); await load(); }
+    try { await api(path, { method: "PUT", body }); message.success(t(success)); await loadConfig(); }
     catch (error) { message.error(apiMessage(error)); } finally { setSaving(false); }
-  }
-
-  async function startOutbound() {
-    if (!outbound.deviceId || !outbound.number) return;
-    try {
-      await api(`/devices/${encodeURIComponent(outbound.deviceId)}/ai-calls/dial`, { method: "POST", body: outbound });
-      message.success(t("AI 通话已启动"));
-      await load();
-    } catch (error) { message.error(apiMessage(error)); }
-  }
-
-  async function hangup(sessionId: string) {
-    try { await api(`/telephony/ai/sessions/${encodeURIComponent(sessionId)}/hangup`, { method: "POST" }); await load(); }
-    catch (error) { message.error(apiMessage(error)); }
   }
 
   const tabs = useMemo(() => [
@@ -129,7 +126,7 @@ export default function TelephonyPage() {
         {tabs.map(([key, label]) => <button key={key} type="button" onClick={() => setTab(key)} className={`rounded-lg px-3 py-2 text-sm font-medium ${tab === key ? "bg-sky-500 text-white" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10"}`}>{label}</button>)}
       </div>
 
-      {tab === "overview" && <Overview config={config} calls={calls} messages={messages} sessions={sessions} devices={devices} outbound={outbound} setOutbound={setOutbound} onDial={startOutbound} onHangup={hangup} onRefresh={load} />}
+      {tab === "overview" && <Overview config={config} calls={calls} messages={messages} sessions={sessions} onRefresh={loadLive} />}
       {tab === "rules" && <RulesEditor rules={rules} setRules={setRules} fallback={config.fallback} setFallback={(fallback) => setConfig({ ...config, fallback })} draft={draftRule} setDraft={setDraftRule} onSave={saveRules} saving={saving} />}
       {tab === "contacts" && <ContactsEditor contacts={contacts} setContacts={setContacts} onSave={() => saveConfigPart("/telephony/contacts", { contacts }, "联系人已保存")} saving={saving} />}
       {tab === "voicemail" && <VoicemailEditor config={config} onSave={(voicemail) => saveConfigPart("/telephony/voicemail/settings", voicemail, "语音信箱设置已保存")} />}
@@ -140,12 +137,11 @@ export default function TelephonyPage() {
   );
 }
 
-function Overview({ config, calls, messages, sessions, devices, outbound, setOutbound, onDial, onHangup, onRefresh }: { config: Config; calls: Array<Record<string, unknown>>; messages: MessageItem[]; sessions: Session[]; devices: Device[]; outbound: { deviceId: string; number: string; provider: string; task: string }; setOutbound: (value: { deviceId: string; number: string; provider: string; task: string }) => void; onDial: () => void; onHangup: (id: string) => void; onRefresh: () => void }) {
+function Overview({ config, calls, messages, sessions, onRefresh }: { config: Config; calls: Array<Record<string, unknown>>; messages: MessageItem[]; sessions: Session[]; onRefresh: () => void }) {
   const { t } = useI18n();
   return <>
     <div className="grid gap-4 md:grid-cols-4"><Metric label={t("规则")} value={config.rules.length} /><Metric label={t("通话记录")} value={calls.length} /><Metric label={t("未读留言")} value={messages.filter((item) => !item.read).length} /><Metric label={t("AI 会话")} value={sessions.length} /></div>
-    <section className={cardClass}><div className="mb-3 flex items-center justify-between"><h2 className="font-semibold">{t("AI 外呼")}</h2><Button size="small" icon={<CallRegular />} onClick={onDial}>{t("拨打")}</Button></div><div className="grid gap-3 md:grid-cols-4"><Field label={t("设备")}><select className={fieldClass} value={outbound.deviceId} onChange={(event) => setOutbound({ ...outbound, deviceId: event.target.value })}>{devices.map((device) => <option key={device.id} value={device.id}>{device.name || device.id}</option>)}</select></Field><Field label={t("号码")}><Input value={outbound.number} onChange={(event) => setOutbound({ ...outbound, number: event.target.value })} placeholder="10086" /></Field><Field label={t("Provider")}><Input value={outbound.provider} onChange={(event) => setOutbound({ ...outbound, provider: event.target.value })} /></Field><Field label={t("任务") }><Input value={outbound.task} onChange={(event) => setOutbound({ ...outbound, task: event.target.value })} placeholder={t("例如查询套餐余额")} /></Field></div></section>
-    <section className={cardClass}><div className="mb-3 flex items-center justify-between"><h2 className="font-semibold">{t("进行中的 AI 会话")}</h2><Button size="small" icon={<SettingsRegular />} onClick={onRefresh}>{t("刷新")}</Button></div>{sessions.length === 0 ? <p className="text-sm text-gray-400">{t("暂无活动会话")}</p> : <div className="space-y-2">{sessions.map((session) => <div key={session.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 p-3 dark:border-white/10"><div><div className="font-medium">{session.number || session.callId}</div><div className="text-xs text-gray-500">{session.provider} · {session.state} · {session.task || t("未填写任务")}</div></div><Button size="small" variant="danger" icon={<DismissRegular />} onClick={() => onHangup(session.id)}>{t("挂断")}</Button></div>)}</div>}</section>
+    <section className={cardClass}><div className="mb-3 flex items-center justify-between"><h2 className="font-semibold">{t("进行中的 AI 会话")}</h2><Button size="small" onClick={onRefresh}>{t("刷新")}</Button></div>{sessions.length === 0 ? <p className="text-sm text-gray-400">{t("暂无活动会话")}</p> : <div className="space-y-2">{sessions.map((session) => <div key={session.id} className="rounded-lg border border-gray-200 p-3 dark:border-white/10"><div className="font-medium">{session.number || session.callId}</div><div className="text-xs text-gray-500">{session.provider} · {session.state} · {session.task || t("未填写任务")}</div></div>)}</div>}</section>
     <section className={cardClass}><h2 className="mb-3 font-semibold">{t("最近来电")}</h2><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs text-gray-500"><tr><th className="pb-2">{t("号码")}</th><th className="pb-2">{t("方向")}</th><th className="pb-2">{t("状态")}</th><th className="pb-2">{t("时间")}</th></tr></thead><tbody>{calls.slice(0, 8).map((call, index) => <tr key={String(call.id || index)} className="border-t border-gray-100 dark:border-white/5"><td className="py-2">{String(call.peer || call.number || "--")}</td><td className="py-2">{String(call.direction || "--")}</td><td className="py-2"><Tag>{String(call.state || "--")}</Tag></td><td className="py-2 text-gray-500">{formatTime(String(call.updatedAt || call.startedAt || ""))}</td></tr>)}</tbody></table></div></section>
   </>;
 }

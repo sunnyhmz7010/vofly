@@ -11,7 +11,6 @@ import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import DevicesPage from "./pages/DevicesPage";
 import PhonePage from "./pages/PhonePage";
-import TelephonyPage from "./pages/TelephonyPage";
 import ProxyPage from "./pages/ProxyPage";
 import ExportProxyPage from "./pages/ExportProxyPage";
 import SmsPage from "./pages/SmsPage";
@@ -85,7 +84,6 @@ function AppRoot() {
           <Route index element={<DashboardPage />} />
           <Route path="devices/*" element={<DevicesPage />} />
           <Route path="phone" element={<PhonePage />} />
-          <Route path="telephony" element={<TelephonyPage />} />
           <Route path="proxy" element={<ProxyPage />} />
           <Route path="export-proxy" element={<ExportProxyPage />} />
           <Route path="sms" element={<SmsPage />} />
