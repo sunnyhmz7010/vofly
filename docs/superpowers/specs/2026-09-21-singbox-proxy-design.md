@@ -103,9 +103,24 @@
 
 前端仓库的 Release workflow 下载固定版本的 sing-box 官方 Linux `amd64`、`arm64`、`armv7` 压缩包，解包后以 `sing-box_<vofly-release>_linux_<arch>` 作为 Release asset，并加入同一份 `SHA256SUMS`。固定版本在 workflow 环境变量中声明，升级时显式变更。
 
-`install.sh` 和 `update.sh` 按当前 Vofly Release 同步下载、校验并安装 `/opt/vofly/bin/sing-box`；失败时不得替换已有可运行安装。`uninstall.sh` 删除该二进制，但默认保留数据库和协议配置数据。后端通过 `VOFLY_SING_BOX_PATH` 支持测试和自定义路径，默认使用 `/opt/vofly/bin/sing-box`，开发环境可使用 PATH 中的 `sing-box`。
+安装脚本不自动安装 sing-box；Release workflow 仍生成经校验的 sing-box asset，供网页端按需安装。`install.sh`、`update.sh` 和 `uninstall.sh` 不再处理 sing-box、PC/SC 或 ffmpeg 这些可选组件，但主体服务二进制、必要运行依赖、服务重启、校验和回滚流程保持不变。后端通过 `VOFLY_SING_BOX_PATH` 支持测试和自定义路径，默认使用 `/opt/vofly/bin/sing-box`，开发环境可使用 PATH 中的 `sing-box`。
 
 Release 文档需要注明 sing-box 版本、上游仓库和许可证信息，避免把第三方二进制来源隐藏在安装脚本中。
+
+## 可选依赖网页管理
+
+新增后端白名单依赖管理器，前端不能提交任意命令、包名或下载 URL。统一资源标识为 `pcsc`、`ffmpeg`、`singbox`：
+
+- `GET /system/dependencies` 返回当前包管理器、组件安装状态、版本/路径、可安装性、可卸载性和占用原因。
+- `POST /system/dependencies/:id/install` 创建安装任务，返回任务 ID；`DELETE /system/dependencies/:id` 创建卸载任务。任务状态通过 `GET /system/dependencies/jobs/:job_id` 查询。
+- 安装/卸载任务单例执行；同一组件已有任务时返回稳定错误码 `dependency_busy`。
+- `pcsc`、`ffmpeg` 只使用后端为当前包管理器预定义的候选包集合。安装前记录已安装包快照，只把本次新增的包写入 Vofly 自己的依赖记录；卸载时只删除这些记录，绝不删除用户原先拥有的包。
+- 安装 PC/SC 后按当前系统启用并启动 `pcscd.socket` 或等效服务；卸载前停止并禁用该服务。ffmpeg 无服务动作。
+- `singbox` 安装时根据当前架构、Vofly Release 版本和固定 asset 名称从 Vofly Release 下载，使用 Release 的 `SHA256SUMS` 校验后原子替换 `/opt/vofly/bin/sing-box`；下载失败不得破坏现有文件。卸载前必须确认没有启用或存在的 sing-box 父资源，否则返回 `dependency_in_use`。
+- sing-box 安装/卸载任务完成后通知运行时管理器重新检测二进制；安装后启用的父资源自动尝试恢复，卸载后父资源保留但进入“运行时未安装”错误状态。
+- 包管理器命令只能通过 `exec.CommandContext` 参数数组执行，允许的可执行文件、参数和包名全部由后端代码固定；输出只保留脱敏后的尾部诊断信息。
+
+前端在系统设置新增“可选组件”卡片，只显示 PC/SC 与 ffmpeg 的状态、安装和卸载按钮；卸载操作显示确认对话框。代理页 sing-box 区显示 sing-box 状态和安装/卸载入口，未安装时允许打开协议配置但保存操作给出明确提示。所有操作显示任务进度、成功结果或后端错误码映射。
 
 ## 错误与安全边界
 
@@ -115,6 +130,7 @@ Release 文档需要注明 sing-box 版本、上游仓库和许可证信息，�
 - sing-box 子进程使用固定可执行文件路径和参数，不把用户输入拼接进 shell；所有进程调用使用 `exec.Command` 参数数组。
 - 任一 sing-box 实例失败只影响它自己的子 SOCKS5 状态；手工 SOCKS5、其他实例和 Web API 继续可用。
 - 更新、删除和关闭流程必须清理进程；测试验证不存在孤儿进程和残留临时配置。
+- 安装脚本参数帮助中不得再出现 `--with-pcsc` 或 `--with-ffmpeg`，脚本不能主动调用这些可选依赖的安装流程；必要运行依赖仍按原有逻辑安装。
 
 ## 测试验收
 
@@ -124,12 +140,15 @@ Release 文档需要注明 sing-box 版本、上游仓库和许可证信息，�
 - 配置生成测试断言本地 SOCKS5 inbound 的地址、端口、UDP 和 outbound 映射，且秘密不会出现在展示响应。
 - Store 测试覆盖迁移、父子创建、级联删除、手工记录兼容和只读字段。
 - 运行时测试使用假的 sing-box 可执行文件验证 check、启动、停止、异常退出重启、端口冲突和关闭清理。
+- 依赖管理测试覆盖包管理器白名单、安装前后快照、只卸载 Vofly 新增包、PC/SC 服务动作、sing-box Release 校验、任务互斥、依赖占用拒绝和命令参数注入防护。
 - API 测试覆盖创建/更新/启停/删除、运行时错误返回、派生 SOCKS5 只读和现有绑定接口兼容。
 
 前端：
 
 - 源码守卫测试锁定上方协议区、下方 SOCKS5 区、派生行只读标记和关键中英文文案。
 - 纯逻辑测试覆盖父子记录展示和错误码映射。
+- 设置页测试锁定 PC/SC 与 ffmpeg 的安装/卸载入口，代理页测试锁定 sing-box 依赖状态和入口。
+- 安装器源码守卫必须确认可选依赖参数和自动安装调用已移除，同时必要运行依赖安装仍存在。
 - 必须通过 `npm test` 和 `npm run build`。
 
 跨仓库最低验证：
@@ -138,4 +157,3 @@ Release 文档需要注明 sing-box 版本、上游仓库和许可证信息，�
 vofly-web:     npm test && npm run build
 vofly-backend: go test ./... && go vet ./... && go build ./cmd/vofly
 ```
-
