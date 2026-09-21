@@ -43,13 +43,12 @@ test("derived SOCKS5 rows remain read-only and optional dependencies are managed
   assert.match(dependencies, /confirmDialog/);
 });
 
-test("release workflow publishes fixed sing-box binaries for supported Linux architectures", async () => {
+test("sing-box dependency uses the official installer instead of bundled release assets", async () => {
   const workflow = await source(".github/workflows/cd.yml");
   const notices = await source("THIRD_PARTY_NOTICES.md");
 
-  assert.match(workflow, /SING_BOX_VERSION: v1\.14\.1/);
-  assert.match(workflow, /sing-box-\$\{version\}-linux-\$\{sing_box_arch\}\.tar\.gz/);
-  assert.match(workflow, /sing-box_\$\{SING_BOX_VERSION\}_linux_\$\{\{ matrix\.artifact_arch \}\}/);
-  assert.match(workflow, /for f in vofly_\* sing-box_\*/);
+  assert.doesNotMatch(workflow, /SING_BOX_VERSION|Download fixed sing-box runtime|sing-box_\$\{/);
+  assert.match(workflow, /for f in vofly_\*;/);
+  assert.match(notices, /https:\/\/sing-box\.app\/install\.sh/);
   assert.match(notices, /GNU General Public License v3\.0/);
 });

@@ -101,9 +101,7 @@
 
 ### 发布与安装
 
-前端仓库的 Release workflow 下载固定版本的 sing-box 官方 Linux `amd64`、`arm64`、`armv7` 压缩包，解包后以 `sing-box_<vofly-release>_linux_<arch>` 作为 Release asset，并加入同一份 `SHA256SUMS`。固定版本在 workflow 环境变量中声明，升级时显式变更。
-
-安装脚本不自动安装 sing-box；Release workflow 仍生成经校验的 sing-box asset，供网页端按需安装。`install.sh`、`update.sh` 和 `uninstall.sh` 不再处理 sing-box、PC/SC 或 ffmpeg 这些可选组件，但主体服务二进制、必要运行依赖、服务重启、校验和回滚流程保持不变。后端通过 `VOFLY_SING_BOX_PATH` 支持测试和自定义路径，默认使用 `/opt/vofly/bin/sing-box`，开发环境可使用 PATH 中的 `sing-box`。
+网页端按需调用 sing-box 官方安装脚本 `https://sing-box.app/install.sh` 安装固定版本，Release workflow 不再捆绑 sing-box 二进制资产。`install.sh`、`update.sh` 和 `uninstall.sh` 不再处理 sing-box、PC/SC 或 ffmpeg 这些可选组件，但主体服务二进制、必要运行依赖、服务重启、校验和回滚流程保持不变。后端通过 `VOFLY_SING_BOX_PATH` 支持测试和自定义路径，默认使用官方包路径 `/usr/bin/sing-box`。
 
 Release 文档需要注明 sing-box 版本、上游仓库和许可证信息，避免把第三方二进制来源隐藏在安装脚本中。
 
@@ -116,7 +114,7 @@ Release 文档需要注明 sing-box 版本、上游仓库和许可证信息，�
 - 安装/卸载任务单例执行；同一组件已有任务时返回稳定错误码 `dependency_busy`。
 - `pcsc`、`ffmpeg` 只使用后端为当前包管理器预定义的候选包集合。安装前记录已安装包快照，只把本次新增的包写入 Vofly 自己的依赖记录；卸载时只删除这些记录，绝不删除用户原先拥有的包。
 - 安装 PC/SC 后按当前系统启用并启动 `pcscd.socket` 或等效服务；卸载前停止并禁用该服务。ffmpeg 无服务动作。
-- `singbox` 安装时根据当前架构、Vofly Release 版本和固定 asset 名称从 Vofly Release 下载，使用 Release 的 `SHA256SUMS` 校验后原子替换 `/opt/vofly/bin/sing-box`；下载失败不得破坏现有文件。卸载前必须确认没有启用或存在的 sing-box 父资源，否则返回 `dependency_in_use`。
+- `singbox` 安装时下载并执行固定 URL 的官方安装脚本，传入固定版本参数，由官方脚本选择当前系统包管理器和架构安装；卸载时只调用后端固定的 `sing-box` 包名。卸载前必须确认没有启用或存在的 sing-box 父资源，否则返回 `dependency_in_use`。
 - sing-box 安装/卸载任务完成后通知运行时管理器重新检测二进制；安装后启用的父资源自动尝试恢复，卸载后父资源保留但进入“运行时未安装”错误状态。
 - 包管理器命令只能通过 `exec.CommandContext` 参数数组执行，允许的可执行文件、参数和包名全部由后端代码固定；输出只保留脱敏后的尾部诊断信息。
 

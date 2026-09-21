@@ -10,7 +10,6 @@ permissions:
 
 env:
   VERSION: ${{ github.event.release.tag_name }}
-  SING_BOX_VERSION: v1.14.1
 
 jobs:
   frontend:
@@ -99,28 +98,6 @@ jobs:
           mv dist/vofly "out/${OUT}"
           (cd out && sha256sum "${OUT}" > "${OUT}.sha256")
 
-      - name: Download fixed sing-box runtime
-        run: |
-          set -eu
-          version="${SING_BOX_VERSION#v}"
-          case "${{ matrix.artifact_arch }}" in
-            amd64) sing_box_arch=amd64 ;;
-            arm64) sing_box_arch=arm64 ;;
-            armv7) sing_box_arch=armv7 ;;
-            *) echo "unsupported sing-box architecture" >&2; exit 1 ;;
-          esac
-          archive="sing-box-${version}-linux-${sing_box_arch}.tar.gz"
-          url="https://github.com/SagerNet/sing-box/releases/download/${SING_BOX_VERSION}/${archive}"
-          curl -fsSL --retry 3 "$url" -o /tmp/"${archive}"
-          rm -rf /tmp/sing-box-extract
-          mkdir -p /tmp/sing-box-extract
-          tar -xzf /tmp/"${archive}" -C /tmp/sing-box-extract
-          binary=$(find /tmp/sing-box-extract -type f -name sing-box -print -quit)
-          test -n "$binary"
-          target="out/sing-box_${SING_BOX_VERSION}_linux_${{ matrix.artifact_arch }}"
-          install -m 0755 "$binary" "$target"
-          sha256sum "$target" > "${target}.sha256"
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -144,7 +121,7 @@ jobs:
         run: |
           cd dist
           : > SHA256SUMS
-          for f in vofly_* sing-box_*; do
+          for f in vofly_*; do
             [ -f "$f" ] || continue
             case "$f" in
               *.sha256) continue ;;

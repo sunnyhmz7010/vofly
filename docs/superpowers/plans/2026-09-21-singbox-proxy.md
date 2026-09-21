@@ -99,7 +99,7 @@
 - [ ] **Step 2: Run `go test ./internal/dependencies -v`** and verify the tests fail before implementation.
 - [ ] **Step 3: Implement package-manager commands** with `exec.CommandContext` argument arrays, snapshots before/after install, Vofly-owned package records, and removal limited to packages recorded as newly installed by that component.
 - [ ] **Step 4: Implement PC/SC service enable/start and stop/disable** using fixed `systemctl` or `/etc/init.d/pcscd` arguments; implement ffmpeg as package-only.
-- [ ] **Step 5: Implement sing-box asset download** with fixed architecture mapping, temporary file, SHA256SUMS verification, mode `0755`, atomic rename, and preservation of an existing binary on any error.
+- [ ] **Step 5: Invoke the official sing-box install script** from the fixed URL with a pinned version argument, execute it through a fixed `sh` command, and keep the runtime path aligned with the official package layout.
 - [ ] **Step 6: Add occupied-resource guard** that refuses sing-box uninstall while any parent resource exists or is enabled, and calls `RefreshBinary` after install/uninstall.
 - [ ] **Step 7: Run focused dependency tests**, including subprocess helper tests, and verify command output is truncated/redacted before entering the job result.
 
@@ -183,7 +183,7 @@
 - [ ] **Step 1: Add failing installer guard assertions** that the optional flags/functions/calls are absent while `install_runtime_dependencies`, service creation, checksum verification, and rollback remain present.
 - [ ] **Step 2: Run `npm test -- test/installerScripts.test.mjs`** and verify the new assertions fail against the current scripts.
 - [ ] **Step 3: Remove optional flags, help text, `finish_install` branches, PC/SC/ffmpeg package functions, and related automatic service/package calls**; leave necessary dependency tracking and service lifecycle untouched.
-- [ ] **Step 4: Add CD steps** to download and verify the pinned sing-box upstream archive per matrix architecture, extract the executable, package it as a Vofly Release asset, and include it in `SHA256SUMS`.
+- [ ] **Step 4: Keep sing-box out of the Vofly Release assets**; the web-managed dependency task uses the official installer URL at runtime.
 - [ ] **Step 5: Document sing-box source/version/license and run installer tests plus shell syntax checks** with `sh -n install.sh update.sh uninstall.sh`.
 
 ### Task 9: 集成验证与分别提交
