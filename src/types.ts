@@ -338,6 +338,58 @@ export interface UpstreamProxy {
   username: string;
   password?: string;
   enabled: boolean;
+  managedBy?: string;
+  managedId?: string;
+  parentName?: string;
+  readOnly?: boolean;
+}
+
+export interface SingBoxStatus {
+  state: string;
+  error?: string;
+  pid?: number;
+  updatedAt?: string;
+}
+
+export interface SingBoxLocalSocks5 {
+  id: string;
+  addr: string;
+  enabled: boolean;
+  readOnly: boolean;
+}
+
+export interface SingBoxProxy {
+  id: string;
+  name: string;
+  protocol: string;
+  server?: string;
+  serverPort?: number;
+  enabled: boolean;
+  localSocks5: SingBoxLocalSocks5;
+  runtime: SingBoxStatus;
+  runtimeError?: string;
+}
+
+export interface DependencyStatus {
+  id: "pcsc" | "ffmpeg" | "singbox" | string;
+  installed: boolean;
+  version?: string;
+  path?: string;
+  available: boolean;
+  canInstall: boolean;
+  canUninstall: boolean;
+  busy: boolean;
+  reason?: string;
+}
+
+export interface DependencyJob {
+  id: string;
+  component: string;
+  operation: "install" | "uninstall" | string;
+  state: "queued" | "running" | "success" | "failed" | string;
+  progress: number;
+  errorCode?: string;
+  error?: string;
 }
 
 export interface UpstreamProxyProbe {

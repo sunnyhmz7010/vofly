@@ -2,7 +2,7 @@
 # vofly 一键安装脚本。
 # 用法：
 #   curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh
-#   sudo sh install.sh [--force] [--with-pcsc] [--with-ffmpeg] [--skip-vowifi-check] [版本]
+#   sudo sh install.sh [--force] [--skip-vowifi-check] [版本]
 
 set -eu
 
@@ -28,8 +28,6 @@ DEFAULT_ADDR="0.0.0.0:7575"
 DEFAULT_DATABASE="/opt/vofly/data/vofly.db"
 
 FORCE=0
-WITH_PCSC=0
-WITH_FFMPEG=0
 SKIP_VOWIFI_CHECK=0
 VERSION_ARG=""
 FIRST_INSTALL=0
@@ -40,19 +38,16 @@ DOWNLOAD_DIR=""
 print_usage() {
   cat <<'USAGE'
 用法:
-  sudo sh install.sh [--force] [--with-pcsc] [--with-ffmpeg] [--skip-vowifi-check] [版本]
+  sudo sh install.sh [--force] [--skip-vowifi-check] [版本]
 
 选项:
   --force           即使当前已是目标版本，也重新下载并安装
-  --with-pcsc       安装并启用 pcscd 与 CCID 驱动（USB SIM 读卡器）
-  --with-ffmpeg     安装 ffmpeg（通话录音 MP3 转码；缺失时录音保持 WAV）
   --skip-vowifi-check
                     跳过 VoWiFi XFRM/IPsec 内核检查（仅使用蜂窝短信/数据等功能时使用）
   -h|--help         显示帮助
 
 示例:
   curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh
-  curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh -s -- --with-pcsc
   curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh -s -- v0.1.0
 USAGE
 }
@@ -60,8 +55,6 @@ USAGE
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --force) FORCE=1 ;;
-    --with-pcsc) WITH_PCSC=1 ;;
-    --with-ffmpeg) WITH_FFMPEG=1 ;;
     --skip-vowifi-check) SKIP_VOWIFI_CHECK=1 ;;
     -h|--help)
       print_usage
@@ -783,83 +776,6 @@ install_runtime_dependencies() {
   esac
 }
 
-install_pcsc_packages() {
-  case "$PACKAGE_MANAGER" in
-    apt) install_packages pcscd libccid ;;
-    dnf|yum) install_packages pcsc-lite ccid ;;
-    apk) install_packages pcsc-lite ccid ;;
-    pacman) install_packages pcsclite ccid ;;
-    opkg)
-      packages=""
-      opkg_has_package pcscd && packages="$packages pcscd"
-      opkg_has_package libccid && packages="$packages libccid"
-      if [ -z "$packages" ] && opkg_has_package ccid; then
-        packages="$packages ccid"
-      fi
-      [ -n "$packages" ] || {
-        printf '当前 OpenWrt 软件源未提供 pcscd/libccid/ccid。\n' >&2
-        return 1
-      }
-      install_packages $packages
-      ;;
-    *)
-      printf '未识别包管理器，请手动安装 pcscd 与 CCID 驱动。\n' >&2
-      return 1
-      ;;
-  esac
-}
-
-start_pcsc_service() {
-  if command -v systemctl >/dev/null 2>&1; then
-    run_root systemctl enable --now pcscd.socket >/dev/null 2>&1 && return 0
-    run_root systemctl restart pcscd >/dev/null 2>&1 && return 0
-  fi
-  if [ -x /etc/init.d/pcscd ]; then
-    run_root /etc/init.d/pcscd enable >/dev/null 2>&1 || true
-    run_root /etc/init.d/pcscd restart >/dev/null 2>&1 || run_root /etc/init.d/pcscd start >/dev/null 2>&1 || true
-    return 0
-  fi
-  return 1
-}
-
-install_pcsc_support() {
-  printf '安装 USB SIM 读卡器依赖：pcscd 与 CCID 驱动。\n'
-  if ! install_pcsc_packages; then
-    printf 'pcscd/CCID 自动安装失败；不影响普通蜂窝模组。\n' >&2
-    return 1
-  fi
-  if ! start_pcsc_service; then
-    printf 'pcscd 已安装但未能自动启动，请手动启用服务。\n' >&2
-    return 1
-  fi
-  printf 'USB SIM 读卡器依赖已就绪。\n'
-}
-
-install_ffmpeg_packages() {
-  if [ "$PACKAGE_MANAGER" = "opkg" ] && ! opkg_has_package ffmpeg; then
-    printf '当前 OpenWrt 软件源未提供 ffmpeg。\n' >&2
-    return 1
-  fi
-  install_packages ffmpeg
-}
-
-install_ffmpeg_support() {
-  printf '安装通话录音 MP3 转码依赖：ffmpeg。\n'
-  if command -v ffmpeg >/dev/null 2>&1; then
-    printf 'ffmpeg 已安装：%s\n' "$(command -v ffmpeg)"
-    return 0
-  fi
-  if ! install_ffmpeg_packages; then
-    printf 'ffmpeg 自动安装失败；通话录音将保存为 WAV，可稍后手动安装。\n' >&2
-    return 1
-  fi
-  if ! command -v ffmpeg >/dev/null 2>&1; then
-    printf 'ffmpeg 包已安装但命令未进入 PATH；通话录音将保存为 WAV。\n' >&2
-    return 1
-  fi
-  printf '通话录音 MP3 转码依赖已就绪。\n'
-}
-
 cleanup_downloads() {
   if [ -n "$DOWNLOAD_DIR" ] && [ -d "$DOWNLOAD_DIR" ]; then
     rm -rf "$DOWNLOAD_DIR"
@@ -875,16 +791,6 @@ on_exit() {
 }
 
 finish_install() {
-  if [ "$WITH_PCSC" = "1" ]; then
-    install_pcsc_support || true
-  else
-    printf '如需 USB SIM 读卡器支持，可重新运行安装命令并追加 --with-pcsc。\n'
-  fi
-  if [ "$WITH_FFMPEG" = "1" ]; then
-    install_ffmpeg_support || true
-  else
-    printf '如需通话录音 MP3 转码，可重新运行安装命令并追加 --with-ffmpeg。\n'
-  fi
   if ! restart_service; then
     rollback_binary
     exit 1

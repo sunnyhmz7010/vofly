@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { AlertRegular, CheckmarkRegular } from "@fluentui/react-icons";
 import { api, apiMessage, getSecuritySettings, updateSecuritySettings } from "../api";
-import type { DeveloperSettings, HTTPSSettings, NotificationSettings, SecuritySettings, SMSSettings, SystemInfo, VoWiFiSettings } from "../types";
+import type { DependencyStatus, DeveloperSettings, HTTPSSettings, NotificationSettings, SecuritySettings, SMSSettings, SystemInfo, VoWiFiSettings } from "../types";
 import { Button, Markdown, PageHeader, confirmDialog, message } from "../components/ui";
 import { formatVersionLabel } from "../components/shell/versionFormat";
 import { CardDecor, CardIcon, CardTitle, SecurityCard, SystemInfoCard } from "../components/settings/Cards";
@@ -30,6 +30,7 @@ import { HTTPSCard } from "../components/settings/HTTPSCard";
 import { SMSRateLimitCard } from "../components/settings/SMSRateLimitCard";
 import { SMSAutoClearCard } from "../components/settings/SMSAutoClearCard";
 import { VoWiFiMTUCard } from "../components/settings/VoWiFiMTUCard";
+import { OptionalDependenciesCard } from "../components/settings/OptionalDependenciesCard";
 
 const EMPTY_PASSWORD: PasswordForm = { currentSecret: "", newSecret: "", confirmSecret: "" };
 
@@ -90,6 +91,7 @@ export default function SettingsPage() {
   const [vowifiSettings, setVoWiFiSettings] = useState<VoWiFiSettings | null>(null);
   const [loadingVoWiFiSettings, setLoadingVoWiFiSettings] = useState(false);
   const [savingVoWiFiSettings, setSavingVoWiFiSettings] = useState(false);
+  const [dependencyStatuses, setDependencyStatuses] = useState<DependencyStatus[]>([]);
 
   const updateChannel = useCallback(<K extends keyof NotifyForms>(key: K, patch: Partial<NotifyForms[K]>) => {
     setForms((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
@@ -183,6 +185,14 @@ export default function SettingsPage() {
     }
   }, [t]);
 
+  const fetchDependencies = useCallback(async () => {
+    try {
+      setDependencyStatuses(await api<DependencyStatus[]>("/system/dependencies"));
+    } catch (error) {
+      message.error(apiMessage(error) || t("依赖状态加载失败"));
+    }
+  }, [t]);
+
   useEffect(() => {
     void fetchSystemInfo();
     void fetchNotifications();
@@ -194,7 +204,8 @@ export default function SettingsPage() {
     void fetchDeveloperSettings();
     void fetchSMSSettings();
     void fetchVoWiFiSettings();
-  }, [fetchHTTPS, fetchDeveloperSettings, fetchSMSSettings, fetchVoWiFiSettings]);
+    void fetchDependencies();
+  }, [fetchHTTPS, fetchDeveloperSettings, fetchSMSSettings, fetchVoWiFiSettings, fetchDependencies]);
 
   const onToggleHTTPS = useCallback(async (enabled: boolean) => {
     setSavingHTTPS(true);
@@ -559,6 +570,7 @@ export default function SettingsPage() {
           onLimitChange={setSMSHourlyLimit}
           onSave={onSaveSMSHourlyLimit}
         />
+        <OptionalDependenciesCard statuses={dependencyStatuses.filter((item) => item.id === "pcsc" || item.id === "ffmpeg")} onRefresh={fetchDependencies} />
         <PluginsCard />
 
         <div className="notify-card ui-card group relative overflow-hidden p-8 lg:col-span-2">

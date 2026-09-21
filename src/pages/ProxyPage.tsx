@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AddRegular, GlobeRegular } from "@fluentui/react-icons";
 import { api, ApiError, apiMessage } from "../api";
-import type { Country, CountryRule, DeviceListItem, DeviceProxyBinding, DevicesResponse, ProfileProxyCandidate, UpstreamProxy } from "../types";
+import type { Country, CountryRule, DependencyJob, DependencyStatus, DeviceListItem, DeviceProxyBinding, DevicesResponse, ProfileProxyCandidate, SingBoxProxy, UpstreamProxy } from "../types";
 import { usePolling } from "../lib/usePolling";
 import { Button, PageHeader, confirmDialog, message } from "../components/ui";
 import {
@@ -16,6 +16,8 @@ import { UpstreamDialog } from "../components/proxy/UpstreamDialog";
 import { DeviceBindingsDialog } from "../components/proxy/DeviceBindingsDialog";
 import { CountryRulesDialog } from "../components/proxy/CountryRulesDialog";
 import { UpstreamSection } from "../components/proxy/UpstreamSection";
+import { SingBoxDialog, type SingBoxForm } from "../components/proxy/SingBoxDialog";
+import { SingBoxSection } from "../components/proxy/SingBoxSection";
 import { tf, useI18n } from "../lib/i18n";
 import { listPlugins, pluginAssetURL, type InstalledPlugin } from "../extensions";
 
@@ -46,6 +48,14 @@ export default function ProxyPage() {
   const [countryBusy, setCountryBusy] = useState(false);
   const [toggleBusyId, setToggleBusyId] = useState("");
   const [plugins, setPlugins] = useState<InstalledPlugin[]>([]);
+  const [singBoxProxies, setSingBoxProxies] = useState<SingBoxProxy[]>([]);
+  const [singBoxDependency, setSingBoxDependency] = useState<DependencyStatus | undefined>();
+  const [singBoxLoading, setSingBoxLoading] = useState(true);
+  const [singBoxDialogOpen, setSingBoxDialogOpen] = useState(false);
+  const [editingSingBox, setEditingSingBox] = useState<SingBoxProxy | null>(null);
+  const [singBoxForm, setSingBoxForm] = useState<SingBoxForm>({ id: "", name: "", uri: "", enabled: true });
+  const [singBoxBusyId, setSingBoxBusyId] = useState("");
+  const [singBoxDialogError, setSingBoxDialogError] = useState("");
 
   const regionNames = useMemo(() => {
     try {
@@ -89,9 +99,26 @@ export default function ProxyPage() {
     }
   }, []);
 
+  const loadSingBox = useCallback(async (initial = false) => {
+    if (initial) setSingBoxLoading(true);
+    try {
+      const [rows, dependencies] = await Promise.all([
+        api<SingBoxProxy[]>("/singbox-proxies"),
+        api<DependencyStatus[]>("/system/dependencies"),
+      ]);
+      setSingBoxProxies(rows || []);
+      setSingBoxDependency((dependencies || []).find((item) => item.id === "singbox"));
+    } catch (error) {
+      message.error(apiMessage(error) || t("sing-box 状态加载失败"));
+    } finally {
+      if (initial) setSingBoxLoading(false);
+    }
+  }, [t]);
+
   useEffect(() => {
     void loadUpstream(true);
-  }, [loadUpstream]);
+    void loadSingBox(true);
+  }, [loadUpstream, loadSingBox]);
 
   useEffect(() => {
     let active = true;
@@ -105,7 +132,73 @@ export default function ProxyPage() {
 
   usePolling(() => {
     if (!upstreamLoading) void loadUpstream(false);
+    if (!singBoxLoading) void loadSingBox(false);
   }, 10000, false);
+
+  const openSingBoxDialog = useCallback((proxy?: SingBoxProxy) => {
+    setSingBoxDialogError("");
+    setEditingSingBox(proxy || null);
+    setSingBoxForm({ id: proxy?.id || "", name: proxy?.name || "", uri: "", enabled: proxy?.enabled ?? true });
+    setSingBoxDialogOpen(true);
+  }, []);
+
+  const submitSingBox = useCallback(async () => {
+    const form = { ...singBoxForm, id: singBoxForm.id.trim(), name: singBoxForm.name.trim(), uri: singBoxForm.uri.trim() };
+    if (!form.uri || !/^(vless|vmess|trojan|ss|socks5?):\/\//i.test(form.uri)) {
+      setSingBoxDialogError(t("请输入受支持的代理 URI"));
+      return;
+    }
+    try {
+      await api(editingSingBox ? `/singbox-proxies/${encodeURIComponent(form.id)}` : "/singbox-proxies", { method: editingSingBox ? "PUT" : "POST", body: form });
+      setSingBoxDialogOpen(false);
+      await Promise.all([loadSingBox(false), loadUpstream(false)]);
+      message.success(t("协议代理已保存"));
+    } catch (error) {
+      setSingBoxDialogError(apiMessage(error) || t("保存失败"));
+    }
+  }, [editingSingBox, loadSingBox, loadUpstream, singBoxForm, t]);
+
+  const toggleSingBox = useCallback(async (proxy: SingBoxProxy) => {
+    setSingBoxBusyId(proxy.id);
+    try {
+      await api(`/singbox-proxies/${encodeURIComponent(proxy.id)}`, { method: "PATCH", body: { enabled: !proxy.enabled } });
+      await Promise.all([loadSingBox(false), loadUpstream(false)]);
+    } catch (error) {
+      message.error(apiMessage(error) || t("切换协议代理状态失败"));
+    } finally {
+      setSingBoxBusyId("");
+    }
+  }, [loadSingBox, loadUpstream, t]);
+
+  const removeSingBox = useCallback(async (proxy: SingBoxProxy) => {
+    if (!await confirmDialog(tf("确定删除协议代理“{name}”吗？其派生 SOCKS5、国家规则和 Profile 绑定也会删除。", { name: proxy.name || proxy.id }), t("确认删除"), { confirmText: t("删除"), cancelText: t("取消"), type: "warning" })) return;
+    try {
+      await api(`/singbox-proxies/${encodeURIComponent(proxy.id)}`, { method: "DELETE" });
+      await Promise.all([loadSingBox(false), loadUpstream(false)]);
+      message.success(t("协议代理已删除"));
+    } catch (error) {
+      message.error(apiMessage(error) || t("删除失败"));
+    }
+  }, [loadSingBox, loadUpstream, t]);
+
+  const runSingBoxDependencyAction = useCallback(async (operation: "install" | "uninstall") => {
+    try {
+      const job = await api<DependencyJob>(`/system/dependencies/singbox/${operation}`, { method: operation === "install" ? "POST" : "DELETE" });
+      for (let attempt = 0; attempt < 60; attempt += 1) {
+        const current = await api<DependencyJob>(`/system/dependencies/jobs/${encodeURIComponent(job.id)}`);
+        if (["success", "failed"].includes(current.state)) {
+          if (current.state === "failed") throw new Error(current.error || t("依赖任务失败"));
+          await loadSingBox(false);
+          return;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 500));
+      }
+      throw new Error(t("依赖任务超时"));
+    } catch (error) {
+      message.error(apiMessage(error) || (error instanceof Error ? error.message : t("依赖操作失败")));
+      await loadSingBox(false);
+    }
+  }, [loadSingBox, t]);
 
   const openUpstreamDialog = useCallback((proxy?: UpstreamProxy) => {
     setUpstreamProbe(null);
@@ -319,6 +412,18 @@ export default function ProxyPage() {
           </div>
         )}
       />
+      <SingBoxSection
+        rows={singBoxProxies}
+        dependency={singBoxDependency}
+        loading={singBoxLoading}
+        onCreate={() => openSingBoxDialog()}
+        onEdit={openSingBoxDialog}
+        onDelete={(proxy) => void removeSingBox(proxy)}
+        onToggle={(proxy) => void toggleSingBox(proxy)}
+        onInstall={() => void runSingBoxDependencyAction("install")}
+        onUninstall={() => void runSingBoxDependencyAction("uninstall")}
+        busyId={singBoxBusyId}
+      />
       <UpstreamSection
         rows={proxyRows}
         loading={upstreamLoading}
@@ -329,6 +434,15 @@ export default function ProxyPage() {
         onOpenBindings={openBindingsDialog}
         onToggle={(proxy) => void toggleUpstream(proxy)}
         toggleBusyId={toggleBusyId}
+      />
+      <SingBoxDialog
+        open={singBoxDialogOpen}
+        editing={!!editingSingBox}
+        form={singBoxForm}
+        error={singBoxDialogError}
+        onPatch={(patch) => setSingBoxForm((form) => ({ ...form, ...patch }))}
+        onClose={() => setSingBoxDialogOpen(false)}
+        onSubmit={() => void submitSingBox()}
       />
       {plugins.filter((plugin) => plugin.enabled).flatMap((plugin) =>
         plugin.contributions.filter((contribution) => contribution.location === "proxy").map((contribution) => (

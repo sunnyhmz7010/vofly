@@ -12,7 +12,7 @@ test("installer installs and records required modem runtime dependencies", async
   const install = await source("install.sh");
 
   assert.match(install, /install_runtime_dependencies/);
-  assert.match(install, /sudo sh install\.sh \[--force\] \[--with-pcsc\] \[--with-ffmpeg\]/);
+  assert.match(install, /sudo sh install\.sh \[--force\] \[--skip-vowifi-check\]/);
   assert.match(install, /libqmi-utils/);
   assert.match(install, /qmi-utils/);
   assert.match(install, /iproute2/);
@@ -20,6 +20,7 @@ test("installer installs and records required modem runtime dependencies", async
   assert.match(install, /installed-packages/);
   assert.match(install, /%s\|%s/);
   assert.match(install, /command -v ip/);
+  assert.doesNotMatch(install, /--with-pcsc|--with-ffmpeg|install_pcsc_support|install_ffmpeg_support/);
   assert.doesNotMatch(install, /CHECK_ENV|--check-env|run_check_env/);
 });
 

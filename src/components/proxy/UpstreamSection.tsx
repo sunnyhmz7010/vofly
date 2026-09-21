@@ -46,7 +46,7 @@ export function UpstreamSection({ rows, loading, error, onRetry, onEdit, onDelet
           <tbody className="divide-y divide-gray-100 dark:divide-white/10">
             {rows.map((row) => (
               <tr key={row.id} className="hover:bg-sky-50/40 dark:hover:bg-sky-500/[0.04]">
-                <td className="px-4 py-3 font-semibold">{row.name || row.id}</td>
+                <td className="px-4 py-3 font-semibold">{row.name || row.id}{row.readOnly ? <div className="mt-1"><Tag type="info">{t("由 sing-box 接管，只读派生")}</Tag></div> : null}</td>
                 <td className="px-4 py-3 font-mono text-xs">{row.addr}</td>
                 <td className="px-4 py-3"><Tag type={row.enabled ? "success" : "info"}>{row.enabled ? t("已启用") : t("已禁用")}</Tag></td>
                 <td className="px-4 py-3">
@@ -70,8 +70,8 @@ export function UpstreamSection({ rows, loading, error, onRetry, onEdit, onDelet
                       onClick={() => onToggle(row)}
                     >{row.enabled ? t("禁用") : t("启用")}</Button>
                     <Button size="small" icon={<DesktopRegular />} onClick={() => onOpenBindings(row)}>{t("SIM / Profile 绑定")}</Button>
-                    <Button size="small" icon={<EditRegular />} onClick={() => onEdit(row)}>{t("编辑")}</Button>
-                    <Button size="small" variant="danger" plain icon={<DeleteRegular />} onClick={() => onDelete(row)}>{t("删除")}</Button>
+                    {!row.readOnly ? <Button size="small" icon={<EditRegular />} onClick={() => onEdit(row)}>{t("编辑")}</Button> : null}
+                    {!row.readOnly ? <Button size="small" variant="danger" plain icon={<DeleteRegular />} onClick={() => onDelete(row)}>{t("删除")}</Button> : null}
                   </div>
                 </td>
               </tr>

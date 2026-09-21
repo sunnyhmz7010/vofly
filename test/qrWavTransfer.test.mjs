@@ -40,7 +40,7 @@ test("QR receive offline service worker is shipped", async () => {
   assert.match(worker, /\/assets\//);
 });
 
-test("installer scripts follow current VOFLY environment layout with opt-in ffmpeg", async () => {
+test("installer scripts follow current VOFLY environment layout with web-managed optional dependencies", async () => {
   const install = await source("install.sh");
   const update = await source("update.sh");
   const uninstall = await source("uninstall.sh");
@@ -52,10 +52,8 @@ test("installer scripts follow current VOFLY environment layout with opt-in ffmp
   assert.match(install, /VOFLY_DATABASE_PATH=%s/);
   assert.match(install, /EnvironmentFile=\/etc\/vofly\/env/);
   assert.match(install, /ExecStart=\/opt\/vofly\/bin\/vofly serve/);
-  assert.match(install, /--with-pcsc/);
-  assert.match(install, /--with-ffmpeg/);
-  assert.match(install, /install_ffmpeg_support/);
-  assert.match(install, /install_ffmpeg_packages/);
+  assert.doesNotMatch(install, /--with-pcsc|--with-ffmpeg/);
+  assert.doesNotMatch(install, /install_pcsc_support|install_ffmpeg_support|install_ffmpeg_packages/);
   assert.match(update, /vofly_/);
   assert.match(uninstall, /--purge/);
 
