@@ -19,7 +19,7 @@
 - Linux 主机或 OpenWrt/Kwrt 设备（x86_64 / arm64 / armv7），具备模组串口或 USB 访问权限
 - 安装脚本会自动安装 QMI、网络工具和 CA 证书等运行依赖
 - VoWiFi IMS 需要内核支持 XFRM/IPsec；OpenWrt/Kwrt 会尝试安装当前软件源中与固件内核匹配的 `ip-full`、`kmod-ipsec`、`kmod-ipsec4/6` 和相关 crypto kmod，禁止强装其他内核版本的 kmod
-- USB SIM 读卡器依赖系统 `pcscd` 服务与 CCID 驱动，可通过安装脚本 `--with-pcsc` 选装
+- USB SIM 读卡器依赖系统 `pcscd` 服务与 CCID 驱动，可在登录后的设置页按需安装
 
 ### 📦 安装与运行
 
@@ -43,23 +43,11 @@ curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh 
 
 #### 🖥️ USB SIM 读卡器（可选）
 
-使用 PC/SC USB SIM 读卡器的用户在安装命令后追加 `--with-pcsc`，脚本会在支持的软件包管理器上自动安装并启动 `pcscd` 与 CCID 驱动（失败仅警告，不阻断安装）：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh -s -- --with-pcsc
-```
-
-也可稍后手动安装，例如 Debian/Ubuntu：`sudo apt install pcscd libccid`。
+使用 PC/SC USB SIM 读卡器时，登录 Web 控制台并打开设置页，在可选依赖卡片中安装并管理 `pcscd` 与 CCID 驱动。
 
 #### 🎙️ 通话录音 MP3 转码（可选）
 
-通话录音会混音上行与下行两路音频；装有 `ffmpeg` 时自动转码为 MP3，缺失时保存为 WAV。需要 MP3 时在安装命令后追加 `--with-ffmpeg`，脚本会在支持的软件包管理器上自动安装 ffmpeg（失败仅警告，不阻断安装）：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh -s -- --with-ffmpeg
-```
-
-也可稍后手动安装，例如 Debian/Ubuntu：`sudo apt install ffmpeg`。
+通话录音会混音上行与下行两路音频；装有 `ffmpeg` 时自动转码为 MP3，缺失时保存为 WAV。需要 MP3 时，登录 Web 控制台并在设置页的可选依赖卡片中安装和管理 `ffmpeg`。
 
 #### 📶 VoWiFi 内核检查
 
