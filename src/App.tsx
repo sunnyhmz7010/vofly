@@ -18,6 +18,7 @@ import KnowledgeBasePage from "./pages/KnowledgeBasePage";
 import AutomaticTasksPage from "./pages/AutomaticTasksPage";
 import LogsPage from "./pages/LogsPage";
 import SettingsPage from "./pages/SettingsPage";
+import OptionalDependenciesPage from "./pages/OptionalDependenciesPage";
 import ExtensionPage from "./pages/ExtensionPage";
 import QrReceivePage from "./pages/QrReceivePage";
 
@@ -92,6 +93,7 @@ function AppRoot() {
           <Route path="extensions/:pluginId/:contributionId" element={<ExtensionPage />} />
           <Route path="logs" element={<LogsPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="settings/dependencies" element={<OptionalDependenciesPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

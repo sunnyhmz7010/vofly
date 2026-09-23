@@ -570,7 +570,7 @@ export default function SettingsPage() {
           onLimitChange={setSMSHourlyLimit}
           onSave={onSaveSMSHourlyLimit}
         />
-        <OptionalDependenciesCard statuses={dependencyStatuses.filter((item) => item.id === "pcsc" || item.id === "ffmpeg")} onRefresh={fetchDependencies} />
+        <OptionalDependenciesCard statuses={dependencyStatuses} />
         <PluginsCard />
 
         <div className="notify-card ui-card group relative overflow-hidden p-8 lg:col-span-2">

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AddRegular, GlobeRegular } from "@fluentui/react-icons";
 import { api, ApiError, apiMessage } from "../api";
-import type { Country, CountryRule, DependencyJob, DependencyStatus, DeviceListItem, DeviceProxyBinding, DevicesResponse, ProfileProxyCandidate, SingBoxProxy, UpstreamProxy } from "../types";
+import type { Country, CountryRule, DependencyStatus, DeviceListItem, DeviceProxyBinding, DevicesResponse, ProfileProxyCandidate, SingBoxProxy, UpstreamProxy } from "../types";
 import { usePolling } from "../lib/usePolling";
 import { Button, PageHeader, confirmDialog, message } from "../components/ui";
 import {
@@ -28,6 +29,7 @@ interface BindingMutationResult {
 
 export default function ProxyPage() {
   const { t, lang } = useI18n();
+  const navigate = useNavigate();
 
   const [proxies, setProxies] = useState<UpstreamProxy[]>([]);
   const [devices, setDevices] = useState<DeviceListItem[]>([]);
@@ -180,25 +182,6 @@ export default function ProxyPage() {
       message.error(apiMessage(error) || t("删除失败"));
     }
   }, [loadSingBox, loadUpstream, t]);
-
-  const runSingBoxDependencyAction = useCallback(async (operation: "install" | "uninstall") => {
-    try {
-      const job = await api<DependencyJob>(`/system/dependencies/singbox/${operation}`, { method: operation === "install" ? "POST" : "DELETE" });
-      for (let attempt = 0; attempt < 60; attempt += 1) {
-        const current = await api<DependencyJob>(`/system/dependencies/jobs/${encodeURIComponent(job.id)}`);
-        if (["success", "failed"].includes(current.state)) {
-          if (current.state === "failed") throw new Error(current.error || t("依赖任务失败"));
-          await loadSingBox(false);
-          return;
-        }
-        await new Promise((resolve) => window.setTimeout(resolve, 500));
-      }
-      throw new Error(t("依赖任务超时"));
-    } catch (error) {
-      message.error(apiMessage(error) || (error instanceof Error ? error.message : t("依赖操作失败")));
-      await loadSingBox(false);
-    }
-  }, [loadSingBox, t]);
 
   const openUpstreamDialog = useCallback((proxy?: UpstreamProxy) => {
     setUpstreamProbe(null);
@@ -420,8 +403,7 @@ export default function ProxyPage() {
         onEdit={openSingBoxDialog}
         onDelete={(proxy) => void removeSingBox(proxy)}
         onToggle={(proxy) => void toggleSingBox(proxy)}
-        onInstall={() => void runSingBoxDependencyAction("install")}
-        onUninstall={() => void runSingBoxDependencyAction("uninstall")}
+        onManageDependencies={() => navigate("/settings/dependencies")}
         busyId={singBoxBusyId}
       />
       <UpstreamSection

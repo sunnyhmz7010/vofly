@@ -1,4 +1,4 @@
-import { AddRegular, DeleteRegular, EditRegular, PauseRegular, PlayRegular } from "@fluentui/react-icons";
+import { AddRegular, DeleteRegular, EditRegular, PauseRegular, PlayRegular, SettingsRegular } from "@fluentui/react-icons";
 import type { DependencyStatus, SingBoxProxy } from "../../types";
 import { Button, Tag } from "../ui";
 import { useI18n } from "../../lib/i18n";
@@ -11,12 +11,11 @@ export interface SingBoxSectionProps {
   onEdit: (row: SingBoxProxy) => void;
   onDelete: (row: SingBoxProxy) => void;
   onToggle: (row: SingBoxProxy) => void;
-  onInstall: () => void;
-  onUninstall: () => void;
+  onManageDependencies: () => void;
   busyId?: string;
 }
 
-export function SingBoxSection({ rows, dependency, loading, onCreate, onEdit, onDelete, onToggle, onInstall, onUninstall, busyId }: SingBoxSectionProps) {
+export function SingBoxSection({ rows, dependency, loading, onCreate, onEdit, onDelete, onToggle, onManageDependencies, busyId }: SingBoxSectionProps) {
   const { t } = useI18n();
   const installed = dependency?.installed === true;
   return (
@@ -27,15 +26,7 @@ export function SingBoxSection({ rows, dependency, loading, onCreate, onEdit, on
           <p className="mt-1 text-xs text-gray-400">{t("URI 由 sing-box 接管，自动生成 127.0.0.1 SOCKS5 监听")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {installed ? (
-            <Button size="small" variant="warning" plain icon={<DeleteRegular />} disabled={!dependency?.canUninstall || dependency.busy || rows.length > 0} onClick={onUninstall}>
-              {t("卸载 sing-box")}
-            </Button>
-          ) : (
-            <Button size="small" variant="primary" icon={<AddRegular />} disabled={dependency?.busy === true || dependency?.canInstall === false} onClick={onInstall}>
-              {t("安装 sing-box")}
-            </Button>
-          )}
+          <Button size="small" variant="default" icon={<SettingsRegular />} onClick={onManageDependencies}>{t("管理依赖")}</Button>
           <Button size="small" variant="primary" icon={<AddRegular />} disabled={!installed} onClick={onCreate}>{t("新增协议代理")}</Button>
         </div>
       </div>

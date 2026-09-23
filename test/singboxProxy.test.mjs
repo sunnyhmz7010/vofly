@@ -30,17 +30,28 @@ test("sing-box proxy input accepts mainstream URI schemes and hides the original
   assert.match(dialog, /VLESS、VMess、Trojan、Shadowsocks 和 SOCKS5 URI/);
 });
 
-test("derived SOCKS5 rows remain read-only and optional dependencies are managed from settings", async () => {
+test("derived SOCKS5 rows remain read-only and all optional dependencies use one settings page", async () => {
   const upstream = await source("src/components/proxy/UpstreamSection.tsx");
+  const app = await source("src/App.tsx");
   const settings = await source("src/pages/SettingsPage.tsx");
   const dependencies = await source("src/components/settings/OptionalDependenciesCard.tsx");
+  const dependencyPage = await source("src/pages/OptionalDependenciesPage.tsx");
+  const proxy = await source("src/pages/ProxyPage.tsx");
+  const section = await source("src/components/proxy/SingBoxSection.tsx");
 
   assert.match(upstream, /!row\.readOnly \? <Button[\s\S]*?onEdit/);
   assert.match(upstream, /!row\.readOnly \? <Button[\s\S]*?onDelete/);
+  assert.match(app, /path="settings\/dependencies"/);
   assert.match(settings, /OptionalDependenciesCard/);
-  assert.match(settings, /item\.id === "pcsc" \|\| item\.id === "ffmpeg"/);
-  assert.match(dependencies, /\/system\/dependencies\/\$\{item\.id\}\/\$\{operation\}/);
-  assert.match(dependencies, /confirmDialog/);
+  assert.match(dependencies, /\/settings\/dependencies/);
+  assert.doesNotMatch(dependencies, /\/system\/dependencies\/\$\{item\.id\}\/\$\{operation\}/);
+  assert.match(dependencyPage, /item\.id === "pcsc" \|\| item\.id === "ffmpeg" \|\| item\.id === "singbox"/);
+  assert.match(dependencyPage, /\/system\/dependencies\/\$\{item\.id\}\/\$\{operation\}/);
+  assert.match(dependencyPage, /confirmDialog/);
+  assert.doesNotMatch(proxy, /runSingBoxDependencyAction/);
+  assert.doesNotMatch(proxy, /onInstall=/);
+  assert.doesNotMatch(proxy, /onUninstall=/);
+  assert.match(section, /onManageDependencies/);
 });
 
 test("sing-box dependency uses the official installer instead of bundled release assets", async () => {
