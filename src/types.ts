@@ -100,6 +100,16 @@ export interface PublicIPInfo {
   organization?: string;
 }
 
+export interface SMSStorageArea {
+  used?: number;
+  total?: number;
+}
+
+export interface SMSStorageUsage {
+  sm?: SMSStorageArea;
+  me?: SMSStorageArea;
+}
+
 export interface DeviceListItem {
   id: string;
   name: string;
@@ -118,6 +128,7 @@ export interface DeviceListItem {
   interface: string;
   esimTransport: string;
   smsEnabled: boolean;
+  smsStorage?: SMSStorageUsage;
 	  networkEnabled: boolean;
   vowifiEnabled: boolean;
   vowifiActive?: boolean;
