@@ -685,6 +685,7 @@ record_new_packages() {
   new_file=$(mktemp "${TMPDIR:-/tmp}/vofly-packages.XXXXXX")
   comm -13 "$before_file" "$after_file" >"$new_file"
   if [ -s "$new_file" ]; then
+    run_root install -d -m 755 "$ENV_DIR"
     while IFS= read -r package; do
       [ -n "$package" ] || continue
       printf '%s|%s\n' "$PACKAGE_MANAGER" "$package" >>"$INSTALLED_PACKAGES_FILE"
