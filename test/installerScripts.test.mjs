@@ -12,7 +12,8 @@ test("installer installs and records required modem runtime dependencies", async
   const install = await source("install.sh");
 
   assert.match(install, /install_runtime_dependencies/);
-  assert.match(install, /sudo sh install\.sh \[--force\] \[--skip-vowifi-check\]/);
+  assert.match(install, /sudo sh install\.sh \[--force\] \[版本\]/);
+  assert.doesNotMatch(install, /--skip-vowifi-check/);
   assert.match(install, /libqmi-utils/);
   assert.match(install, /qmi-utils/);
   assert.match(install, /iproute2/);

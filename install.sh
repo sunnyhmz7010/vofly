@@ -2,7 +2,7 @@
 # vofly 一键安装脚本。
 # 用法：
 #   curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh
-#   sudo sh install.sh [--force] [--skip-vowifi-check] [版本]
+#   sudo sh install.sh [--force] [版本]
 
 set -eu
 
@@ -28,7 +28,6 @@ DEFAULT_ADDR="0.0.0.0:7575"
 DEFAULT_DATABASE="/opt/vofly/data/vofly.db"
 
 FORCE=0
-SKIP_VOWIFI_CHECK=0
 VERSION_ARG=""
 FIRST_INSTALL=0
 INITIAL_ADMIN_PASSWORD=""
@@ -38,12 +37,10 @@ DOWNLOAD_DIR=""
 print_usage() {
   cat <<'USAGE'
 用法:
-  sudo sh install.sh [--force] [--skip-vowifi-check] [版本]
+  sudo sh install.sh [--force] [版本]
 
 选项:
   --force           即使当前已是目标版本，也重新下载并安装
-  --skip-vowifi-check
-                    跳过 VoWiFi XFRM/IPsec 内核检查（仅使用蜂窝短信/数据等功能时使用）
   -h|--help         显示帮助
 
 示例:
@@ -55,7 +52,6 @@ USAGE
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --force) FORCE=1 ;;
-    --skip-vowifi-check) SKIP_VOWIFI_CHECK=1 ;;
     -h|--help)
       print_usage
       exit 0
@@ -403,11 +399,6 @@ install_openwrt_vowifi_packages() {
 }
 
 check_vowifi_environment() {
-  if [ "$SKIP_VOWIFI_CHECK" = "1" ]; then
-    printf '已跳过 VoWiFi XFRM/IPsec 内核检查；IMS 通话和短信可能不可用。\n'
-    return 0
-  fi
-
   if is_openwrt; then
     install_openwrt_vowifi_packages
   fi
@@ -416,13 +407,13 @@ check_vowifi_environment() {
     return 0
   fi
   if is_openwrt; then
-    printf '当前 OpenWrt/Kwrt 内核 %s 不支持 NETLINK_XFRM，或软件源没有匹配的 kmod-ipsec。\n' "$(uname -r)" >&2
+    printf '警告：当前 OpenWrt/Kwrt 内核 %s 未通过 XFRM/IPsec 检查，或软件源没有匹配的 kmod-ipsec。\n' "$(uname -r)" >&2
     printf '请使用包含 kmod-ipsec、kmod-ipsec4/6、kmod-crypto-authenc、CBC、AES 和 SHA1 组件的同版本固件；禁止强装其他内核版本的 kmod。\n' >&2
-    printf '仅使用非 VoWiFi 功能时可追加 --skip-vowifi-check。\n' >&2
-    return 1
+    printf '安装将继续；VoWiFi IMS 功能可能不可用。\n' >&2
+    return 0
   fi
-  printf '当前 Linux 内核不支持 XFRM/IPsec，VoWiFi IMS 无法工作；仅使用非 VoWiFi 功能时可追加 --skip-vowifi-check。\n' >&2
-  return 1
+  printf '警告：当前 Linux 内核未通过 XFRM/IPsec 检查，VoWiFi IMS 可能无法工作；安装将继续。\n' >&2
+  return 0
 }
 
 write_systemd_unit() {

@@ -51,13 +51,7 @@ curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh 
 
 #### 📶 VoWiFi 内核检查
 
-安装脚本默认验证 XFRM/IPsec 是否可用。OpenWrt/Kwrt 会优先从当前软件源安装可用的 `ip-full`、`kmod-ipsec`、`kmod-ipsec4`、`kmod-ipsec6`、`kmod-crypto-authenc`、`kmod-crypto-cbc`、`kmod-crypto-aes`、`kmod-crypto-hmac`、`kmod-crypto-sha1`；如果软件源没有与当前内核匹配的 kmod，需要更换包含这些组件的同版本固件。
-
-仅使用蜂窝短信、数据或基础模组管理、不使用 VoWiFi IMS 时，可跳过检查：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/sunnyhmz7010/vofly/main/install.sh | sudo sh -s -- --skip-vowifi-check
-```
+安装脚本默认检查 XFRM/IPsec 是否可用；检查未通过时只提示警告，继续安装。OpenWrt/Kwrt 会优先从当前软件源安装可用的 `ip-full`、`kmod-ipsec`、`kmod-ipsec4`、`kmod-ipsec6`、`kmod-crypto-authenc`、`kmod-crypto-cbc`、`kmod-crypto-aes`、`kmod-crypto-hmac`、`kmod-crypto-sha1`；如果软件源没有与当前内核匹配的 kmod，需更换包含这些组件的同版本固件才能使用 VoWiFi IMS。
 
 #### 🔄 更新
 
