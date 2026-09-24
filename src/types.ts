@@ -384,12 +384,15 @@ export interface SingBoxProxy {
 export interface DependencyStatus {
   id: "pcsc" | "ffmpeg" | "singbox" | string;
   installed: boolean;
+  managed: boolean;
   version?: string;
   path?: string;
   available: boolean;
   canInstall: boolean;
   canUninstall: boolean;
   busy: boolean;
+  activeJobId?: string;
+  latestJobId?: string;
   reason?: string;
 }
 
@@ -399,8 +402,15 @@ export interface DependencyJob {
   operation: "install" | "uninstall" | string;
   state: "queued" | "running" | "success" | "failed" | string;
   progress: number;
+  phase?: string;
+  command?: string;
+  output?: string;
+  outputTruncated?: boolean;
   errorCode?: string;
   error?: string;
+  createdAt?: string;
+  startedAt?: string;
+  finishedAt?: string;
 }
 
 export interface UpstreamProxyProbe {

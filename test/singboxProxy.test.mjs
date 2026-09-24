@@ -46,7 +46,12 @@ test("derived SOCKS5 rows remain read-only and all optional dependencies use one
   assert.match(dependencies, /\/settings\/dependencies/);
   assert.doesNotMatch(dependencies, /\/system\/dependencies\/\$\{item\.id\}\/\$\{operation\}/);
   assert.match(dependencyPage, /item\.id === "pcsc" \|\| item\.id === "ffmpeg" \|\| item\.id === "singbox"/);
-  assert.match(dependencyPage, /\/system\/dependencies\/\$\{item\.id\}\/\$\{operation\}/);
+  assert.match(dependencyPage, /operation === "install" \? `\/system\/dependencies\/\$\{item\.id\}\/install` : `\/system\/dependencies\/\$\{item\.id\}`/);
+  assert.match(dependencyPage, /job\.command/);
+  assert.match(dependencyPage, /job\.output/);
+  assert.match(dependencyPage, /activeJobId/);
+  assert.match(dependencyPage, /latestJobId/);
+  assert.doesNotMatch(dependencyPage, /attempt < 60/);
   assert.match(dependencyPage, /confirmDialog/);
   assert.doesNotMatch(proxy, /runSingBoxDependencyAction/);
   assert.doesNotMatch(proxy, /onInstall=/);

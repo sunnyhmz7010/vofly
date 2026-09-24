@@ -21,7 +21,7 @@ export function OptionalDependenciesCard({ statuses }: { statuses: DependencySta
       <div className="relative z-10 grid gap-3 md:grid-cols-3">
         {optional.map((item) => (
           <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 p-4 dark:bg-white/5">
-            <div className="min-w-0"><div className="truncate font-semibold">{item.id === "pcsc" ? "PC/SC" : item.id === "ffmpeg" ? "ffmpeg" : "sing-box"}</div><div className="mt-1 truncate text-xs text-gray-400">{item.reason || t("状态待检查")}</div></div>
+            <div className="min-w-0"><div className="font-semibold">{item.id === "pcsc" ? "PC/SC" : item.id === "ffmpeg" ? "ffmpeg" : "sing-box"}</div><div className="mt-1 break-words text-xs text-gray-400">{!item.available ? t("当前系统没有可用的包管理器") : item.busy ? t("执行中") : item.installed ? item.managed ? t("由 vofly 管理") : t("系统已有，非 vofly 管理") : t("未安装")}</div></div>
             <Tag type={item.installed ? "success" : "info"}>{item.installed ? t("已安装") : t("未安装")}</Tag>
           </div>
         ))}
