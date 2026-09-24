@@ -1596,4 +1596,7 @@ export const EN_DICT: Record<string, string> = {
   "用于通话录音转码为 MP3": "For transcoding call recordings to MP3",
   "用于 VLESS、VMess、Trojan、Shadowsocks 和 SOCKS5 协议代理":
     "For VLESS, VMess, Trojan, Shadowsocks, and SOCKS5 protocol proxies",
+  "模组短信存储已满，新短信可能无法接收": "Modem SMS storage is full; new messages may not be received",
+  "SIM 短信存储已满，新短信可能无法接收": "SIM SMS storage is full; new messages may not be received",
+  "模组和 SIM 短信存储已满，新短信可能无法接收": "Modem and SIM SMS storage are full; new messages may not be received",
 };
